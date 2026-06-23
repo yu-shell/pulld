@@ -134,20 +134,25 @@ export async function onRequestPost(context) {
         .run()
       await logEvent(env, event, true, `license issued (test_mode=${testMode})`)
     } else if (isRevoke) {
+      // Revoke on refund, or when the license key is disabled/expired — e.g. a subscription
+      // lapses and Lemon Squeezy fires license_key_updated with `disabled: true` or a non-active
+      // `status`. (`disabled` and `status` are real fields on the LS license_key object.)
+      const refunded = event === "order_refunded"
+      const revoke =
+        refunded || attrs.disabled === true || (!!attrs.status && attrs.status !== "active")
+      const active = revoke ? 0 : 1
+      const note = `active=${active} status=${attrs.status} disabled=${attrs.disabled}`
+
       // If this key is a search project's license, deactivate the project; else a Pro license.
       const sp = await env.DB.prepare("SELECT id FROM search_projects WHERE ls_license = ?")
         .bind(key)
         .first()
       if (sp) {
-        const active =
-          event === "order_refunded" ? 0 : attrs.status && attrs.status !== "active" ? 0 : 1
         await env.DB.prepare("UPDATE search_projects SET active = ? WHERE ls_license = ?")
           .bind(active, key)
           .run()
-        await logEvent(env, event, true, `search project active=${active}`)
+        await logEvent(env, event, true, `search project ${note}`)
       } else {
-        const refunded = event === "order_refunded"
-        const active = refunded ? 0 : attrs.status && attrs.status !== "active" ? 0 : 1
         const status = refunded ? "refunded" : active ? "active" : "disabled"
         // A refund always applies (terminal); license_key_updated does not revive a refunded row.
         await env.DB.prepare(
@@ -156,7 +161,7 @@ export async function onRequestPost(context) {
         )
           .bind(active, status, key, refunded ? 1 : 0)
           .run()
-        await logEvent(env, event, true, `revoke active=${active}`)
+        await logEvent(env, event, true, `revoke ${note}`)
       }
     } else {
       await logEvent(
