@@ -146,7 +146,7 @@ const html = `<!doctype html>
   h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
     margin:56px 0 16px;font-weight:600}
   .grid{display:grid;gap:14px}
-  .card{display:flex;gap:16px;align-items:flex-start;background:var(--surface);
+  .card{display:flex;gap:16px;align-items:center;background:var(--surface);
     border:1px solid var(--line);border-radius:14px;padding:16px}
   .card-body{flex:1;min-width:0}
   .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
