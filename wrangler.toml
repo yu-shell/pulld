@@ -7,3 +7,12 @@ compatibility_date = "2026-01-01"
 binding = "DB"
 database_name = "pulld"
 database_id = "ff110676-b940-4295-a2e3-3043f041af1b"
+
+# Workers AI (embeddings) — env.AI
+[ai]
+binding = "AI"
+
+# Vector index for pulld Search (semantic search) — env.VEC
+[[vectorize]]
+binding = "VEC"
+index_name = "pulld-search"

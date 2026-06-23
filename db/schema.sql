@@ -31,3 +31,23 @@ CREATE TABLE IF NOT EXISTS webhook_log (
   ok INTEGER,
   note TEXT
 );
+
+-- pulld Search (semantic search service). One project per customer = one Vectorize namespace.
+-- admin_key indexes content (secret); query_key is used client-side to search (Algolia-style).
+CREATE TABLE IF NOT EXISTS search_projects (
+  id TEXT PRIMARY KEY,
+  admin_key TEXT UNIQUE,
+  query_key TEXT UNIQUE,
+  plan TEXT DEFAULT 'free',
+  q_limit INTEGER DEFAULT 1000,   -- queries per month
+  doc_limit INTEGER DEFAULT 200,  -- indexed docs
+  created TEXT,
+  active INTEGER DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS search_usage (
+  project TEXT,
+  month TEXT,                     -- YYYY-MM
+  queries INTEGER DEFAULT 0,
+  docs INTEGER DEFAULT 0,
+  PRIMARY KEY (project, month)
+);
