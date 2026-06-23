@@ -89,6 +89,7 @@ const searchSection = `
       <div class="search-cta-text">
         <h3>pulld Search — semantic search for your app</h3>
         <p>Hosted and drop-in. Plug it into the command palette's <code>source</code>: index your content and get typo-tolerant, meaning-based results. Nothing to run.</p>
+        <p class="note" style="margin:8px 0 0;font-size:13px">Already subscribed? <a href="${BASE}/account">Get your keys →</a></p>
       </div>
       <a class="buy" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
     </div>

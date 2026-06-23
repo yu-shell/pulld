@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>pulld Search — your keys</title>
+<style>
+  :root{--bg:#fbfbfa;--surface:#fff;--ink:#1a1a1a;--muted:#6b6b6b;--line:#e7e7e4;--accent:#6d5efc;--code-bg:#f4f4f2;--ok:#16a34a;--warn:#dc2626}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f0f11;--surface:#17171a;--ink:#ececef;--muted:#9a9aa2;--line:#27272c;--accent:#8b7dff;--code-bg:#1e1e22;--ok:#4ade80;--warn:#f87171}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:64px 24px 96px}
+  .brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:20px;letter-spacing:-.02em;text-decoration:none;color:var(--ink)}
+  .dot{width:12px;height:12px;border-radius:3px;background:var(--accent)}
+  h1{font-size:30px;line-height:1.15;letter-spacing:-.03em;margin:32px 0 12px}
+  .lede{color:var(--muted);font-size:17px;margin:0 0 24px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:36px 0 8px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .note{color:var(--muted);font-size:14px;margin:0 0 10px}
+  .note code{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+  .row{display:flex;gap:8px;margin:8px 0}
+  input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:11px 13px;color:var(--ink);font:14px ui-monospace,monospace}
+  input:focus{outline:none;border-color:var(--accent)}
+  .buy{flex:none;background:var(--accent);color:#fff;border:none;border-radius:9px;padding:0 18px;font-size:14px;font-weight:500;cursor:pointer}
+  .buy:hover{filter:brightness(1.08)}
+  .meta{font-size:14px;color:var(--muted);margin:0}
+  .tag{font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:5px;padding:2px 7px}
+  .tag.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+  .tag.secret{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .keyrow{display:flex;align-items:center;gap:8px;background:var(--code-bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;overflow:auto}
+  .keyrow code{flex:1;white-space:nowrap;color:var(--ink)}
+  .copy{flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer}
+  .copy:hover{color:var(--ink);border-color:var(--accent)}
+  .snip{position:relative}
+  .snip pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;overflow:auto;
+    font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);white-space:pre}
+  .snip .copy{position:absolute;top:9px;right:9px;background:var(--surface)}
+  footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="brand" href="/"><span class="dot" aria-hidden="true"></span> pulld</a>
+    <h1>Your pulld Search keys</h1>
+    <p class="lede">Paste the Lemon Squeezy license key from your purchase email to get your project's API keys and setup snippets.</p>
+    <div class="row">
+      <input id="lic" type="text" placeholder="paste your license key" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <button id="go" class="buy" type="button">Get my keys</button>
+    </div>
+    <p id="status" class="note" role="status" aria-live="polite"></p>
+
+    <section id="out" hidden>
+      <h2>Project</h2>
+      <p class="meta" id="meta"></p>
+
+      <h2>query_key <span class="tag ok">public</span></h2>
+      <p class="note">Safe to ship in client code — it can only search, never write. Used by the command palette.</p>
+      <div class="keyrow"><code id="qk"></code><button class="copy" type="button" data-for="qk">copy</button></div>
+
+      <h2>admin_key <span class="tag secret">secret</span></h2>
+      <p class="note">Write key for indexing content. Keep it server-side — never ship it to the browser.</p>
+      <div class="keyrow"><code id="ak"></code><button class="copy" type="button" data-for="ak">copy</button></div>
+
+      <h2>1 · Index your content</h2>
+      <p class="note">Server-to-server. Send up to 100 documents per request; re-send a document to update it.</p>
+      <div class="snip"><pre id="ingest"></pre><button class="copy" type="button" data-for="ingest">copy</button></div>
+
+      <h2>2 · Wire the command palette</h2>
+      <p class="note">Point the palette's <code>source</code> prop at your project. Results come back ranked by meaning.</p>
+      <div class="snip"><pre id="palette"></pre><button class="copy" type="button" data-for="palette">copy</button></div>
+    </section>
+
+    <footer>Lost your key? It's in your Lemon Squeezy receipt email. · <a href="/">back to pulld</a></footer>
+  </main>
+  <script>
+    var BASE = location.origin;
+    function $(id){ return document.getElementById(id); }
+    function setStatus(m){ $("status").textContent = m || ""; }
+
+    async function load(){
+      var key = $("lic").value.trim();
+      if(!key){ setStatus("Enter your license key."); return; }
+      setStatus("Loading…");
+      try{
+        var r = await fetch(BASE + "/api/search/account?license=" + encodeURIComponent(key));
+        var j = await r.json();
+        if(!r.ok){
+          $("out").hidden = true;
+          setStatus(j && (j.message || j.error) ? (j.message || j.error) : "No active project for that key. If you just subscribed, give it a minute and try again.");
+          return;
+        }
+        render(j);
+        setStatus("");
+      }catch(e){ setStatus("Network error — try again."); }
+    }
+
+    function render(j){
+      var lim = j.limits || {};
+      $("meta").textContent = j.project + "  ·  " + (j.plan || "?") + " plan  ·  "
+        + (lim.queries_per_month != null ? lim.queries_per_month : "?") + " queries/mo  ·  "
+        + (lim.docs != null ? lim.docs : "?") + " docs";
+      $("qk").textContent = j.query_key || "";
+      $("ak").textContent = j.admin_key || "";
+      $("ingest").textContent =
+        "curl -X POST " + BASE + "/api/search/ingest \\\n" +
+        "  -H \"x-pulld-admin-key: " + j.admin_key + "\" \\\n" +
+        "  -H \"content-type: application/json\" \\\n" +
+        "  -d '{\"documents\":[{\"id\":\"doc-1\",\"title\":\"Getting started\",\"url\":\"/docs/start\",\"content\":\"Your page text here.\"}]}'";
+      $("palette").textContent =
+        "// command-palette source(): hosted semantic search\n" +
+        "async function source(query) {\n" +
+        "  const r = await fetch(\n" +
+        "    \"" + BASE + "/api/search/query?key=" + j.query_key + "&q=\" + encodeURIComponent(query)\n" +
+        "  );\n" +
+        "  const { results } = await r.json();\n" +
+        "  return results; // [{ id, label, url, snippet, score }]\n" +
+        "}";
+      $("out").hidden = false;
+    }
+
+    $("go").addEventListener("click", load);
+    $("lic").addEventListener("keydown", function(e){ if(e.key === "Enter") load(); });
+    document.querySelectorAll(".copy").forEach(function(b){
+      b.addEventListener("click", function(){
+        var el = document.getElementById(b.getAttribute("data-for"));
+        if(!el) return;
+        navigator.clipboard.writeText(el.textContent).then(function(){
+          var t = b.textContent; b.textContent = "copied"; setTimeout(function(){ b.textContent = t; }, 1200);
+        }).catch(function(){});
+      });
+    });
+    // Prefill + auto-load when arriving from a ?license= redirect (e.g. Lemon Squeezy success URL).
+    var pre = new URLSearchParams(location.search).get("license");
+    if(pre){ $("lic").value = pre; load(); }
+  </script>
+</body>
+</html>
