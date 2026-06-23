@@ -100,6 +100,14 @@
       "description": "A production-ready ⌘K command palette: accessible (combobox/listbox roles, aria-activedescendant, focus trapped and restored), full keyboard navigation with wrap-around, fuzzy filtering with match highlighting, grouped results, recents, and an async `source` hook so you can plug in server-side or semantic search. Use it for global search, quick actions, and navigation in any app.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/command-palette.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "toast",
+      "type": "registry:ui",
+      "title": "Toast",
+      "description": "A production-ready toast/notification system: call toast(), toast.success/error/info/warning/loading or toast.promise() from anywhere — no provider or context needed — and render one <Toaster />. Auto-dismiss with pause-on-hover and focus, swipe-to-dismiss, six positions, action buttons, and accessible live regions (assertive for errors, polite otherwise). Enter/exit animation respects prefers-reduced-motion. Use it for success/error feedback, async operation status, and undo prompts.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/toast.tsx", "type": "registry:ui" }]
     }
   ]
 }

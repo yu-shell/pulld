@@ -28,6 +28,7 @@ const ICON = {
   inbox: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.5 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.5A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.5Z"/></svg>`,
   box: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>`,
   search: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
 }
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
@@ -43,6 +44,7 @@ const PREVIEWS = {
   "confirm-button": `<button class="pv-btn pv-danger">Delete</button>`,
   "dashboard-overview": `<div class="pv-dash"><div class="pv-dbar"></div><div class="pv-drow"><span></span><span></span><span></span></div></div>`,
   "command-palette": `<div class="pv-input" style="gap:6px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span><span style="margin-left:auto;display:flex;gap:3px"><span class="pv-kbd">⌘</span><span class="pv-kbd">K</span></span></div>`,
+  toast: `<div class="pv-toast"><span class="pv-tok">${ICON.check}</span><span>Changes saved</span></div>`,
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
@@ -221,7 +223,10 @@ const html = `<!doctype html>
   .pv-drow{display:flex;gap:5px}
   .pv-drow span{flex:1;height:30px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
   .pv-drow span:first-child{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} }
+  .pv-toast{display:flex;align-items:center;gap:7px;width:100%;background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.10);font-size:11.5px;color:var(--ink)}
+  .pv-tok{color:#16a34a;display:inline-flex;flex:none}
+  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} }
   .search-cta{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-top:14px;
     background:color-mix(in srgb,var(--accent) 7%,var(--surface));
     border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:14px;padding:18px 20px}
