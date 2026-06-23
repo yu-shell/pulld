@@ -52,6 +52,10 @@ function genKey() {
   return [...b].map((x) => x.toString(16).padStart(2, "0")).join("")
 }
 
+// Lemon Squeezy product ids that map to pulld Search. license_key_created carries product_id
+// (not product_name), so route on the id. Add more ids here as Search plans are added.
+const SEARCH_PRODUCT_IDS = new Set(["1168884"])
+
 export async function onRequestPost(context) {
   const { request, env } = context
 
@@ -91,7 +95,7 @@ export async function onRequestPost(context) {
     attrs.test_mode === true || body?.meta?.test_mode === true ? 1 : 0
   // Route by product: a "pulld Search" subscription provisions a search project; everything
   // else is a one-time Pro-blocks license.
-  const isSearch = /search/i.test(String(attrs.product_name || ""))
+  const isSearch = SEARCH_PRODUCT_IDS.has(String(attrs.product_id ?? ""))
   const objectId = body?.data?.id || null
 
   const isIssue =
