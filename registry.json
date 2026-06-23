@@ -1,0 +1,97 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "pulld",
+  "homepage": "https://pulld.dev",
+  "items": [
+    {
+      "name": "copy-button",
+      "type": "registry:ui",
+      "title": "Copy Button",
+      "description": "Accessible icon button that copies a string to the clipboard and shows a transient copied state. Has aria-label, an aria-live announcement, keyboard focus ring, and a configurable reset timeout. Use it next to code blocks, API keys, share links, or any inline value a user might want to copy.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/copy-button.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "kbd",
+      "type": "registry:ui",
+      "title": "Kbd",
+      "description": "Inline keyboard key hint that renders a styled <kbd> element for showing shortcuts like Cmd+K or Ctrl+S. Use it in command palettes, tooltips, docs, and shortcut hints. Theme-aware via shadcn tokens; no dependencies.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/kbd.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "empty-state",
+      "type": "registry:ui",
+      "title": "Empty State",
+      "description": "Centered empty/zero-data placeholder with an optional icon, title, description, and call-to-action slot. Use it when a list, table, search result, inbox, or dashboard has no items yet. Dashed border, muted text, fully accessible.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/empty-state.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "stat-card",
+      "type": "registry:ui",
+      "title": "Stat Card",
+      "description": "Compact metric card showing a label, a big value, and an optional percentage delta with an up/down arrow (green for positive, red for negative). Use it in dashboards, analytics, and KPI rows. Composes well into dashboard blocks.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/stat-card.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "theme-toggle",
+      "type": "registry:ui",
+      "title": "Theme Toggle",
+      "description": "Self-contained light/dark mode toggle button. Persists the choice to localStorage, respects the OS prefers-color-scheme on first load, and toggles the 'dark' class on the html element. No next-themes or provider required. Sun/Moon icons, aria-pressed.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/theme-toggle.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "avatar-stack",
+      "type": "registry:ui",
+      "title": "Avatar Stack",
+      "description": "Row of overlapping circular avatars that collapses the remainder into a '+N' badge past a max count. Falls back to an initial when no image is provided. Use it for team members, participants, collaborators, or assignees.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/avatar-stack.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "password-input",
+      "type": "registry:ui",
+      "title": "Password Input",
+      "description": "Password text input with a built-in show/hide toggle button. Toggles between password and text, has an accessible aria-label and aria-pressed, and the toggle stays out of the tab order. Use it in sign-up, login, and reset-password forms.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/password-input.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "spinner",
+      "type": "registry:ui",
+      "title": "Spinner",
+      "description": "Accessible loading spinner with role=status, an aria-live region, and a screen-reader label. Use it for inline loading, button busy states, or anywhere you need to indicate a pending async operation. Animated lucide Loader2.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/spinner.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "code-block",
+      "type": "registry:ui",
+      "title": "Code Block",
+      "description": "Code snippet container with an optional language label and a hover/focus-revealed copy button (composes pulld's copy-button). Use it in docs, changelogs, and developer marketing pages to show installable commands or code. Demonstrates how pulld premium blocks compose free atoms.",
+      "dependencies": [],
+      "registryDependencies": ["copy-button"],
+      "files": [{ "path": "registry/ui/code-block.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "loading-button",
+      "type": "registry:ui",
+      "title": "Loading Button",
+      "description": "Button that shows a spinner and disables itself while an async action is pending. Set loading=true during submit, save, or checkout to prevent double-clicks; an optional loadingText swaps the label. Composes pulld's spinner atom.",
+      "dependencies": [],
+      "registryDependencies": ["spinner"],
+      "files": [{ "path": "registry/ui/loading-button.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "confirm-button",
+      "type": "registry:ui",
+      "title": "Confirm Button",
+      "description": "Two-step confirm button for destructive actions: the first click arms it and swaps the label to a confirmation prompt, the second click runs onConfirm. Auto-reverts after a timeout and on blur so a stray click can't fire. Use it for delete, remove, reset, revoke, unsubscribe, or disconnect actions where a full alert dialog is overkill. Theme-aware via shadcn destructive tokens; no dependencies.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/confirm-button.tsx", "type": "registry:ui" }]
+    }
+  ]
+}

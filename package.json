@@ -1,0 +1,24 @@
+{
+  "name": "pulld",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Production-ready, accessible, theme-aware UI components for shadcn/ui — installable with the shadcn CLI or your AI coding agent.",
+  "scripts": {
+    "registry:build": "npx --yes shadcn@latest build && node scripts/inject-base.mjs && node scripts/build-landing.mjs && node scripts/build-llms.mjs",
+    "serve": "npx serve public",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify-registry.mjs",
+    "check": "npm run typecheck && npm run registry:build && npm run verify",
+    "build:pro": "npx --yes shadcn@latest build pro/registry.json -o pro/dist && node scripts/build-pro.mjs",
+    "deploy": "SITE_BASE=https://pulld.pages.dev npm run registry:build && SITE_BASE=https://pulld.pages.dev npm run build:pro && npx --yes wrangler@latest pages deploy",
+    "db:schema": "npx --yes wrangler@latest d1 execute pulld --remote --file db/schema.sql",
+    "report": "node scripts/report.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "lucide-react": "^0.460.0",
+    "react": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}

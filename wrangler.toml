@@ -1,0 +1,9 @@
+name = "pulld"
+pages_build_output_dir = "public"
+compatibility_date = "2026-01-01"
+
+# D1 database for the fetch log (referenced as env.DB by functions/r/[[path]].js)
+[[d1_databases]]
+binding = "DB"
+database_name = "pulld"
+database_id = "ff110676-b940-4295-a2e3-3043f041af1b"
