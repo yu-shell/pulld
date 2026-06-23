@@ -79,6 +79,20 @@ const PRO_PRICE = process.env.PRO_PRICE || "$39"
 const PRO_CHECKOUT =
   process.env.PRO_CHECKOUT ||
   "https://pulld.lemonsqueezy.com/checkout/buy/47c36d39-1b45-4b70-bf87-07aefe1bf8e8"
+
+const SEARCH_PRICE = process.env.SEARCH_PRICE || "$19"
+const SEARCH_CHECKOUT =
+  process.env.SEARCH_CHECKOUT ||
+  "https://pulld.lemonsqueezy.com/checkout/buy/6dd487d7-0ee4-45c0-8e29-05217c3a90bd"
+const searchSection = `
+    <div class="search-cta">
+      <div class="search-cta-text">
+        <h3>pulld Search — semantic search for your app</h3>
+        <p>Hosted and drop-in. Plug it into the command palette's <code>source</code>: index your content and get typo-tolerant, meaning-based results. Nothing to run.</p>
+      </div>
+      <a class="buy" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
+    </div>
+`
 let proSection = ""
 const proRegPath = join(ROOT, "pro", "registry.json")
 if (existsSync(proRegPath)) {
@@ -207,6 +221,13 @@ const html = `<!doctype html>
   .pv-drow span{flex:1;height:30px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
   .pv-drow span:first-child{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
   @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} }
+  .search-cta{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-top:14px;
+    background:color-mix(in srgb,var(--accent) 7%,var(--surface));
+    border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:14px;padding:18px 20px}
+  .search-cta-text{flex:1;min-width:240px}
+  .search-cta h3{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
+  .search-cta p{margin:0;color:var(--muted);font-size:14px}
+  .search-cta .buy{margin-top:0;white-space:nowrap}
   footer{margin-top:64px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
   a{color:var(--accent)}
 </style>
@@ -231,6 +252,7 @@ const html = `<!doctype html>
     <div class="grid">
 ${cards}
     </div>
+${searchSection}
 ${proSection}
     <footer>
       MIT-licensed · every component is type-checked, built, and verified before it ships.
