@@ -8,6 +8,9 @@ copies code into your project, so existing installs are never changed automatica
 - a11y(stat-card): add dark-mode contrast variants for the delta (emerald/red 400
   in dark) and a screen-reader direction label so +N% and −N% are distinguishable
   without relying on color (WCAG 1.4.1).
+- a11y(avatar-stack): add role="img" to the initial-letter fallback so its
+  aria-label is reliably announced (aria-label on a bare span is not honored
+  by all screen readers).
 
 ## 2026-06-23
 

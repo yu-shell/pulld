@@ -31,7 +31,9 @@ export function AvatarStack({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span aria-label={a.alt}>{a.alt.charAt(0).toUpperCase()}</span>
+            <span role="img" aria-label={a.alt}>
+              {a.alt.charAt(0).toUpperCase()}
+            </span>
           )}
         </span>
       ))}
