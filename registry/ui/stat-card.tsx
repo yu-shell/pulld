@@ -34,7 +34,9 @@ export function StatCard({
           <span
             className={cn(
               "inline-flex items-center gap-0.5 text-xs font-medium",
-              positive ? "text-emerald-600" : "text-red-600"
+              positive
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-red-600 dark:text-red-400"
             )}
           >
             {positive ? (
@@ -42,6 +44,7 @@ export function StatCard({
             ) : (
               <ArrowDownRight className="h-3 w-3" aria-hidden="true" />
             )}
+            <span className="sr-only">{positive ? "Up " : "Down "}</span>
             {Math.abs(delta)}%
           </span>
         ) : null}
