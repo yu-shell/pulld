@@ -1,6 +1,6 @@
 // GET/POST /api/search/query?key=&q= — semantic search for a project (public query_key).
 // This is what the command-palette `source` calls. Returns items shaped for the palette.
-import { json, cors, embed, projectByKey, bumpUsage } from "./_lib.js"
+import { json, cors, embed, projectByKey, bumpUsage, rateLimited } from "./_lib.js"
 
 export function onRequestOptions() {
   return cors()
@@ -34,6 +34,18 @@ async function handle(context) {
 
   const project = await projectByKey(env, "query_key", key)
   if (!project) return json({ error: "unauthorized" }, 401)
+
+  // Burst limit per project+IP, before consuming the monthly quota or doing any embed/query work,
+  // so a flood from one client can't drain the customer's quota or run up cost.
+  const ip = request.headers.get("cf-connecting-ip") || "0.0.0.0"
+  if (await rateLimited(env, `${project.id}:${ip}`)) {
+    return json(
+      { error: "rate_limited", message: "Too many requests; slow down." },
+      429,
+      { "retry-after": "10" }
+    )
+  }
+
   if (!env.VEC || !env.AI) return json({ error: "search not configured" }, 503)
   if (!q.trim()) return json({ results: [] })
 

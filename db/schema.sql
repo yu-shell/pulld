@@ -54,3 +54,13 @@ CREATE TABLE IF NOT EXISTS search_usage (
   docs INTEGER DEFAULT 0,
   PRIMARY KEY (project, month)
 );
+
+-- Short-window burst rate limiting for the public search query_key. One row per (key, bucket),
+-- where key = "<project>:<ip>" and bucket = floor(epoch_seconds / window). Stale buckets are
+-- pruned opportunistically by the query path.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  k TEXT NOT NULL,
+  bucket INTEGER NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (k, bucket)
+);

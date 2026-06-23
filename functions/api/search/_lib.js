@@ -69,6 +69,34 @@ export function monthKey() {
   return new Date().toISOString().slice(0, 7) // YYYY-MM
 }
 
+const RL_WINDOW = 60 // seconds per fixed window
+const RL_LIMIT = 120 // requests per window per key
+
+// Short-window burst limit, defense-in-depth on top of the monthly quota: a flood from one client
+// can't drain a customer's quota or spike cost in minutes. Fixed window counter in D1 (strongly
+// consistent — KV's read-after-write is too loose for a limiter; Pages doesn't support the native
+// rate-limit binding). Fail-open on any error so a limiter hiccup never takes search down. Returns
+// true when the caller should be rejected (429).
+export async function rateLimited(env, key) {
+  if (!env.DB) return false
+  try {
+    const bucket = Math.floor(Date.now() / 1000 / RL_WINDOW)
+    const row = await env.DB.prepare(
+      "INSERT INTO rate_limits (k, bucket, n) VALUES (?, ?, 1) " +
+        "ON CONFLICT(k, bucket) DO UPDATE SET n = n + 1 RETURNING n"
+    )
+      .bind(key, bucket)
+      .first()
+    // Opportunistically prune stale buckets so the table can't grow unbounded (fire-and-forget).
+    if (Math.random() < 0.02) {
+      env.DB.prepare("DELETE FROM rate_limits WHERE bucket < ?").bind(bucket).run().catch(() => {})
+    }
+    return (row?.n ?? 0) > RL_LIMIT
+  } catch {
+    return false
+  }
+}
+
 const COUNTERS = new Set(["queries", "docs"])
 
 // Increment a usage counter for this month and return the new total.
