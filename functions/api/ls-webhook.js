@@ -46,6 +46,12 @@ async function logEvent(env, event, ok, note) {
   }
 }
 
+function genKey() {
+  const b = new Uint8Array(18)
+  crypto.getRandomValues(b)
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("")
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context
 
@@ -83,6 +89,10 @@ export async function onRequestPost(context) {
   const email = attrs.user_email || attrs.email || null
   const testMode =
     attrs.test_mode === true || body?.meta?.test_mode === true ? 1 : 0
+  // Route by product: a "pulld Search" subscription provisions a search project; everything
+  // else is a one-time Pro-blocks license.
+  const isSearch = /search/i.test(String(attrs.product_name || ""))
+  const objectId = body?.data?.id || null
 
   const isIssue =
     !!key && (event === "license_key_created" || event === "order_created")
@@ -96,7 +106,18 @@ export async function onRequestPost(context) {
   }
 
   try {
-    if (isIssue) {
+    if (isIssue && isSearch) {
+      // Provision a search project, idempotent on the LS license key (= retrieval token).
+      const projId = "prj_" + genKey().slice(0, 12)
+      await env.DB.prepare(
+        "INSERT INTO search_projects (id, admin_key, query_key, email, ls_license, ls_subscription, plan, q_limit, doc_limit, created, active) " +
+          "VALUES (?, ?, ?, ?, ?, ?, 'pro', 50000, 5000, ?, 1) " +
+          "ON CONFLICT(ls_license) DO UPDATE SET active=1, email=excluded.email"
+      )
+        .bind(projId, "ak_" + genKey(), "pk_" + genKey(), email, key, objectId, new Date().toISOString())
+        .run()
+      await logEvent(env, event, true, `search project provisioned (test_mode=${testMode})`)
+    } else if (isIssue) {
       // refunded is terminal: a replayed "created" event does not revive a refunded row.
       await env.DB.prepare(
         "INSERT INTO licenses (key, email, product, created, active, status, test_mode) " +
@@ -109,21 +130,30 @@ export async function onRequestPost(context) {
         .run()
       await logEvent(env, event, true, `license issued (test_mode=${testMode})`)
     } else if (isRevoke) {
-      const refunded = event === "order_refunded"
-      const active = refunded
-        ? 0
-        : attrs.status && attrs.status !== "active"
-          ? 0
-          : 1
-      const status = refunded ? "refunded" : active ? "active" : "disabled"
-      // A refund always applies (terminal); license_key_updated does not revive a refunded row.
-      await env.DB.prepare(
-        "UPDATE licenses SET active=?, status=? " +
-          "WHERE key=? AND (?=1 OR status IS NULL OR status <> 'refunded')"
-      )
-        .bind(active, status, key, refunded ? 1 : 0)
-        .run()
-      await logEvent(env, event, true, `revoke active=${active}`)
+      // If this key is a search project's license, deactivate the project; else a Pro license.
+      const sp = await env.DB.prepare("SELECT id FROM search_projects WHERE ls_license = ?")
+        .bind(key)
+        .first()
+      if (sp) {
+        const active =
+          event === "order_refunded" ? 0 : attrs.status && attrs.status !== "active" ? 0 : 1
+        await env.DB.prepare("UPDATE search_projects SET active = ? WHERE ls_license = ?")
+          .bind(active, key)
+          .run()
+        await logEvent(env, event, true, `search project active=${active}`)
+      } else {
+        const refunded = event === "order_refunded"
+        const active = refunded ? 0 : attrs.status && attrs.status !== "active" ? 0 : 1
+        const status = refunded ? "refunded" : active ? "active" : "disabled"
+        // A refund always applies (terminal); license_key_updated does not revive a refunded row.
+        await env.DB.prepare(
+          "UPDATE licenses SET active=?, status=? " +
+            "WHERE key=? AND (?=1 OR status IS NULL OR status <> 'refunded')"
+        )
+          .bind(active, status, key, refunded ? 1 : 0)
+          .run()
+        await logEvent(env, event, true, `revoke active=${active}`)
+      }
     } else {
       await logEvent(
         env,

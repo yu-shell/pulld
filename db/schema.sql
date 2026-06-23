@@ -38,6 +38,9 @@ CREATE TABLE IF NOT EXISTS search_projects (
   id TEXT PRIMARY KEY,
   admin_key TEXT UNIQUE,
   query_key TEXT UNIQUE,
+  email TEXT,
+  ls_license TEXT UNIQUE,         -- Lemon Squeezy license key = the customer's retrieval token
+  ls_subscription TEXT,           -- LS subscription/order id (best-effort, for lifecycle)
   plan TEXT DEFAULT 'free',
   q_limit INTEGER DEFAULT 1000,   -- queries per month
   doc_limit INTEGER DEFAULT 200,  -- indexed docs
