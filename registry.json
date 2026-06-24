@@ -97,7 +97,7 @@
       "name": "command-palette",
       "type": "registry:ui",
       "title": "Command Palette",
-      "description": "A production-ready ⌘K command palette: accessible (combobox/listbox roles, aria-activedescendant, focus trapped and restored), full keyboard navigation with wrap-around, fuzzy filtering with match highlighting, grouped results, recents, and an async `source` hook so you can plug in server-side or semantic search. Use it for global search, quick actions, and navigation in any app.",
+      "description": "A production-ready ⌘K command palette: accessible (combobox/listbox roles, aria-activedescendant, focus trapped and restored), full keyboard navigation with wrap-around, fuzzy filtering with match highlighting, grouped results, recents, and an async `source` hook so you can plug in server-side or semantic search. Use it for global search, quick actions, and navigation in any app. Pairs with pulld Search via the exported `pulldSearchSource` helper for hosted semantic search — index your content and get meaning-based results with no search infra to run.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/command-palette.tsx", "type": "registry:ui" }]
     },

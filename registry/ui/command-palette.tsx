@@ -24,6 +24,9 @@ interface CommandPaletteProps {
    * Async source for the current query — return the items to show. This is the
    * integration point for server-side or semantic search. The function identity
    * may change between renders; it is read from a ref, so an inline arrow is safe.
+   *
+   * For hosted semantic search with no infra to run, use the `pulldSearchSource`
+   * helper exported below — `source={pulldSearchSource({ queryKey: "pk_..." })}`.
    */
   source?: (query: string) => Promise<CommandItem[]>
   placeholder?: string
@@ -418,4 +421,62 @@ export function CommandPalette({
       </div>
     </div>
   )
+}
+
+/** A single result from the pulld Search query endpoint. */
+interface PulldSearchResult {
+  id: string
+  label: string
+  url: string
+  snippet: string
+  score: number
+}
+
+/**
+ * Optional: a drop-in `source` backed by pulld Search — hosted semantic (meaning-based)
+ * search with no infra to run. Subscribe at https://pulld.pages.dev, index your content,
+ * then wire it in one line:
+ *
+ *   <CommandPalette source={pulldSearchSource({ queryKey: "pk_your_public_key" })} />
+ *
+ * It calls the public query endpoint and maps each result to a command item that
+ * navigates to the result's URL on select. `queryKey` is the public, read-only key
+ * (safe to ship in client code); pass `onSelect` to handle results yourself (e.g.
+ * client-side routing) instead of a full-page navigation.
+ */
+export function pulldSearchSource(opts: {
+  queryKey: string
+  /** Override the endpoint, e.g. when serving pulld Search from your own domain. */
+  endpoint?: string
+  /** Max results to request (default 8). */
+  limit?: number
+  onSelect?: (result: PulldSearchResult) => void
+}): (query: string) => Promise<CommandItem[]> {
+  const endpoint = opts.endpoint ?? "https://pulld.pages.dev/api/search/query"
+  const limit = opts.limit ?? 8
+  return async (query) => {
+    // Fail soft: a search backend hiccup yields no results rather than breaking the palette.
+    try {
+      const url = `${endpoint}?key=${encodeURIComponent(opts.queryKey)}&q=${encodeURIComponent(
+        query
+      )}&limit=${limit}`
+      const res = await fetch(url)
+      if (!res.ok) return []
+      const data = (await res.json()) as { results?: PulldSearchResult[] }
+      return (data.results ?? []).map((r) => ({
+        id: r.id,
+        label: r.label,
+        keywords: r.snippet,
+        onSelect: opts.onSelect
+          ? () => opts.onSelect!(r)
+          : r.url
+            ? () => {
+                window.location.href = r.url
+              }
+            : undefined,
+      }))
+    } catch {
+      return []
+    }
+  }
 }
