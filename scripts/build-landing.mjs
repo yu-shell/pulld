@@ -139,6 +139,7 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>pulld — components your AI coding agent installs by itself</title>
 <meta name="description" content="An open shadcn-compatible component registry. Point any AI coding agent (Claude Code, Cursor, v0) at a component and it pulls it in." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <style>
   :root{
     --bg:#fbfbfa; --surface:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b;
