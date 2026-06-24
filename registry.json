@@ -108,6 +108,14 @@
       "description": "A production-ready toast/notification system: call toast(), toast.success/error/info/warning/loading or toast.promise() from anywhere — no provider or context needed — and render one <Toaster />. Auto-dismiss with pause-on-hover and focus, swipe-to-dismiss, six positions, action buttons, and accessible live regions (assertive for errors, polite otherwise). Enter/exit animation respects prefers-reduced-motion. Use it for success/error feedback, async operation status, and undo prompts.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/toast.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "search-input",
+      "type": "registry:ui",
+      "title": "Search Input",
+      "description": "Search field with a leading search icon and a trailing clear (✕) button that appears once there's text and empties the field, refocusing it. Works controlled or uncontrolled, forwards a ref so you can focus it from a keyboard shortcut (e.g. \"/\"), hides the browser's native search-cancel button, and clearing fires onChange so list/table/typeahead filtering updates. Use it to filter lists, tables, command menus, dropdowns, or any search box. Unlike a bare input it ships the icon, the clear control, and accessible focus rings out of the box. Theme-aware via shadcn tokens; depends only on lucide-react.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/search-input.tsx", "type": "registry:ui" }]
     }
   ]
 }
