@@ -15,6 +15,7 @@
     "db:schema": "npx --yes wrangler@latest d1 execute pulld --remote --file db/schema.sql",
     "report": "node scripts/report.mjs",
     "usage-alert": "node scripts/usage-alert.mjs",
+    "learn": "node scripts/learn.mjs",
     "sweep": "node scripts/sweep.mjs"
   },
   "devDependencies": {
