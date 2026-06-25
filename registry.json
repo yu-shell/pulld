@@ -15,7 +15,7 @@
       "name": "kbd",
       "type": "registry:ui",
       "title": "Kbd",
-      "description": "Inline keyboard key hint that renders a styled <kbd> element for showing shortcuts like Cmd+K or Ctrl+S. Use it in command palettes, tooltips, docs, and shortcut hints. Theme-aware via shadcn tokens; no dependencies.",
+      "description": "Inline keyboard key hint that renders a styled <kbd> element for showing shortcuts, hotkeys, and keybindings like Cmd+K, Ctrl+S, or ⇧⌘P. Use it in command palettes, tooltips, menu items, docs, onboarding, and keyboard-shortcut help dialogs. Unlike a plain styled <span> it uses the semantic <kbd> tag so the key is announced as keyboard input. Theme-aware via shadcn tokens; no dependencies.",
       "dependencies": [],
       "files": [{ "path": "registry/ui/kbd.tsx", "type": "registry:ui" }]
     },
@@ -116,6 +116,14 @@
       "description": "Search field with a leading search icon and a trailing clear (✕) button that appears once there's text and empties the field, refocusing it. Works controlled or uncontrolled, forwards a ref so you can focus it from a keyboard shortcut (e.g. \"/\"), hides the browser's native search-cancel button, and clearing fires onChange so list/table/typeahead filtering updates. Use it to filter lists, tables, command menus, dropdowns, or any search box. Unlike a bare input it ships the icon, the clear control, and accessible focus rings out of the box. Theme-aware via shadcn tokens; depends only on lucide-react.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/search-input.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "number-input",
+      "type": "registry:ui",
+      "title": "Number Input",
+      "description": "Number field with − and + stepper buttons that respect min, max, and step (including decimal steps), so users adjust a value without selecting and retyping. Works controlled or uncontrolled, forwards a ref, clamps at the bounds and disables the button once a limit is reached, and steps via a native input event so onChange fires and your form or state stays in sync. Use it for quantity pickers in carts and order forms, price or amount fields, numeric settings like font size, padding, or count, and any spinbutton-style input. Unlike a bare <input type=\"number\"> it ships accessible, theme-aware +/− controls and hides the browser's inconsistent native spinners. Theme-aware via shadcn tokens; depends only on lucide-react.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/number-input.tsx", "type": "registry:ui" }]
     }
   ]
 }
