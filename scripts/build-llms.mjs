@@ -74,6 +74,11 @@ lines.push(
     "/api/search/ingest` header `x-pulld-admin-key`, body `{documents:[{id,title,url,content}]}` (≤100/req; same `id` overwrites)."
 )
 lines.push(
+  "- Remove (server-side, secret admin_key): `POST " +
+    BASE +
+    "/api/search/delete` body `{ids:[\"docId\"]}` (same id range as ingest; non-existent ids are no-ops)."
+)
+lines.push(
   "- Search (public query_key): `GET " +
     BASE +
     "/api/search/query?key=<query_key>&q=<text>` → `{results:[{id,label,url,snippet,score}]}`."

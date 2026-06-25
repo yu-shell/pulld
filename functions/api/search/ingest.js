@@ -2,9 +2,8 @@
 // Server-to-server only: admin_key is a secret write key, so no CORS is offered.
 // Body: { documents: [{ id, title, url, content }] }. Chunks + embeds + upserts to Vectorize
 // under the project's namespace.
-import { json, embed, chunk, projectByKey, bumpUsage } from "./_lib.js"
+import { json, embed, chunk, projectByKey, bumpUsage, MAX_CHUNKS_PER_DOC } from "./_lib.js"
 
-const MAX_CHUNKS_PER_DOC = 20
 const MAX_CHUNKS_PER_REQUEST = 400
 const j = (data, status = 200) => json(data, status, { cors: false })
 

@@ -63,6 +63,21 @@ curl -X POST https://pulld.pages.dev/api/search/ingest \
   -d '{"documents":[{"id":"refunds","title":"Refund policy","url":"/docs/refunds","content":"You can request a refund within 30 days of purchase..."}]}'
 ```
 
+### Remove documents
+
+To remove documents (e.g. content was deleted or unpublished), POST their ids to the delete
+endpoint. Server-to-server, same `admin_key`.
+
+```
+POST https://pulld.pages.dev/api/search/delete
+Headers: x-pulld-admin-key: <admin_key>
+         content-type: application/json
+Body:    { "ids": ["refunds", "old-article"] }
+→ { "ok": true, "deleted_docs": 2 }
+```
+
+Up to 100 ids per request. Deleting an id that doesn't exist is a harmless no-op.
+
 ## 4. Keep the index in sync
 
 pulld does **not** crawl your site — you push content. Pick whichever fits your stack:
@@ -96,6 +111,6 @@ Keep `admin_key` as a server-side secret (e.g. `PULLD_ADMIN_KEY`) — never in c
 
 - Pro plan: 50,000 queries/month, 5,000 indexed docs.
 - Multilingual (English, Japanese, and more) for both content and queries.
-- Indexing is asynchronous — a freshly ingested document can take a few seconds to become searchable.
-- Deleting an indexed document isn't yet supported via the API; re-indexing with the same `id`
-  updates it in place. (Need removal? Contact support.)
+- Indexing and deletion are asynchronous — a freshly ingested or removed document can take a few
+  seconds to take effect in search results.
+- Update a document by re-indexing it with the same `id`; remove it with the delete endpoint above.

@@ -2,6 +2,10 @@
 
 const EMBED_MODEL = "@cf/baai/bge-m3" // multilingual, 1024-dim, cheap
 
+// Max chunks (vectors) a single document is split into. ingest caps at this; delete removes the
+// full `<project>:<id>:<0..MAX_CHUNKS_PER_DOC-1>` range, so both must use the same value.
+export const MAX_CHUNKS_PER_DOC = 20
+
 export function json(data, status = 200, opts = {}) {
   const { cors = true, ...extra } = opts
   const headers = {
