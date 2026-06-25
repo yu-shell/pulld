@@ -58,6 +58,28 @@ if (existsSync(proPath)) {
   }
 }
 lines.push("")
+lines.push("## pulld Search (hosted semantic search, subscription)")
+lines.push("")
+lines.push(
+  "Hosted meaning-based search for your app — index your content, query by meaning, no vector DB " +
+    "to run. Pairs with the command-palette via the exported `pulldSearchSource` helper. " +
+    "Full integration guide (keys, ingest, keep-in-sync patterns): " +
+    BASE +
+    "/search-integration.md"
+)
+lines.push("")
+lines.push(
+  "- Index (server-side, secret admin_key): `POST " +
+    BASE +
+    "/api/search/ingest` header `x-pulld-admin-key`, body `{documents:[{id,title,url,content}]}` (≤100/req; same `id` overwrites)."
+)
+lines.push(
+  "- Search (public query_key): `GET " +
+    BASE +
+    "/api/search/query?key=<query_key>&q=<text>` → `{results:[{id,label,url,snippet,score}]}`."
+)
+lines.push("- Keys: `GET " + BASE + "/api/search/account?license=<license_key>`.")
+lines.push("")
 
 writeFileSync(join(ROOT, "public", "llms.txt"), lines.join("\n"))
 console.log(`OK\tpublic/llms.txt generated: ${items.length} components (base ${BASE})`)

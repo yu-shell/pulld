@@ -443,6 +443,9 @@ interface PulldSearchResult {
  * navigates to the result's URL on select. `queryKey` is the public, read-only key
  * (safe to ship in client code); pass `onSelect` to handle results yourself (e.g.
  * client-side routing) instead of a full-page navigation.
+ *
+ * To make results appear you must first index your content. Full integration guide
+ * (keys, ingest, keeping the index in sync): https://pulld.pages.dev/search-integration.md
  */
 export function pulldSearchSource(opts: {
   queryKey: string
