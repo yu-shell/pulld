@@ -47,7 +47,7 @@
       "name": "avatar-stack",
       "type": "registry:ui",
       "title": "Avatar Stack",
-      "description": "Row of overlapping circular avatars that collapses the remainder into a '+N' badge past a max count. Falls back to an initial when no image is provided. Use it for team members, participants, collaborators, or assignees.",
+      "description": "Row of overlapping circular avatars (a facepile) that collapses the overflow into a '+N' badge past a max count, with a letter-initial fallback when an avatar has no image. Use it to show team members, project collaborators, assignees or reviewers, meeting attendees, who's online or currently viewing, or a 'shared with' list. Unlike rendering separate avatars it handles the overlap spacing and the overflow count for you. Theme-aware via shadcn tokens; no dependencies.",
       "dependencies": [],
       "files": [{ "path": "registry/ui/avatar-stack.tsx", "type": "registry:ui" }]
     },
@@ -124,6 +124,14 @@
       "description": "Number field with − and + stepper buttons that respect min, max, and step (including decimal steps), so users adjust a value without selecting and retyping. Works controlled or uncontrolled, forwards a ref, clamps at the bounds and disables the button once a limit is reached, and steps via a native input event so onChange fires and your form or state stays in sync. Use it for quantity pickers in carts and order forms, price or amount fields, numeric settings like font size, padding, or count, and any spinbutton-style input. Unlike a bare <input type=\"number\"> it ships accessible, theme-aware +/− controls and hides the browser's inconsistent native spinners. Theme-aware via shadcn tokens; depends only on lucide-react.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/number-input.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "otp-input",
+      "type": "registry:ui",
+      "title": "OTP Input",
+      "description": "One-time passcode / verification code input split into individual single-character slots (default 6). Use it for two-factor authentication (2FA), email confirmation codes, phone/SMS verification, and authenticator app codes on verify, login-challenge, and confirm-email screens. Paste a full code into any slot and it distributes across them, supports OS one-time-code autofill, auto-advances as you type, Backspace clears and steps back, and arrow/Home/End keys move between slots. Works controlled or uncontrolled, forwards a ref to focus from a shortcut, fires onComplete when the last slot fills, and can mirror its value into a hidden input for native form submit. Unlike a single text field it ships the familiar boxed code UI with accessible per-digit labels and a group label. Theme-aware via shadcn tokens; no dependencies.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/otp-input.tsx", "type": "registry:ui" }]
     }
   ]
 }
