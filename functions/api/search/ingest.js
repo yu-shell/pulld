@@ -5,6 +5,7 @@
 import { json, embed, chunk, projectByKey, bumpUsage, MAX_CHUNKS_PER_DOC } from "./_lib.js"
 
 const MAX_CHUNKS_PER_REQUEST = 400
+const PRUNE_BATCH = 1000 // vector ids per deleteByIds call (mirrors delete.js)
 const j = (data, status = 200) => json(data, status, { cors: false })
 
 export async function onRequestPost(context) {
@@ -29,10 +30,23 @@ export async function onRequestPost(context) {
 
   const texts = []
   const meta = []
+  // Tail chunk ids to prune after upserting (see below): when a doc is re-indexed with fewer
+  // chunks than a previous version, the higher-index chunks would otherwise linger.
+  const staleIds = []
   for (const d of docs) {
     const id = String(d?.id ?? "").slice(0, 200)
     if (!id) continue
     const parts = chunk(`${d.title ?? ""}\n${d.content ?? ""}`).slice(0, MAX_CHUNKS_PER_DOC)
+    // A doc can shrink on re-index. Upserting only overwrites chunks 0..N-1; any higher-index
+    // chunks from a previous, longer version would survive and keep matching queries —
+    // contradicting the documented "re-sending the same id overwrites that document". Mark the
+    // now-unused tail (N..MAX_CHUNKS_PER_DOC-1) for deletion. Skip empty docs (0 chunks): removing
+    // a document is the delete endpoint's job, not a silent side effect of empty-content ingest.
+    if (parts.length > 0) {
+      for (let ci = parts.length; ci < MAX_CHUNKS_PER_DOC; ci++) {
+        staleIds.push(`${project.id}:${id}:${ci}`)
+      }
+    }
     for (let ci = 0; ci < parts.length; ci++) {
       if (texts.length >= MAX_CHUNKS_PER_REQUEST) {
         return j(
@@ -83,6 +97,22 @@ export async function onRequestPost(context) {
   } catch (e) {
     console.error("ingest upsert failed:", e?.message || e)
     return j({ error: "upsert failed" }, 502)
+  }
+
+  // Prune orphaned tail chunks left by previous, longer versions of these docs. Never delete a
+  // vector we just wrote — guards against the same id appearing twice in one request. Best-effort:
+  // the new content is already indexed, so a prune hiccup degrades to a few stale chunks (which the
+  // next re-index or an explicit delete clears), not a failed update.
+  const upserted = new Set(vectors.map((v) => v.id))
+  const toPrune = staleIds.filter((vid) => !upserted.has(vid))
+  if (toPrune.length) {
+    try {
+      for (let i = 0; i < toPrune.length; i += PRUNE_BATCH) {
+        await env.VEC.deleteByIds(toPrune.slice(i, i + PRUNE_BATCH))
+      }
+    } catch (e) {
+      console.error("ingest prune failed:", e?.message || e)
+    }
   }
 
   const docsThisMonth = await bumpUsage(env, project.id, "docs", docs.length)
