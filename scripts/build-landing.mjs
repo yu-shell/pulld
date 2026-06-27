@@ -80,7 +80,7 @@ const nsConfig = `{ "registries": { "@pulld": "${BASE}/r/{name}.json" } }`
 const PRO_PRICE = process.env.PRO_PRICE || "$39"
 const PRO_CHECKOUT =
   process.env.PRO_CHECKOUT ||
-  "https://pulld.lemonsqueezy.com/checkout/buy/47c36d39-1b45-4b70-bf87-07aefe1bf8e8"
+  "https://buy.polar.sh/polar_cl_h2Vmr8KMgAweYuRNExTD0QXYGOqqVFodnj1zR0fSyw4"
 
 const SEARCH_PRICE = process.env.SEARCH_PRICE || "$19"
 const SEARCH_CHECKOUT =

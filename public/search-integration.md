@@ -7,8 +7,9 @@ This guide is written so an AI coding agent can wire pulld Search end to end. Fo
 
 ## 1. Get your keys
 
-After subscribing, exchange your Lemon Squeezy license key for your project keys at
-<https://pulld.pages.dev/account> (or `GET https://pulld.pages.dev/api/search/account?license=<LS_LICENSE_KEY>`).
+After subscribing, your keys appear at <https://pulld.pages.dev/account> — Polar's post-checkout
+redirect opens it automatically. You can also paste your Polar license key there anytime, or fetch
+them with `GET https://pulld.pages.dev/api/search/account?license=<POLAR_LICENSE_KEY>`.
 
 You get two keys:
 

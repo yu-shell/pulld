@@ -22,3 +22,4 @@ index_name = "pulld-search"
 [vars]
 POLAR_ORG_ID = "9030a633-a030-47e9-96b4-73d62f89efc9"
 POLAR_SEARCH_PRODUCT_IDS = "284512c9-e164-4ce4-8c31-814b88fdc9c9"
+POLAR_PRO_PRODUCT_IDS = "6b4e677f-dc20-4093-bcc8-6ea16e104cdd"

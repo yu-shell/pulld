@@ -46,7 +46,7 @@
   <main class="wrap">
     <a class="brand" href="/"><span class="dot" aria-hidden="true"></span> pulld</a>
     <h1>Your pulld Search keys</h1>
-    <p class="lede">Paste the Lemon Squeezy license key from your purchase email to get your project's API keys and setup snippets.</p>
+    <p class="lede">After checkout your keys load automatically. Or paste your pulld license key (from your Polar receipt) to fetch them anytime.</p>
     <div class="row">
       <input id="lic" type="text" placeholder="paste your license key" autocomplete="off" autocapitalize="off" spellcheck="false" />
       <button id="go" class="buy" type="button">Get my keys</button>
@@ -74,28 +74,32 @@
       <div class="snip"><pre id="palette"></pre><button class="copy" type="button" data-for="palette">copy</button></div>
     </section>
 
-    <footer><a href="/search-integration.md">Full integration guide ↗</a> · Lost your key? It's in your Lemon Squeezy receipt email. · <a href="/">back to pulld</a></footer>
+    <footer><a href="/search-integration.md">Full integration guide ↗</a> · Lost your key? It's in your Polar receipt email. · <a href="/">back to pulld</a></footer>
   </main>
   <script>
     var BASE = location.origin;
     function $(id){ return document.getElementById(id); }
     function setStatus(m){ $("status").textContent = m || ""; }
 
-    async function load(){
-      var key = $("lic").value.trim();
-      if(!key){ setStatus("Enter your license key."); return; }
+    async function fetchAccount(qs){
       setStatus("Loading…");
       try{
-        var r = await fetch(BASE + "/api/search/account?license=" + encodeURIComponent(key));
+        var r = await fetch(BASE + "/api/search/account?" + qs);
         var j = await r.json();
         if(!r.ok){
           $("out").hidden = true;
-          setStatus(j && (j.message || j.error) ? (j.message || j.error) : "No active project for that key. If you just subscribed, give it a minute and try again.");
+          setStatus(j && (j.message || j.error) ? (j.message || j.error) : "No active project found. If you just subscribed, give it a minute and try again.");
           return;
         }
         render(j);
         setStatus("");
       }catch(e){ setStatus("Network error — try again."); }
+    }
+
+    function load(){
+      var key = $("lic").value.trim();
+      if(!key){ setStatus("Enter your license key."); return; }
+      fetchAccount("license=" + encodeURIComponent(key));
     }
 
     function render(j){
@@ -133,9 +137,13 @@
         }).catch(function(){});
       });
     });
-    // Prefill + auto-load when arriving from a ?license= redirect (e.g. Lemon Squeezy success URL).
-    var pre = new URLSearchParams(location.search).get("license");
-    if(pre){ $("lic").value = pre; load(); }
+    // Auto-load: Polar's post-checkout redirect carries a customer session token; otherwise accept
+    // a ?license= deep link. Either way, manual paste remains available.
+    var qp = new URLSearchParams(location.search);
+    var cst = qp.get("customer_session_token");
+    var lic = qp.get("license");
+    if(cst){ fetchAccount("customer_session_token=" + encodeURIComponent(cst)); }
+    else if(lic){ $("lic").value = lic; load(); }
   </script>
 </body>
 </html>

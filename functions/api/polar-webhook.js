@@ -9,7 +9,7 @@
 //
 // Retrieval model: a Search subscription issues a Polar license key (License Keys benefit). We
 // fetch that key via the Polar API and store it as the customer's retrieval token (search_projects
-// .ls_license), so /account works exactly as with Lemon Squeezy. Revocation matches by Polar
+// .ls_license), so /account resolves it the same way. Revocation matches by Polar
 // subscription id (always present in the webhook).
 //
 // Missing secret → 503; invalid signature → 401 (fail-closed). State-changing events return
@@ -124,14 +124,16 @@ function genKey() {
 
 // Polar product ids that map to pulld Search. Set POLAR_SEARCH_PRODUCT_IDS (comma-separated) once
 // the product exists; until then provisioning is skipped and the product id is logged.
-function searchProductIds(env) {
+function idSet(value) {
   return new Set(
-    String(env.POLAR_SEARCH_PRODUCT_IDS || "")
+    String(value || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
   )
 }
+const searchProductIds = (env) => idSet(env.POLAR_SEARCH_PRODUCT_IDS)
+const proProductIds = (env) => idSet(env.POLAR_PRO_PRODUCT_IDS)
 
 // Best-effort: fetch the customer's license key via the Polar API (License Keys benefit).
 // Field/endpoint specifics are confirmed against the first real payload; returns null on any miss.
@@ -214,31 +216,55 @@ export async function onRequestPost(context) {
   }
 
   const isSearch = searchProductIds(env).has(productId)
+  const isPro = proProductIds(env).has(productId)
 
   try {
-    if (isIssue && isSearch) {
+    if (isIssue && (isSearch || isPro)) {
       const license = await fetchLicenseKey(env, { customerId })
       if (!license) {
-        // The license key may not be issued yet (the benefit is granted slightly after the
-        // order/subscription). Return a retryable status so Polar redelivers and we provision once
-        // the key exists, instead of dropping the provisioning permanently.
-        await logEvent(env, `polar:${type}`, false, `search issue, license key not ready (cust=${customerId}) — retry`)
+        // The license key may be granted slightly after the order/subscription. Return a retryable
+        // status so Polar redelivers and we issue once the key exists, rather than dropping it.
+        await logEvent(env, `polar:${type}`, false, `issue, license key not ready (cust=${customerId}) — retry`)
         return new Response("license key not ready", { status: 503 })
       }
-      const projId = "prj_" + genKey().slice(0, 12)
-      await env.DB.prepare(
-        "INSERT INTO search_projects (id, admin_key, query_key, email, ls_license, ls_subscription, plan, q_limit, doc_limit, created, active) " +
-          "VALUES (?, ?, ?, ?, ?, ?, 'pro', 50000, 5000, ?, 1) " +
-          "ON CONFLICT(ls_license) DO UPDATE SET active=1, email=excluded.email, ls_subscription=excluded.ls_subscription"
-      )
-        .bind(projId, "ak_" + genKey(), "pk_" + genKey(), email, license, subId, new Date().toISOString())
-        .run()
-      await logEvent(env, `polar:${type}`, true, `search project provisioned (sub=${subId})`)
-    } else if (isRevoke && subId) {
-      await env.DB.prepare("UPDATE search_projects SET active = 0 WHERE ls_subscription = ?")
-        .bind(subId)
-        .run()
-      await logEvent(env, `polar:${type}`, true, `search project deactivated (sub=${subId})`)
+      if (isSearch) {
+        const projId = "prj_" + genKey().slice(0, 12)
+        await env.DB.prepare(
+          "INSERT INTO search_projects (id, admin_key, query_key, email, ls_license, ls_subscription, plan, q_limit, doc_limit, created, active) " +
+            "VALUES (?, ?, ?, ?, ?, ?, 'pro', 50000, 5000, ?, 1) " +
+            "ON CONFLICT(ls_license) DO UPDATE SET active=1, email=excluded.email, ls_subscription=excluded.ls_subscription"
+        )
+          .bind(projId, "ak_" + genKey(), "pk_" + genKey(), email, license, subId, new Date().toISOString())
+          .run()
+        await logEvent(env, `polar:${type}`, true, `search project provisioned (sub=${subId})`)
+      } else {
+        // Pro one-time block license. refunded is terminal: a replayed issue won't revive it.
+        await env.DB.prepare(
+          "INSERT INTO licenses (key, email, product, created, active, status, test_mode) " +
+            "VALUES (?, ?, 'pulld-pro', ?, 1, 'active', 0) " +
+            "ON CONFLICT(key) DO UPDATE SET email=excluded.email, active=1, status='active' " +
+            "WHERE licenses.status IS NULL OR licenses.status <> 'refunded'"
+        )
+          .bind(license, email, new Date().toISOString())
+          .run()
+        await logEvent(env, `polar:${type}`, true, `pro license issued`)
+      }
+    } else if (isRevoke) {
+      if (subId) {
+        await env.DB.prepare("UPDATE search_projects SET active = 0 WHERE ls_subscription = ?")
+          .bind(subId)
+          .run()
+      }
+      // One-time Pro refund (no subscription): deactivate the license by its key.
+      if (isPro || !subId) {
+        const lk = await fetchLicenseKey(env, { customerId })
+        if (lk) {
+          await env.DB.prepare("UPDATE licenses SET active = 0, status = 'refunded' WHERE key = ?")
+            .bind(lk)
+            .run()
+        }
+      }
+      await logEvent(env, `polar:${type}`, true, `revoked (sub=${subId} pro=${isPro})`)
     }
   } catch (e) {
     console.error("polar-webhook db:", e?.message || e)
