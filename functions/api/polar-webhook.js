@@ -133,8 +133,10 @@ async function fetchLicenseKey(env, { customerId }) {
     if (!res.ok) return null
     const data = await res.json()
     const items = data?.items ?? data?.result?.items ?? []
-    const match =
-      items.find((k) => k.customer_id === customerId || k.user_id === customerId) || items[0]
+    // Only return a key we can confidently attribute to this customer — never an arbitrary key,
+    // which would hand one customer another customer's retrieval token.
+    if (!customerId) return null
+    const match = items.find((k) => k.customer_id === customerId || k.user_id === customerId)
     return match?.key ?? null
   } catch {
     return null
@@ -186,10 +188,9 @@ export async function onRequestPost(context) {
     type === "subscription.created" ||
     (type === "order.paid" &&
       (!billingReason || ["purchase", "subscription_create"].includes(billingReason)))
-  const isRevoke =
-    type === "subscription.revoked" ||
-    type === "subscription.canceled" ||
-    type === "order.refunded"
+  // Only `revoked` ends access. `subscription.canceled` is cancel-at-period-end — the customer
+  // keeps access until the period actually ends (then `revoked` fires), so it must NOT deactivate.
+  const isRevoke = type === "subscription.revoked" || type === "order.refunded"
 
   if ((isIssue || isRevoke) && !env.DB) {
     await logEvent(env, `polar:${type}`, false, "no DB binding")
@@ -202,9 +203,11 @@ export async function onRequestPost(context) {
     if (isIssue && isSearch) {
       const license = await fetchLicenseKey(env, { customerId })
       if (!license) {
-        // Can't key the project without the retrieval token yet — log so we can finalize the fetch.
-        await logEvent(env, `polar:${type}`, false, `search issue but no license key (cust=${customerId})`)
-        return new Response("ok", { status: 200 })
+        // The license key may not be issued yet (the benefit is granted slightly after the
+        // order/subscription). Return a retryable status so Polar redelivers and we provision once
+        // the key exists, instead of dropping the provisioning permanently.
+        await logEvent(env, `polar:${type}`, false, `search issue, license key not ready (cust=${customerId}) — retry`)
+        return new Response("license key not ready", { status: 503 })
       }
       const projId = "prj_" + genKey().slice(0, 12)
       await env.DB.prepare(
