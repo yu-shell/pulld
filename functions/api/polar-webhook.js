@@ -36,17 +36,33 @@ function bytesToB64(buf) {
   return btoa(bin)
 }
 
-// Candidate key byte-strings for Polar's secret (format varies between deployments).
+// Candidate HMAC keys for Polar's signing secret. Polar's secret is `polar_whs_<...>` and isn't a
+// standard `whsec_`+base64 secret, so we try every plausible interpretation — full string, base64,
+// and prefix-stripped (utf8 / base64). Only a key that produces a matching signature is accepted,
+// so trying extras never weakens security.
 function secretCandidates(secret) {
   const enc = new TextEncoder()
-  const out = [enc.encode(secret)] // plain string bytes
-  let s = secret.startsWith("whsec_") ? secret.slice(6) : secret
-  try {
-    out.push(b64ToBytes(s))
-  } catch {
-    /* not base64 */
+  const cands = []
+  const tryB64 = (s) => {
+    try {
+      return b64ToBytes(s)
+    } catch {
+      return null
+    }
   }
-  return out
+  const add = (bytes) => {
+    if (bytes && bytes.length) cands.push(bytes)
+  }
+  add(enc.encode(secret))
+  add(tryB64(secret))
+  for (const pfx of ["whsec_", "polar_whs_"]) {
+    if (secret.startsWith(pfx)) {
+      const rest = secret.slice(pfx.length)
+      add(enc.encode(rest))
+      add(tryB64(rest))
+    }
+  }
+  return cands
 }
 
 async function hmacB64(keyBytes, msg) {
@@ -127,7 +143,7 @@ async function fetchLicenseKey(env, { customerId }) {
   if (env.POLAR_ORG_ID) params.set("organization_id", env.POLAR_ORG_ID)
   params.set("limit", "50")
   try {
-    const res = await fetch(`${base}/v1/license-keys?${params.toString()}`, {
+    const res = await fetch(`${base}/v1/license-keys/?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!res.ok) return null

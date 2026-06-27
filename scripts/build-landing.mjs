@@ -85,7 +85,7 @@ const PRO_CHECKOUT =
 const SEARCH_PRICE = process.env.SEARCH_PRICE || "$19"
 const SEARCH_CHECKOUT =
   process.env.SEARCH_CHECKOUT ||
-  "https://pulld.lemonsqueezy.com/checkout/buy/6dd487d7-0ee4-45c0-8e29-05217c3a90bd"
+  "https://buy.polar.sh/polar_cl_NUyf4PdoVJn8sIMP70hghnK0JuO8prt7kUGrh3uowc6"
 const searchSection = `
     <div class="search-cta">
       <div class="search-cta-text">

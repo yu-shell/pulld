@@ -16,3 +16,9 @@ binding = "AI"
 [[vectorize]]
 binding = "VEC"
 index_name = "pulld-search"
+
+# Polar billing (non-secret ids). Secrets (POLAR_WEBHOOK_SECRET, POLAR_ACCESS_TOKEN) are set via
+# `wrangler pages secret put`, not here.
+[vars]
+POLAR_ORG_ID = "9030a633-a030-47e9-96b4-73d62f89efc9"
+POLAR_SEARCH_PRODUCT_IDS = "284512c9-e164-4ce4-8c31-814b88fdc9c9"
