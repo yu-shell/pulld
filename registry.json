@@ -132,6 +132,14 @@
       "description": "One-time passcode / verification code input split into individual single-character slots (default 6). Use it for two-factor authentication (2FA), email confirmation codes, phone/SMS verification, and authenticator app codes on verify, login-challenge, and confirm-email screens. Paste a full code into any slot and it distributes across them, supports OS one-time-code autofill, auto-advances as you type, Backspace clears and steps back, and arrow/Home/End keys move between slots. Works controlled or uncontrolled, forwards a ref to focus from a shortcut, fires onComplete when the last slot fills, and can mirror its value into a hidden input for native form submit. Unlike a single text field it ships the familiar boxed code UI with accessible per-digit labels and a group label. Theme-aware via shadcn tokens; no dependencies.",
       "dependencies": [],
       "files": [{ "path": "registry/ui/otp-input.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "tag-input",
+      "type": "registry:ui",
+      "title": "Tag Input",
+      "description": "Multi-value text input that turns typed entries into removable chips — press Enter or comma to add a tag, click the × or press Backspace on an empty field to remove the last one, and paste a comma- or newline-separated list to add many at once. Use it for tags, labels, keywords, categories, email recipients, skills, or allowed domains — any free-form list of short values on a form or filter bar. Works controlled or uncontrolled via a string[] value, forwards a ref to focus the field, and supports a max count, case-insensitive de-duplication, and a validate hook to reject bad entries. shadcn/ui ships no tag or chips input; chips use secondary tokens so they follow your theme, each remove button is aria-labelled, and add/remove is announced via an aria-live region. Depends only on lucide-react.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/tag-input.tsx", "type": "registry:ui" }]
     }
   ]
 }
