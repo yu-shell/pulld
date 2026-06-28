@@ -135,26 +135,45 @@ function idSet(value) {
 const searchProductIds = (env) => idSet(env.POLAR_SEARCH_PRODUCT_IDS)
 const proProductIds = (env) => idSet(env.POLAR_PRO_PRODUCT_IDS)
 
-// Best-effort: fetch the customer's license key via the Polar API (License Keys benefit).
-// Field/endpoint specifics are confirmed against the first real payload; returns null on any miss.
-async function fetchLicenseKey(env, { customerId }) {
+// Resolve a product's License Keys benefit id. A customer who buys several products holds one key
+// per benefit, so matching on the benefit is what keeps Search and Pro keys apart.
+async function licenseBenefitId(base, token, productId) {
+  if (!productId) return null
+  try {
+    const res = await fetch(`${base}/v1/products/${productId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return null
+    const p = await res.json()
+    return (p.benefits || []).find((b) => b.type === "license_keys")?.id || null
+  } catch {
+    return null
+  }
+}
+
+// Fetch the license key the customer received for THIS product, via the Polar API — matched on
+// both customer and the product's license benefit, so a customer who owns Search + Pro never gets
+// the other product's key. Returns null on any miss (caller retries); never a wrong/arbitrary key.
+async function fetchLicenseKey(env, { customerId, productId }) {
   const token = env.POLAR_ACCESS_TOKEN
-  if (!token) return null
+  if (!token || !customerId) return null
   const base = env.POLAR_API_BASE || "https://api.polar.sh"
+  const benefitId = await licenseBenefitId(base, token, productId)
   const params = new URLSearchParams()
   if (env.POLAR_ORG_ID) params.set("organization_id", env.POLAR_ORG_ID)
+  if (benefitId) params.set("benefit_id", benefitId)
   params.set("limit", "50")
   try {
     const res = await fetch(`${base}/v1/license-keys/?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!res.ok) return null
-    const data = await res.json()
-    const items = data?.items ?? data?.result?.items ?? []
-    // Only return a key we can confidently attribute to this customer — never an arbitrary key,
-    // which would hand one customer another customer's retrieval token.
-    if (!customerId) return null
-    const match = items.find((k) => k.customer_id === customerId || k.user_id === customerId)
+    const items = (await res.json())?.items ?? []
+    const match = items.find(
+      (k) =>
+        (k.customer_id === customerId || k.user_id === customerId) &&
+        (!benefitId || k.benefit_id === benefitId)
+    )
     return match?.key ?? null
   } catch {
     return null
@@ -220,7 +239,7 @@ export async function onRequestPost(context) {
 
   try {
     if (isIssue && (isSearch || isPro)) {
-      const license = await fetchLicenseKey(env, { customerId })
+      const license = await fetchLicenseKey(env, { customerId, productId })
       if (!license) {
         // The license key may be granted slightly after the order/subscription. Return a retryable
         // status so Polar redelivers and we issue once the key exists, rather than dropping it.
@@ -257,7 +276,7 @@ export async function onRequestPost(context) {
       }
       // One-time Pro refund (no subscription): deactivate the license by its key.
       if (isPro || !subId) {
-        const lk = await fetchLicenseKey(env, { customerId })
+        const lk = await fetchLicenseKey(env, { customerId, productId })
         if (lk) {
           await env.DB.prepare("UPDATE licenses SET active = 0, status = 'refunded' WHERE key = ?")
             .bind(lk)
