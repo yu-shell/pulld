@@ -246,8 +246,12 @@ const html = `<!doctype html>
   .pp-kbd2{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;font:12px ui-monospace,monospace}
   .pp-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;
     justify-content:center;padding:12vh 16px}
-  .pp-modal{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
-    box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .pp-overlay[hidden]{display:none}
+  .pp-modal{position:relative;width:100%;max-width:560px;background:var(--surface);border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .pp-close{position:absolute;top:9px;right:9px;width:28px;height:28px;border:none;background:transparent;
+    color:var(--muted);font-size:15px;line-height:1;border-radius:7px;cursor:pointer;z-index:1}
+  .pp-close:hover{background:var(--code-bg);color:var(--ink)}
   .pp-input2{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);
     font-size:16px;padding:16px 18px;outline:none}
   .pp-results{list-style:none;margin:0;padding:6px;max-height:48vh;overflow:auto}
@@ -292,6 +296,7 @@ ${proSection}
   </main>
   <div id="pp-overlay" class="pp-overlay" hidden>
     <div class="pp-modal" role="dialog" aria-modal="true" aria-label="Search components">
+      <button type="button" id="pp-close" class="pp-close" aria-label="Close search">✕</button>
       <input id="pp-input" class="pp-input2" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
         placeholder="Search components by meaning…" aria-label="Search components by meaning" />
       <ul id="pp-results" class="pp-results"></ul>
@@ -327,6 +332,7 @@ ${proSection}
       results.addEventListener("click", function(e){ var li=e.target.closest(".pp-item"); if(li)choose(+li.getAttribute("data-i")); });
       overlay.addEventListener("click", function(e){ if(e.target===overlay)hide(); });
       var ob=document.getElementById("pp-open"); if(ob)ob.addEventListener("click", show);
+      var cb=document.getElementById("pp-close"); if(cb)cb.addEventListener("click", hide);
       document.addEventListener("keydown", function(e){
         if((e.metaKey||e.ctrlKey) && String(e.key).toLowerCase()==="k"){ e.preventDefault(); open?hide():show(); return; }
         if(!open)return;
