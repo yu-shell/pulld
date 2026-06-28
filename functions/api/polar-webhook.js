@@ -159,6 +159,9 @@ async function fetchLicenseKey(env, { customerId, productId }) {
   if (!token || !customerId) return null
   const base = env.POLAR_API_BASE || "https://api.polar.sh"
   const benefitId = await licenseBenefitId(base, token, productId)
+  // Fail closed: if a product was given but we couldn't resolve its license benefit, don't fall
+  // back to an unfiltered lookup (which could return another product's key) — let the caller retry.
+  if (productId && !benefitId) return null
   const params = new URLSearchParams()
   if (env.POLAR_ORG_ID) params.set("organization_id", env.POLAR_ORG_ID)
   if (benefitId) params.set("benefit_id", benefitId)
@@ -212,14 +215,6 @@ export async function onRequestPost(context) {
       ? data.id ?? null
       : data.subscription_id ?? data.subscription?.id ?? null
   const billingReason = data.billing_reason ?? null
-
-  // Diagnostic: capture the real payload shape (data keys + extracted fields) for the first events.
-  await logEvent(
-    env,
-    `polar:${type}`,
-    true,
-    `keys=${Object.keys(data).join(",")};pid=${productId};cust=${customerId};sub=${subId};reason=${billingReason}`
-  )
 
   const isIssue =
     type === "subscription.created" ||
@@ -284,6 +279,10 @@ export async function onRequestPost(context) {
         }
       }
       await logEvent(env, `polar:${type}`, true, `revoked (sub=${subId} pro=${isPro})`)
+    } else if (isIssue) {
+      // Paid order for a product in neither POLAR_SEARCH_PRODUCT_IDS nor POLAR_PRO_PRODUCT_IDS —
+      // log loudly (ok=0) so a product-id misconfiguration is visible rather than silently dropped.
+      await logEvent(env, `polar:${type}`, false, `unrecognized product ${productId} — check POLAR_*_PRODUCT_IDS`)
     }
   } catch (e) {
     console.error("polar-webhook db:", e?.message || e)

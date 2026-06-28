@@ -23,18 +23,19 @@ async function licenseFromSession(env, session) {
     if (!res.ok) return ""
     const data = await res.json()
     const items = data?.items ?? []
-    if (env.DB) {
-      for (const k of items) {
-        if (!k.key) continue
-        const hit = await env.DB.prepare(
-          "SELECT 1 FROM search_projects WHERE ls_license = ? AND active = 1"
-        )
-          .bind(k.key)
-          .first()
-        if (hit) return k.key
-      }
+    if (!env.DB) return ""
+    // Return only a key that maps to one of this customer's active search projects — never an
+    // arbitrary key. (No active-project match → "" → 401, rather than guessing.)
+    for (const k of items) {
+      if (!k.key) continue
+      const hit = await env.DB.prepare(
+        "SELECT 1 FROM search_projects WHERE ls_license = ? AND active = 1"
+      )
+        .bind(k.key)
+        .first()
+      if (hit) return k.key
     }
-    return items[0]?.key || ""
+    return ""
   } catch {
     return ""
   }
