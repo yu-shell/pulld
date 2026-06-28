@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const BASE = (process.env.SITE_BASE || "https://pulld.pages.dev").replace(/\/$/, "")
+// Public read-only query key for the pulld-demo project — powers the live ⌘K demo on this page
+// (the page searches its own components via pulld Search). Safe to ship; rate-limited per IP.
+const DEMO_QUERY_KEY = process.env.DEMO_QUERY_KEY || "pk_3852c981c083241aa2af291864e0594b"
 const reg = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf8"))
 const items = reg.items ?? []
 
@@ -56,7 +59,7 @@ const cards = items
       Array.isArray(it.registryDependencies) && it.registryDependencies.length
         ? `<span class="dep">composes ${it.registryDependencies.map(esc).join(", ")}</span>`
         : ""
-    return `      <article class="card">
+    return `      <article class="card" id="c-${it.name}">
         ${preview(it.name)}
         <div class="card-body">
           <div class="card-head">
@@ -237,6 +240,25 @@ const html = `<!doctype html>
   .search-cta .buy{margin-top:0;white-space:nowrap}
   footer{margin-top:64px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
   a{color:var(--accent)}
+  .pp-trigger{display:inline-flex;align-items:center;gap:8px;margin-top:22px;background:var(--surface);
+    border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:11px 15px;font-size:14px;cursor:pointer}
+  .pp-trigger:hover{border-color:var(--accent);color:var(--ink)}
+  .pp-kbd2{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;font:12px ui-monospace,monospace}
+  .pp-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;
+    justify-content:center;padding:12vh 16px}
+  .pp-modal{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .pp-input2{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);
+    font-size:16px;padding:16px 18px;outline:none}
+  .pp-results{list-style:none;margin:0;padding:6px;max-height:48vh;overflow:auto}
+  .pp-item{padding:10px 12px;border-radius:9px;cursor:pointer}
+  .pp-item.on{background:var(--accent);color:#fff}
+  .pp-item.on .pp-s{color:rgba(255,255,255,.82)}
+  .pp-l{font-size:14.5px;font-weight:500}
+  .pp-s{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pp-empty{padding:14px 12px;color:var(--muted);font-size:13.5px}
+  .pp-foot{border-top:1px solid var(--line);padding:8px 14px;font-size:11.5px;color:var(--muted)}
+  .card.flash{outline:2px solid var(--accent);outline-offset:3px}
 </style>
 </head>
 <body>
@@ -255,6 +277,9 @@ const html = `<!doctype html>
       <button type="button" class="copy" data-cmd="${esc(nsConfig)}" aria-label="Copy registry config">copy</button>
     </div>
 
+    <button type="button" id="pp-open" class="pp-trigger">Search components by meaning <span class="pp-kbd2">⌘K</span></button>
+    <p class="note" style="margin-top:8px;font-size:13px">This search is <a href="${BASE}/account">pulld Search</a> running on this page — try “let users switch to dark mode” or “copy text to clipboard”.</p>
+
     <h2>Components</h2>
     <div class="grid">
 ${cards}
@@ -265,6 +290,14 @@ ${proSection}
       MIT-licensed · every component is type-checked, built, and verified before it ships.
     </footer>
   </main>
+  <div id="pp-overlay" class="pp-overlay" hidden>
+    <div class="pp-modal" role="dialog" aria-modal="true" aria-label="Search components">
+      <input id="pp-input" class="pp-input2" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+        placeholder="Search components by meaning…" aria-label="Search components by meaning" />
+      <ul id="pp-results" class="pp-results"></ul>
+      <div class="pp-foot">powered by <strong>pulld Search</strong> · ↑↓ navigate · ↵ jump · esc close</div>
+    </div>
+  </div>
   <script>
     document.querySelectorAll(".copy").forEach(function(b){
       b.addEventListener("click", function(){
@@ -273,6 +306,36 @@ ${proSection}
         }).catch(function(){});
       });
     });
+    // Live ⌘K demo: search this page's own components via pulld Search, jump to the matched card.
+    (function(){
+      var KEY="${DEMO_QUERY_KEY}", ENDPOINT="${BASE}/api/search/query";
+      var overlay=document.getElementById("pp-overlay"), input=document.getElementById("pp-input"), results=document.getElementById("pp-results");
+      if(!overlay||!input||!results) return;
+      var open=false, items=[], active=-1, timer=null, seq=0;
+      function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+      function render(){
+        results.innerHTML = items.length
+          ? items.map(function(r,i){ return '<li class="pp-item'+(i===active?" on":"")+'" data-i="'+i+'"><div class="pp-l">'+esc(r.label)+'</div>'+(r.snippet?'<div class="pp-s">'+esc(r.snippet)+'</div>':"")+'</li>'; }).join("")
+          : '<li class="pp-empty">'+(input.value.trim()?"No matches":"Type to search by meaning…")+'</li>';
+      }
+      function show(){ overlay.hidden=false; open=true; input.value=""; items=[]; active=-1; render(); document.body.style.overflow="hidden"; setTimeout(function(){input.focus();},0); }
+      function hide(){ overlay.hidden=true; open=false; document.body.style.overflow=""; }
+      function run(q){ var my=++seq; fetch(ENDPOINT+"?key="+encodeURIComponent(KEY)+"&q="+encodeURIComponent(q)+"&limit=8").then(function(r){return r.json();}).then(function(j){ if(my!==seq)return; items=(j&&j.results)||[]; active=items.length?0:-1; render(); }).catch(function(){ if(my!==seq)return; items=[]; active=-1; render(); }); }
+      function move(d){ if(!items.length)return; active=(active+d+items.length)%items.length; render(); var el=results.querySelector(".pp-item.on"); if(el)el.scrollIntoView({block:"nearest"}); }
+      function choose(i){ var r=items[i]; if(!r)return; hide(); var card=document.getElementById("c-"+r.id); if(card){ card.scrollIntoView({behavior:"smooth",block:"center"}); card.classList.add("flash"); setTimeout(function(){card.classList.remove("flash");},1500); } else if(r.url){ location.href=r.url; } }
+      input.addEventListener("input", function(){ var q=input.value.trim(); clearTimeout(timer); if(!q){ items=[]; active=-1; render(); return; } timer=setTimeout(function(){ run(q); }, 180); });
+      results.addEventListener("click", function(e){ var li=e.target.closest(".pp-item"); if(li)choose(+li.getAttribute("data-i")); });
+      overlay.addEventListener("click", function(e){ if(e.target===overlay)hide(); });
+      var ob=document.getElementById("pp-open"); if(ob)ob.addEventListener("click", show);
+      document.addEventListener("keydown", function(e){
+        if((e.metaKey||e.ctrlKey) && String(e.key).toLowerCase()==="k"){ e.preventDefault(); open?hide():show(); return; }
+        if(!open)return;
+        if(e.key==="Escape"){ hide(); }
+        else if(e.key==="ArrowDown"){ e.preventDefault(); move(1); }
+        else if(e.key==="ArrowUp"){ e.preventDefault(); move(-1); }
+        else if(e.key==="Enter"){ e.preventDefault(); choose(active); }
+      });
+    })();
   </script>
 </body>
 </html>

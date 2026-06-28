@@ -4,6 +4,12 @@ Production-ready UI components for [shadcn/ui](https://ui.shadcn.com) — typed,
 
 **Browse the catalog → [pulld.pages.dev](https://pulld.pages.dev)**
 
+## Demo
+
+![pulld command palette searching components by meaning](assets/demo.svg)
+
+Press <kbd>⌘K</kbd> on [pulld.pages.dev](https://pulld.pages.dev) and search the components by meaning — that search is **pulld Search** (hosted semantic search) running on the page itself.
+
 ## Install
 
 Add a component directly by URL:
