@@ -90,13 +90,17 @@ const SEARCH_CHECKOUT =
   process.env.SEARCH_CHECKOUT ||
   "https://buy.polar.sh/polar_cl_NUyf4PdoVJn8sIMP70hghnK0JuO8prt7kUGrh3uowc6"
 const searchSection = `
-    <div class="search-cta">
-      <div class="search-cta-text">
-        <h3>pulld Search — semantic search for your app</h3>
-        <p>Hosted and drop-in. Plug it into the command palette's <code>source</code>: index your content and get typo-tolerant, meaning-based results. Nothing to run.</p>
-        <p class="note" style="margin:8px 0 0;font-size:13px">Already subscribed? <a href="${BASE}/account">Get your keys →</a></p>
-      </div>
-      <a class="buy" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
+    <h2>Hosted service</h2>
+    <div class="grid">
+      <article class="card search">
+        <div class="preview"><span class="pv-search">${ICON.search}</span></div>
+        <div class="card-body">
+          <div class="card-head"><h3>pulld Search <span class="badge">${esc(SEARCH_PRICE)}/mo</span></h3></div>
+          <p>Hosted semantic search — index your content and get typo-tolerant, meaning-based results. Drop it into the command palette's <code>source</code>; nothing to run.</p>
+          <a class="buy" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
+          <p class="note" style="margin:10px 0 0;font-size:13px">Already subscribed? <a href="${BASE}/account">Get your keys →</a></p>
+        </div>
+      </article>
     </div>
 `
 let proSection = ""
@@ -231,13 +235,10 @@ const html = `<!doctype html>
     border-radius:9px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.10);font-size:11.5px;color:var(--ink)}
   .pv-tok{color:#16a34a;display:inline-flex;flex:none}
   @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} }
-  .search-cta{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-top:14px;
-    background:color-mix(in srgb,var(--accent) 7%,var(--surface));
-    border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:14px;padding:18px 20px}
-  .search-cta-text{flex:1;min-width:240px}
-  .search-cta h3{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
-  .search-cta p{margin:0;color:var(--muted);font-size:14px}
-  .search-cta .buy{margin-top:0;white-space:nowrap}
+  .card.search{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));
+    background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+  .pv-search{color:var(--accent);display:inline-flex}
+  .pv-search svg{width:30px;height:30px}
   footer{margin-top:64px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
   a{color:var(--accent)}
   .pp-trigger{display:inline-flex;align-items:center;gap:8px;margin-top:22px;background:var(--surface);
