@@ -140,6 +140,15 @@
       "description": "Multi-value text input that turns typed entries into removable chips — press Enter or comma to add a tag, click the × or press Backspace on an empty field to remove the last one, and paste a comma- or newline-separated list to add many at once. Use it for tags, labels, keywords, categories, email recipients, skills, or allowed domains — any free-form list of short values on a form or filter bar. Works controlled or uncontrolled via a string[] value, forwards a ref to focus the field, and supports a max count, case-insensitive de-duplication, and a validate hook to reject bad entries. shadcn/ui ships no tag or chips input; chips use secondary tokens so they follow your theme, each remove button is aria-labelled, and add/remove is announced via an aria-live region. Depends only on lucide-react.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/tag-input.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "copy-field",
+      "type": "registry:ui",
+      "title": "Copy Field",
+      "description": "Read-only input that shows a value with a copy button docked at its right edge — one click copies, and focusing or clicking the field selects the whole value for manual copy. Use it to surface an API key, secret, access token, client ID/secret, invite or share link, webhook or endpoint URL, account/order/transaction ID, or any generated string a user reads once and copies. shadcn/ui ships no copy field; this composes pulld's copy-button (so it inherits the accessible copied-state announcement and focus ring), forwards a ref so you can focus it from a shortcut, renders the value in monospace, and is theme-aware via shadcn tokens with no extra dependencies.",
+      "dependencies": [],
+      "registryDependencies": ["copy-button"],
+      "files": [{ "path": "registry/ui/copy-field.tsx", "type": "registry:ui" }]
     }
   ]
 }
