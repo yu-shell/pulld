@@ -63,7 +63,7 @@
       "name": "spinner",
       "type": "registry:ui",
       "title": "Spinner",
-      "description": "Accessible loading spinner with role=status, an aria-live region, and a screen-reader label. Use it for inline loading, button busy states, or anywhere you need to indicate a pending async operation. Animated lucide Loader2.",
+      "description": "Accessible loading spinner (animated lucide Loader2) with role=status, aria-live, and a configurable screen-reader-only label so assistive tech announces the busy state. Use it while fetching data, submitting a form, loading a page or section, as a Suspense or lazy-route fallback, or inside a button's busy/pending state — anywhere you show a 'Loading…' indicator for a pending async operation. shadcn/ui ships no spinner primitive; this is the accessible default, and it follows the surrounding text color. Depends only on lucide-react.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/spinner.tsx", "type": "registry:ui" }]
     },
@@ -149,6 +149,14 @@
       "dependencies": [],
       "registryDependencies": ["copy-button"],
       "files": [{ "path": "registry/ui/copy-field.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "segmented-control",
+      "type": "registry:ui",
+      "title": "Segmented Control",
+      "description": "Horizontal group of 2–4 mutually exclusive options rendered as one pill/track — a lighter switch than Tabs for toggling a view, time range, unit, sort order, or mode (e.g. List/Grid, Day/Week/Month, °C/°F, Light/Dark). Built as an accessible radiogroup: arrow keys (and Home/End) roving-focus and select, each segment is a role=radio with aria-checked, there's a focus-visible ring, per-segment disabling, and it works controlled or uncontrolled via a string value with onValueChange. Unlike Tabs it doesn't manage panels — it's only the selector — and unlike a Switch it supports more than two choices. Theme-aware via shadcn tokens; no dependencies.",
+      "dependencies": [],
+      "files": [{ "path": "registry/ui/segmented-control.tsx", "type": "registry:ui" }]
     }
   ]
 }
