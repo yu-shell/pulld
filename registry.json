@@ -157,6 +157,14 @@
       "description": "Horizontal group of 2–4 mutually exclusive options rendered as one pill/track — a lighter switch than Tabs for toggling a view, time range, unit, sort order, or mode (e.g. List/Grid, Day/Week/Month, °C/°F, Light/Dark). Built as an accessible radiogroup: arrow keys (and Home/End) roving-focus and select, each segment is a role=radio with aria-checked, there's a focus-visible ring, per-segment disabling, and it works controlled or uncontrolled via a string value with onValueChange. Unlike Tabs it doesn't manage panels — it's only the selector — and unlike a Switch it supports more than two choices. Theme-aware via shadcn tokens; no dependencies.",
       "dependencies": [],
       "files": [{ "path": "registry/ui/segmented-control.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "step-indicator",
+      "type": "registry:ui",
+      "title": "Step Indicator",
+      "description": "Horizontal stepper that shows progress through a fixed sequence — numbered circle markers joined by a line, with each step rendered as complete (filled with a check), current (ringed and highlighted), or upcoming (muted). Use it at the top of a multi-step form, wizard, onboarding or setup flow, checkout, KYC/verification, or account-creation flow to tell users where they are and how much is left; pass a `current` index and it derives every step's state. shadcn/ui ships no stepper. Accessible as an ordered list where the active step carries aria-current=\"step\" and each marker has an sr-only status (Completed / Current step / Not completed); the check icon is aria-hidden. Optionally pass onStepClick to make already-reached steps navigable buttons (with a focus-visible ring), while upcoming steps stay non-interactive. Theme-aware via shadcn tokens with dark mode; only depends on lucide-react for the check icon.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/step-indicator.tsx", "type": "registry:ui" }]
     }
   ]
 }
