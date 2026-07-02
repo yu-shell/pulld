@@ -165,6 +165,14 @@
       "description": "Horizontal stepper that shows progress through a fixed sequence — numbered circle markers joined by a line, with each step rendered as complete (filled with a check), current (ringed and highlighted), or upcoming (muted). Use it at the top of a multi-step form, wizard, onboarding or setup flow, checkout, KYC/verification, or account-creation flow to tell users where they are and how much is left; pass a `current` index and it derives every step's state. shadcn/ui ships no stepper. Accessible as an ordered list where the active step carries aria-current=\"step\" and each marker has an sr-only status (Completed / Current step / Not completed); the check icon is aria-hidden. Optionally pass onStepClick to make already-reached steps navigable buttons (with a focus-visible ring), while upcoming steps stay non-interactive. Theme-aware via shadcn tokens with dark mode; only depends on lucide-react for the check icon.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/step-indicator.tsx", "type": "registry:ui" }]
+    },
+    {
+      "name": "rating",
+      "type": "registry:ui",
+      "title": "Rating",
+      "description": "Star rating for both input and display, with half-star support. Use it to collect a score — rate this product, leave a review, a satisfaction or feedback rating, thumbs/stars on an order or support ticket — or, in read-only mode, to show an average score next to reviews, listings, or search results (an average like 3.7 fills 70% of a star). shadcn/ui ships no rating component. Works controlled or uncontrolled via a number value with onValueChange, forwards a ref, and posts through a hidden input in native forms via `name`. Set allowHalf to pick half stars — click the left half of a star, or step by 0.5 with the keyboard. Accessible as a slider: it's focusable with a focus-visible ring, arrow keys raise and lower the score, Home clears to 0 and End maxes out, and it exposes aria-valuenow plus a spoken aria-valuetext (\"3.5 out of 5 stars\"); read-only mode renders as a labelled image instead. The empty and filled stars are decorative and aria-hidden. Configure the number of stars with max and pixel size with size. Theme-aware via shadcn tokens (filled stars use the primary color, so it follows your theme in light and dark mode); only depends on lucide-react for the star icon.",
+      "dependencies": ["lucide-react"],
+      "files": [{ "path": "registry/ui/rating.tsx", "type": "registry:ui" }]
     }
   ]
 }
