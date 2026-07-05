@@ -3,6 +3,14 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-07-05 — quality sweep
+
+- fix(command-palette): keyboard selection now matches the highlighted row when
+  results use `group`. Navigation indexed the score-ordered list while rendering
+  re-bucketed by group, so for scattered groups the highlighted / aria-active /
+  scrolled row and the row Enter selected diverged. Results are now clustered by
+  group (first-seen order) before slicing, so nav order == render order.
+
 ## 2026-06-23 — quality sweep
 
 - a11y(stat-card): add dark-mode contrast variants for the delta (emerald/red 400

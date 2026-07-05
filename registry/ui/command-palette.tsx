@@ -231,8 +231,27 @@ export function CommandPalette({
       .map((x) => x.i)
   }, [items, asyncItems, hasSource, query, recents])
 
+  // Cluster items by group in first-seen order so each group renders contiguously.
+  // The render below re-buckets `shown` by group, so keyboard nav (which keys off the
+  // `shown` index) and rendering only agree when `shown` is already grouped — otherwise
+  // the highlighted / aria-active / scrolled row and the row Enter selects diverge for
+  // groups that are scattered in the results order.
+  const ordered = React.useMemo<CommandItem[]>(() => {
+    let hasGroup = false
+    const buckets = new Map<string, CommandItem[]>()
+    for (const it of results) {
+      if (it.group) hasGroup = true
+      const key = it.group ?? ""
+      const arr = buckets.get(key)
+      if (arr) arr.push(it)
+      else buckets.set(key, [it])
+    }
+    // No groups in play → keep the original (score / recents) order untouched.
+    return hasGroup ? Array.from(buckets.values()).flat() : results
+  }, [results])
+
   // Only render up to maxResults; everything (nav, aria) is based on this list.
-  const shown = results.slice(0, Math.max(1, maxResults))
+  const shown = ordered.slice(0, Math.max(1, maxResults))
   // Clamp the active index during render so aria-activedescendant always resolves.
   const safeActive = shown.length ? Math.min(Math.max(0, active), shown.length - 1) : 0
 
