@@ -10,6 +10,9 @@ copies code into your project, so existing installs are never changed automatica
   re-bucketed by group, so for scattered groups the highlighted / aria-active /
   scrolled row and the row Enter selected diverged. Results are now clustered by
   group (first-seen order) before slicing, so nav order == render order.
+- docs(spinner): drop the stale "shadcn/ui ships no spinner primitive" line from
+  the registry description — shadcn now ships an official `spinner`. Metadata
+  only; the component code is unchanged.
 
 ## 2026-06-23 — quality sweep
 

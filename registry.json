@@ -63,7 +63,7 @@
       "name": "spinner",
       "type": "registry:ui",
       "title": "Spinner",
-      "description": "Accessible loading spinner (animated lucide Loader2) with role=status, aria-live, and a configurable screen-reader-only label so assistive tech announces the busy state. Use it while fetching data, submitting a form, loading a page or section, as a Suspense or lazy-route fallback, or inside a button's busy/pending state — anywhere you show a 'Loading…' indicator for a pending async operation. shadcn/ui ships no spinner primitive; this is the accessible default, and it follows the surrounding text color. Depends only on lucide-react.",
+      "description": "Accessible loading spinner (animated lucide Loader2) with role=status, aria-live, and a configurable screen-reader-only label so assistive tech announces the busy state. Use it while fetching data, submitting a form, loading a page or section, as a Suspense or lazy-route fallback, or inside a button's busy/pending state — anywhere you show a 'Loading…' indicator for a pending async operation. It follows the surrounding text color, so it inherits a button's or link's foreground. Depends only on lucide-react.",
       "dependencies": ["lucide-react"],
       "files": [{ "path": "registry/ui/spinner.tsx", "type": "registry:ui" }]
     },
