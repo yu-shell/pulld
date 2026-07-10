@@ -6,7 +6,7 @@
 // json()/cors() response shaping the endpoints depend on.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { chunk, monthKey, json, cors, MAX_CHUNKS_PER_DOC } from "../functions/api/search/_lib.js"
+import { chunk, monthKey, json, cors, MAX_CHUNKS_PER_DOC, vecId } from "../functions/api/search/_lib.js"
 
 test("chunk: empty / whitespace-only / nullish input yields no chunks", () => {
   assert.deepEqual(chunk(""), [])
@@ -52,6 +52,30 @@ test("chunk: overlap >= size cannot infinite-loop (step is floored to 1) and sti
 
 test("MAX_CHUNKS_PER_DOC is a positive integer (ingest/delete id range bound)", () => {
   assert.ok(Number.isInteger(MAX_CHUNKS_PER_DOC) && MAX_CHUNKS_PER_DOC > 0)
+})
+
+test("vecId: pins the on-the-wire chunk id format `<project>:<doc>:<chunk>`", () => {
+  // ingest writes these ids and delete reconstructs them; both derive from vecId, so pinning the
+  // literal format here catches any change that would break the ingest/delete contract.
+  assert.equal(vecId("prj_x", "doc-1", 0), "prj_x:doc-1:0")
+  assert.equal(vecId("prj_x", "doc-1", MAX_CHUNKS_PER_DOC - 1), `prj_x:doc-1:${MAX_CHUNKS_PER_DOC - 1}`)
+})
+
+test("vecId: delete's full range covers every id ingest can write for a document", () => {
+  // ingest writes chunks 0..parts.length-1 (parts capped at MAX_CHUNKS_PER_DOC); delete removes the
+  // whole 0..MAX_CHUNKS_PER_DOC-1 range. Every id ingest could emit must be one delete removes,
+  // otherwise a re-index-then-delete would leave orphaned vectors that still match queries.
+  const project = "prj_x"
+  const doc = "help-article"
+  const deleteTargets = new Set(
+    Array.from({ length: MAX_CHUNKS_PER_DOC }, (_, ci) => vecId(project, doc, ci))
+  )
+  for (let n = 0; n <= MAX_CHUNKS_PER_DOC; n++) {
+    const ingestWrites = Array.from({ length: Math.min(n, MAX_CHUNKS_PER_DOC) }, (_, ci) =>
+      vecId(project, doc, ci)
+    )
+    assert.ok(ingestWrites.every((id) => deleteTargets.has(id)))
+  }
 })
 
 test("monthKey: YYYY-MM matching the current UTC month", () => {

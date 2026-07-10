@@ -2,7 +2,7 @@
 // Server-to-server only: admin_key is a secret write key, so no CORS is offered.
 // Body: { documents: [{ id, title, url, content }] }. Chunks + embeds + upserts to Vectorize
 // under the project's namespace.
-import { json, embed, chunk, projectByKey, bumpUsage, MAX_CHUNKS_PER_DOC } from "./_lib.js"
+import { json, embed, chunk, projectByKey, bumpUsage, MAX_CHUNKS_PER_DOC, vecId } from "./_lib.js"
 
 const MAX_CHUNKS_PER_REQUEST = 400
 const PRUNE_BATCH = 1000 // vector ids per deleteByIds call (mirrors delete.js)
@@ -44,7 +44,7 @@ export async function onRequestPost(context) {
     // a document is the delete endpoint's job, not a silent side effect of empty-content ingest.
     if (parts.length > 0) {
       for (let ci = parts.length; ci < MAX_CHUNKS_PER_DOC; ci++) {
-        staleIds.push(`${project.id}:${id}:${ci}`)
+        staleIds.push(vecId(project.id, id, ci))
       }
     }
     for (let ci = 0; ci < parts.length; ci++) {
@@ -59,7 +59,7 @@ export async function onRequestPost(context) {
       }
       texts.push(parts[ci])
       meta.push({
-        vid: `${project.id}:${id}:${ci}`,
+        vid: vecId(project.id, id, ci),
         docId: id,
         title: String(d.title ?? id).slice(0, 200),
         url: String(d.url ?? "").slice(0, 500),
