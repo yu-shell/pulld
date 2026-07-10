@@ -4,7 +4,7 @@
 // MAX_CHUNKS_PER_DOC vectors (`<project>:<id>:<0..n>`), so we delete that whole id range; deleting
 // ids that don't exist is a harmless no-op. The `<project>` prefix is the authenticated project,
 // so a caller can only delete its own documents.
-import { json, projectByKey, MAX_CHUNKS_PER_DOC } from "./_lib.js"
+import { json, projectByKey, MAX_CHUNKS_PER_DOC, vecId } from "./_lib.js"
 
 const MAX_IDS_PER_REQUEST = 100
 const DELETE_BATCH = 1000 // vector ids per deleteByIds call
@@ -38,7 +38,7 @@ export async function onRequestPost(context) {
     if (!id) continue
     docs++
     for (let ci = 0; ci < MAX_CHUNKS_PER_DOC; ci++) {
-      vectorIds.push(`${project.id}:${id}:${ci}`)
+      vectorIds.push(vecId(project.id, id, ci))
     }
   }
   if (!vectorIds.length) return j({ error: "no valid ids" }, 400)

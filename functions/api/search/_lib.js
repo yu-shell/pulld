@@ -6,6 +6,12 @@ const EMBED_MODEL = "@cf/baai/bge-m3" // multilingual, 1024-dim, cheap
 // full `<project>:<id>:<0..MAX_CHUNKS_PER_DOC-1>` range, so both must use the same value.
 export const MAX_CHUNKS_PER_DOC = 20
 
+// Vector id for one chunk: `<project>:<doc>:<chunkIndex>`. ingest writes these ids and delete
+// reconstructs the same 0..MAX_CHUNKS_PER_DOC-1 range to remove a document — so the two endpoints
+// MUST derive the id identically. Centralize the format here so they can never silently drift and
+// leave orphaned vectors that keep matching queries.
+export const vecId = (projectId, docId, ci) => `${projectId}:${docId}:${ci}`
+
 export function json(data, status = 200, opts = {}) {
   const { cors = true, ...extra } = opts
   const headers = {
