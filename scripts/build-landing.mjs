@@ -32,6 +32,7 @@ const ICON = {
   box: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>`,
   search: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
   check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  upload: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/></svg>`,
 }
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
@@ -48,6 +49,18 @@ const PREVIEWS = {
   "dashboard-overview": `<div class="pv-dash"><div class="pv-dbar"></div><div class="pv-drow"><span></span><span></span><span></span></div></div>`,
   "command-palette": `<div class="pv-input" style="gap:6px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span><span style="margin-left:auto;display:flex;gap:3px"><span class="pv-kbd">⌘</span><span class="pv-kbd">K</span></span></div>`,
   toast: `<div class="pv-toast"><span class="pv-tok">${ICON.check}</span><span>Changes saved</span></div>`,
+  "search-input": `<div class="pv-input"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span></div>`,
+  "number-input": `<div class="pv-input" style="justify-content:center;gap:8px"><span class="pv-numbtn">−</span><span style="font-size:13px;color:var(--ink);min-width:14px;text-align:center">3</span><span class="pv-numbtn">+</span></div>`,
+  "otp-input": `<div class="pv-otp"><span>4</span><span>2</span><span></span><span></span></div>`,
+  "tag-input": `<div class="pv-input" style="height:auto;min-height:30px;flex-wrap:wrap;gap:4px;padding:6px 7px"><span class="pv-tag">react</span><span class="pv-tag">ui</span><span style="color:var(--muted);font-size:11px">|</span></div>`,
+  "copy-field": `<div class="pv-input"><span style="font:11px ui-monospace,monospace;color:var(--ink)">tok_1a2b</span><span style="margin-left:auto;color:var(--muted);display:inline-flex">${ICON.copy}</span></div>`,
+  "segmented-control": `<div class="pv-seg"><span class="on">Day</span><span>Week</span></div>`,
+  "step-indicator": `<div class="pv-steps"><span class="d on"></span><i></i><span class="d cur">2</span><i></i><span class="d">3</span></div>`,
+  rating: `<div style="font-size:19px;letter-spacing:2px"><span style="color:var(--accent)">★★★★</span><span style="color:var(--line)">★</span></div>`,
+  timeline: `<div class="pv-timeline"><span class="d on"></span><span class="b" style="width:46px"></span><span class="d"></span><span class="b" style="width:30px"></span><span class="d"></span><span class="b" style="width:40px"></span></div>`,
+  "announcement-bar": `<div class="pv-annc"><span>New — try it →</span><span class="x">×</span></div>`,
+  "file-dropzone": `<div class="pv-empty">${ICON.upload}<span>Drop files</span></div>`,
+  "progress-ring": `<svg width="54" height="54" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="20" cy="20" r="16" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="72 101" transform="rotate(-90 20 20)"/><text x="20" y="24" text-anchor="middle" font-size="11" fill="var(--ink)" font-weight="600">72%</text></svg>`,
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
@@ -235,6 +248,26 @@ const html = `<!doctype html>
     border-radius:9px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.10);font-size:11.5px;color:var(--ink)}
   .pv-tok{color:#16a34a;display:inline-flex;flex:none}
   @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} }
+  .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
+  .pv-otp{display:flex;gap:5px}
+  .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
+  .pv-tag{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:500}
+  .pv-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:2px}
+  .pv-seg span{font-size:11.5px;padding:3px 9px;border-radius:6px;color:var(--muted)}
+  .pv-seg .on{background:var(--accent);color:#fff}
+  .pv-steps{display:flex;align-items:center}
+  .pv-steps .d{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:600;border:1px solid var(--line);color:var(--muted);background:var(--surface)}
+  .pv-steps .d.on{background:var(--accent);border-color:transparent}
+  .pv-steps .d.cur{border-color:var(--accent);color:var(--accent)}
+  .pv-steps i{width:12px;height:2px;background:var(--line)}
+  .pv-timeline{display:grid;grid-template-columns:auto 1fr;gap:7px}
+  .pv-timeline .d{width:9px;height:9px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+  .pv-timeline .d.on{background:var(--accent);border-color:var(--accent)}
+  .pv-timeline .b{height:6px;border-radius:3px;background:var(--line)}
+  .pv-annc{display:flex;align-items:center;gap:6px;width:100%;border-radius:8px;padding:6px 8px;font-size:11px;color:var(--ink);
+    background:color-mix(in srgb,var(--accent) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line))}
+  .pv-annc .x{margin-left:auto;color:var(--muted)}
   .card.search{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));
     background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
   .pv-search{color:var(--accent);display:inline-flex}
