@@ -66,17 +66,26 @@ export const TagInput = React.forwardRef<HTMLInputElement, TagInputProps>(
       onChange?.(next)
     }
 
-    function addTag(raw: string) {
+    // Append `raw` to `list` if it passes the trim/cap/dedup/validate gate;
+    // returns the next list, or null when the candidate is rejected. Pure so a
+    // batch (paste) can thread one working list through many candidates without
+    // relying on state that hasn't re-rendered yet.
+    function withTag(list: string[], raw: string): string[] | null {
       const tag = raw.trim()
-      if (!tag || disabled) return
-      if (max !== undefined && tags.length >= max) return
+      if (!tag || disabled) return null
+      if (max !== undefined && list.length >= max) return null
       if (
         !allowDuplicates &&
-        tags.some((t) => t.toLowerCase() === tag.toLowerCase())
+        list.some((t) => t.toLowerCase() === tag.toLowerCase())
       )
-        return
-      if (validate && !validate(tag)) return
-      commit([...tags, tag], `Added ${tag}`)
+        return null
+      if (validate && !validate(tag)) return null
+      return [...list, tag]
+    }
+
+    function addTag(raw: string) {
+      const next = withTag(tags, raw)
+      if (next) commit(next, `Added ${raw.trim()}`)
     }
 
     function removeAt(index: number) {
@@ -108,11 +117,21 @@ export const TagInput = React.forwardRef<HTMLInputElement, TagInputProps>(
       // Only intercept multi-value pastes; a single value falls through to typing.
       if (/[,\n]/.test(text)) {
         e.preventDefault()
-        text
-          .split(/[,\n]/)
-          .map((t) => t.trim())
-          .filter(Boolean)
-          .forEach(addTag)
+        // Thread one working list through every candidate so each add sees the
+        // results of the previous ones (state from this render is stale mid-loop),
+        // then commit once. Announce the batch as a count.
+        let working = tags
+        let added = 0
+        for (const part of text.split(/[,\n]/)) {
+          const next = withTag(working, part)
+          if (next) {
+            working = next
+            added++
+          }
+        }
+        if (added > 0) {
+          commit(working, added === 1 ? `Added ${working[working.length - 1]}` : `Added ${added} tags`)
+        }
         setDraft("")
       }
     }
