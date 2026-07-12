@@ -228,10 +228,13 @@ export function Toaster({ position = "bottom-right", gap = 12 }: ToasterProps) {
   const isTop = position.startsWith("top")
 
   return (
-    <section
+    // An <ol> (not a <section>) so the <li> toasts nest in a valid list; the
+    // aria-label names the region for assistive tech. `m-0 list-none` keeps it
+    // reset even without Tailwind's preflight.
+    <ol
       aria-label="Notifications"
       className={cn(
-        "pointer-events-none fixed z-[100] flex w-full max-w-[400px] flex-col p-4",
+        "pointer-events-none fixed z-[100] m-0 flex w-full max-w-[400px] list-none flex-col p-4",
         // newest toast sits closest to the screen edge
         isTop ? "flex-col" : "flex-col-reverse",
         POSITION_CLASSES[position]
@@ -241,7 +244,7 @@ export function Toaster({ position = "bottom-right", gap = 12 }: ToasterProps) {
       {list.map((record) => (
         <ToastItem key={record.id} record={record} fromTop={isTop} />
       ))}
-    </section>
+    </ol>
   )
 }
 

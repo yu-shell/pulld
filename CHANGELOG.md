@@ -3,6 +3,17 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-07-12 — quality sweep
+
+- fix(tag-input): pasting a comma/newline-separated list now adds every value.
+  The paste loop called `addTag` per value, but each add read the tag list from a
+  render that hadn't updated yet, so `[...tags, tag]` overwrote prior adds and only
+  the last value survived. Adds are now threaded through one working list and
+  committed once.
+- a11y(toast): the `<Toaster>` container is now an `<ol>` instead of a `<section>`,
+  so its `<li>` toasts nest in a valid list for assistive tech (an `<li>` outside a
+  list is invalid HTML). The `aria-label="Notifications"` region name is preserved.
+
 ## 2026-07-05 — quality sweep
 
 - fix(command-palette): keyboard selection now matches the highlighted row when
