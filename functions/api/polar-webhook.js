@@ -15,7 +15,7 @@
 // Missing secret → 503; invalid signature → 401 (fail-closed). State-changing events return
 // non-200 on a DB failure so Polar retries. Rich diagnostics capture the real payload shape.
 
-function timingSafeEqual(a, b) {
+export function timingSafeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false
   let out = 0
   for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i)
@@ -40,7 +40,7 @@ function bytesToB64(buf) {
 // standard `whsec_`+base64 secret, so we try every plausible interpretation — full string, base64,
 // and prefix-stripped (utf8 / base64). Only a key that produces a matching signature is accepted,
 // so trying extras never weakens security.
-function secretCandidates(secret) {
+export function secretCandidates(secret) {
   const enc = new TextEncoder()
   const cands = []
   const tryB64 = (s) => {
@@ -65,7 +65,7 @@ function secretCandidates(secret) {
   return cands
 }
 
-async function hmacB64(keyBytes, msg) {
+export async function hmacB64(keyBytes, msg) {
   const key = await crypto.subtle.importKey(
     "raw",
     keyBytes,
@@ -77,7 +77,7 @@ async function hmacB64(keyBytes, msg) {
   return bytesToB64(sig)
 }
 
-async function verifySignature(secret, headers, body) {
+export async function verifySignature(secret, headers, body) {
   const id = headers.get("webhook-id")
   const ts = headers.get("webhook-timestamp")
   const sigHeader = headers.get("webhook-signature")
