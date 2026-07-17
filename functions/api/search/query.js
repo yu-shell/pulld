@@ -2,6 +2,15 @@
 // This is what the command-palette `source` calls. Returns items shaped for the palette.
 import { json, cors, embed, projectByKey, bumpUsage, rateLimited } from "./_lib.js"
 
+// Clamp a requested result count to [1,20]. Falls back to `dflt` for missing, empty, or
+// non-numeric input — Number("abc") is NaN, which Math.min/max would propagate into topK and
+// poison both the Vectorize query (topK*3) and the `results.length >= topK` dedup guard.
+export const clampLimit = (raw, dflt) => {
+  if (raw === null || raw === undefined || raw === "") return dflt
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.min(20, Math.max(1, n)) : dflt
+}
+
 export function onRequestOptions() {
   return cors()
 }
@@ -19,14 +28,14 @@ async function handle(context) {
 
   let q = url.searchParams.get("q") || ""
   let key = url.searchParams.get("key") || request.headers.get("x-pulld-key") || ""
-  let topK = Math.min(20, Math.max(1, Number(url.searchParams.get("limit") || 8)))
+  let topK = clampLimit(url.searchParams.get("limit"), 8)
 
   if (request.method === "POST") {
     try {
       const b = await request.json()
       if (typeof b?.q === "string") q = b.q
       if (typeof b?.key === "string") key = b.key
-      if (b?.limit) topK = Math.min(20, Math.max(1, Number(b.limit)))
+      if (b?.limit) topK = clampLimit(b.limit, topK)
     } catch {
       /* ignore */
     }
