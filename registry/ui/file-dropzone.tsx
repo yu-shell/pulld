@@ -114,13 +114,23 @@ export const FileDropzone = React.forwardRef<HTMLInputElement, FileDropzoneProps
         }
       }
 
-      // A single-file dropzone only keeps the last valid file.
-      let next = multiple ? [...files, ...passed] : passed.slice(-1)
-      if (multiple && maxFiles !== undefined && next.length > maxFiles) {
-        for (const file of next.slice(maxFiles)) {
+      let next: File[]
+      if (multiple) {
+        next = [...files, ...passed]
+        if (maxFiles !== undefined && next.length > maxFiles) {
+          for (const file of next.slice(maxFiles)) {
+            rejected.push({ file, reason: "too-many" })
+          }
+          next = next.slice(0, maxFiles)
+        }
+      } else {
+        // A single-file dropzone keeps only the last valid file; the earlier ones
+        // are over the cap, so report them through onReject instead of dropping
+        // them silently.
+        next = passed.slice(-1)
+        for (const file of passed.slice(0, -1)) {
           rejected.push({ file, reason: "too-many" })
         }
-        next = next.slice(0, maxFiles)
       }
 
       if (rejected.length) onReject?.(rejected)

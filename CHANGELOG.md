@@ -3,6 +3,14 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-07-19 — quality sweep
+
+- fix(file-dropzone): in single-file mode, dropping several valid files at once now
+  reports the discarded ones through `onReject` with reason `"too-many"` instead of
+  silently dropping all but the last. The accepted file is unchanged; only the
+  previously-missing reject notifications (and an accurate "Added 1 file, N skipped"
+  announcement) are added.
+
 ## 2026-07-12 — quality sweep
 
 - fix(tag-input): pasting a comma/newline-separated list now adds every value.
