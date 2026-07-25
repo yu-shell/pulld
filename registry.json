@@ -538,6 +538,19 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "type-to-confirm",
+      "type": "registry:ui",
+      "title": "Type-to-Confirm",
+      "description": "The confirmation step in front of an irreversible action: the user has to type the resource's own name (\"acme-prod\") before the destructive button turns on. Use it wherever a misclick would be unrecoverable — deleting a project, repository, workspace, organisation, cluster, database, or environment, removing a team member, revoking an API key, wiping data, cancelling a subscription, or any \"danger zone\" section of a settings page. Common asks it answers: \"type to confirm\", \"type the project name to delete\", \"type DELETE to confirm\", \"confirm delete by typing name\", \"GitHub-style delete confirmation\", \"danger zone dialog\", \"destructive action modal\", \"disable the delete button until the name matches\". shadcn/ui ships alert-dialog as an empty shell — the typed match, the disabled-until-it-matches wiring, and the announcement are left to you every time; this packages them into one drop-in that sits inside your existing dialog or card, so nothing here assumes which official components you have installed. Pass `phrase` (the name) and `onConfirm`; both sides are trimmed before comparing, so a pasted name that picked up a trailing space still matches, and an empty phrase never matches, which stops an untouched field from arming a delete. Set `caseSensitive={false}` to let \"delete\" pass for \"DELETE\", and mirror your mutation with `pending` to lock the field and swap the button label. The field opts out of autocomplete, autocorrect, autocapitalisation, and spellcheck — on a phone the first letter would otherwise be capitalised and an exact match made impossible to type. The button is genuinely disabled rather than aria-disabled, which screen readers skip: nothing is lost by that, because the label states what to type, the description explains that the button is waiting for it, and an always-mounted live region announces the moment it turns on (a live region inserted together with its text is not reliably announced, so one that appeared only on match would swallow that update). It renders as a real <form>, so Enter submits and, inside a dialog, focus lands on the field on open with no extra wiring. Styled with shadcn tokens (border-input, destructive, muted-foreground, ring) for automatic light/dark theming, with zero dependencies beyond your cn util. Distinct from confirm-button, which is a two-step click for cheap, reversible actions; this is the high-friction guard for the ones you cannot take back.",
+      "dependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/type-to-confirm.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }
