@@ -2,8 +2,7 @@
 // Log-then-serve pattern. Serving the registry is never blocked — not when env.DB (D1) is
 // unbound, not for bots, and not when the log insert fails.
 
-const BOT_UA =
-  /bot|crawl|spider|slurp|facebookexternalhit|headless|python-requests|curl\/|wget|go-http|java\//i
+import { isCrawler } from "../_traffic.js"
 
 export async function onRequestGet(context) {
   const { request, env } = context
@@ -23,7 +22,7 @@ export async function onRequestGet(context) {
       const item = m[1]
       const ua = request.headers.get("user-agent") || ""
       const country = (request.headers.get("cf-ipcountry") || "").slice(0, 8)
-      const isBot = BOT_UA.test(ua) ? 1 : 0
+      const isBot = isCrawler(ua) ? 1 : 0
       const date = new Date().toISOString().slice(0, 10)
       context.waitUntil(
         env.DB.prepare(

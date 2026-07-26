@@ -108,15 +108,15 @@ const first = items[0]?.name || "copy-button"
 const heroCmd = `npx shadcn@latest add ${BASE}/r/${first}.json`
 const nsConfig = `{ "registries": { "@pulld": "${BASE}/r/{name}.json" } }`
 
+// Buy buttons point at our own /go/* redirect, never at buy.polar.sh directly: the click is
+// logged there before the hop, and crawlers stop at it instead of opening a Polar checkout
+// session. rel="nofollow" keeps well-behaved crawlers from following it at all. The Polar URLs
+// themselves live in wrangler.toml [vars], read by functions/go/[target].js.
 const PRO_PRICE = process.env.PRO_PRICE || "$39"
-const PRO_CHECKOUT =
-  process.env.PRO_CHECKOUT ||
-  "https://buy.polar.sh/polar_cl_h2Vmr8KMgAweYuRNExTD0QXYGOqqVFodnj1zR0fSyw4"
+const PRO_CHECKOUT = "/go/pro"
 
 const SEARCH_PRICE = process.env.SEARCH_PRICE || "$19"
-const SEARCH_CHECKOUT =
-  process.env.SEARCH_CHECKOUT ||
-  "https://buy.polar.sh/polar_cl_NUyf4PdoVJn8sIMP70hghnK0JuO8prt7kUGrh3uowc6"
+const SEARCH_CHECKOUT = "/go/search"
 const searchSection = `
     <h2>Hosted service</h2>
     <div class="grid">
@@ -125,7 +125,7 @@ const searchSection = `
         <div class="card-body">
           <div class="card-head"><h3>pulld Search <span class="badge">${esc(SEARCH_PRICE)}/mo</span></h3></div>
           <p>Hosted semantic search — index your content and get typo-tolerant, meaning-based results. Drop it into the command palette's <code>source</code>; nothing to run.</p>
-          <a class="buy" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
+          <a class="buy" rel="nofollow" href="${esc(SEARCH_CHECKOUT)}">Subscribe — ${esc(SEARCH_PRICE)}/mo</a>
           <p class="note" style="margin:10px 0 0;font-size:13px">Already subscribed? <a href="${BASE}/account">Get your keys →</a></p>
         </div>
       </article>
@@ -152,7 +152,7 @@ if (existsSync(proRegPath)) {
           </div>
           <p>${esc(it.description || "")}</p>
           <div class="cmd"><code>${esc(cmd)}</code></div>
-          <a class="buy" href="${esc(PRO_CHECKOUT)}">Get a license — ${esc(PRO_PRICE)} one-time</a>
+          <a class="buy" rel="nofollow" href="${esc(PRO_CHECKOUT)}">Get a license — ${esc(PRO_PRICE)} one-time</a>
         </div>
       </article>`
       })

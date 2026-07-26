@@ -23,3 +23,8 @@ index_name = "pulld-search"
 POLAR_ORG_ID = "9030a633-a030-47e9-96b4-73d62f89efc9"
 POLAR_SEARCH_PRODUCT_IDS = "284512c9-e164-4ce4-8c31-814b88fdc9c9"
 POLAR_PRO_PRODUCT_IDS = "6b4e677f-dc20-4093-bcc8-6ea16e104cdd"
+
+# Checkout links, resolved by functions/go/[target].js. The landing page links to /go/search and
+# /go/pro (never to buy.polar.sh directly), so these are the only place the URLs are written.
+POLAR_SEARCH_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_NUyf4PdoVJn8sIMP70hghnK0JuO8prt7kUGrh3uowc6"
+POLAR_PRO_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_h2Vmr8KMgAweYuRNExTD0QXYGOqqVFodnj1zR0fSyw4"

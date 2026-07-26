@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createHash } from "node:crypto"
+import { isInstall } from "../functions/_traffic.js"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const STATE_PATH = join(ROOT, "data", "learn-state.json")
@@ -46,13 +47,22 @@ function d1(sql) {
   return block?.results ?? []
 }
 
+// Installs are re-derived from the stored user-agent, not from the `is_bot` column: the column
+// was written by a regex that missed the largest automated clients, and a crawler counted as an
+// install is a fake reward that makes this loop tune metadata against noise.
 function ratesByItem() {
   const rows = d1(
-    "SELECT item, SUM(CASE WHEN is_bot=0 THEN 1 ELSE 0 END) AS clean " +
-      `FROM fetches WHERE date >= date('now','-${WINDOW} day') AND item != 'registry' GROUP BY item`
+    "SELECT item, ua, COUNT(*) AS n " +
+      `FROM fetches WHERE date >= date('now','-${WINDOW} day') AND item != 'registry' ` +
+      "GROUP BY item, ua"
   )
   const out = {}
-  for (const r of rows) out[String(r.item)] = (Number(r.clean) || 0) / WINDOW
+  for (const r of rows) {
+    const item = String(r.item)
+    out[item] = out[item] || 0
+    if (isInstall(r.ua)) out[item] += Number(r.n) || 0
+  }
+  for (const k of Object.keys(out)) out[k] /= WINDOW
   return out
 }
 

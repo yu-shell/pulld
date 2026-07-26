@@ -12,6 +12,21 @@ CREATE TABLE IF NOT EXISTS fetches (
 CREATE INDEX IF NOT EXISTS idx_fetches_item ON fetches(item);
 CREATE INDEX IF NOT EXISTS idx_fetches_date ON fetches(date);
 
+-- Buy-button clicks (functions/go/[target].js), recorded before the redirect to Polar. Polar
+-- opens a new Checkout Session on every visit to a checkout link, so its checkout count can't
+-- tell a buyer from a crawler that followed the link; this is the funnel's real denominator.
+CREATE TABLE IF NOT EXISTS clicks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,        -- YYYY-MM-DD (UTC)
+  target TEXT NOT NULL,      -- 'search' | 'pro'
+  ts INTEGER NOT NULL,       -- epoch ms
+  ua TEXT,                   -- user-agent (first 256 chars)
+  country TEXT,              -- cf-ipcountry
+  referer TEXT,              -- where the click came from (first 256 chars)
+  is_bot INTEGER DEFAULT 0   -- 1 = crawler; these are shown the link instead of being redirected
+);
+CREATE INDEX IF NOT EXISTS idx_clicks_date ON clicks(date);
+
 -- License keys for Pro blocks (one key per one-time purchase, issued by the checkout webhook).
 CREATE TABLE IF NOT EXISTS licenses (
   key TEXT PRIMARY KEY,

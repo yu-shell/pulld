@@ -1,0 +1,6 @@
+# The registry is the product — crawlers, indexers and AI agents are welcome everywhere except
+# the buy redirect. /go/* forwards to a Polar checkout link, and Polar opens a new checkout
+# session on every visit, so a crawler following that link lands in the sales dashboard as an
+# abandoned checkout. Nothing here is hidden: the same destination is reachable from the page.
+User-agent: *
+Disallow: /go/

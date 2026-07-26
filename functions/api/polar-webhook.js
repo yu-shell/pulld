@@ -283,6 +283,11 @@ export async function onRequestPost(context) {
       // Paid order for a product in neither POLAR_SEARCH_PRODUCT_IDS nor POLAR_PRO_PRODUCT_IDS —
       // log loudly (ok=0) so a product-id misconfiguration is visible rather than silently dropped.
       await logEvent(env, `polar:${type}`, false, `unrecognized product ${productId} — check POLAR_*_PRODUCT_IDS`)
+    } else {
+      // Any other event (checkout.*, subscription.updated, …) is a no-op, but record it: an empty
+      // webhook_log otherwise can't distinguish "no sales yet" from "the webhook was never
+      // registered in Polar", and those need very different fixes.
+      await logEvent(env, `polar:${type}`, true, "no-op")
     }
   } catch (e) {
     console.error("polar-webhook db:", e?.message || e)

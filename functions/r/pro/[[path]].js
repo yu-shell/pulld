@@ -3,9 +3,7 @@
 // Pro block contents live in _pro-blocks.js, which is not committed and not served statically,
 // so they cannot be retrieved without a valid key.
 import { PRO_BLOCKS } from "../../_pro-blocks.js"
-
-const BOT_UA =
-  /bot|crawl|spider|slurp|facebookexternalhit|headless|python-requests|curl\/|wget|go-http|java\//i
+import { isCrawler } from "../../_traffic.js"
 
 function logFetch(context, env, item, paid) {
   try {
@@ -13,7 +11,7 @@ function logFetch(context, env, item, paid) {
     if (!env.DB) return
     const ua = request.headers.get("user-agent") || ""
     const country = (request.headers.get("cf-ipcountry") || "").slice(0, 8)
-    const isBot = BOT_UA.test(ua) ? 1 : 0
+    const isBot = isCrawler(ua) ? 1 : 0
     const date = new Date().toISOString().slice(0, 10)
     context.waitUntil(
       env.DB.prepare(
