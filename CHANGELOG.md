@@ -3,6 +3,14 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-07-26 — quality sweep
+
+- fix(feature-card): props passed alongside `href` now reach the rendered `<a>`.
+  The link branch never spread `...props`, so `id`, `data-*`, `aria-*`, `style` and
+  event handlers were silently dropped on linked cards while working fine on plain
+  ones. The props type widened from `ComponentPropsWithoutRef<"div">` to
+  `HTMLAttributes<HTMLElement>` to cover both elements the card renders.
+
 ## 2026-07-19 — quality sweep
 
 - fix(file-dropzone): in single-file mode, dropping several valid files at once now

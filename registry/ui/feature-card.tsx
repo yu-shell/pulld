@@ -2,8 +2,9 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// Element-agnostic: the card renders a <div>, or an <a> when `href` is set.
 interface FeatureCardProps
-  extends Omit<React.ComponentPropsWithoutRef<"div">, "title"> {
+  extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
   /**
    * Leading icon, usually a lucide-react icon element. Rendered inside a
    * tinted square and marked decorative (`aria-hidden`) since the title
@@ -67,6 +68,7 @@ export function FeatureCard({
           "block rounded-lg border bg-card p-6 text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           className
         )}
+        {...props}
       >
         {body}
       </a>
