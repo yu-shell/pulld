@@ -14,6 +14,12 @@ copies code into your project, so existing installs are never changed automatica
   for instance a remaining-items count — now renders. The center was gated with
   `??` on a truthiness test, so a `0` or `""` child fell through to nothing. It now
   tests for null/undefined, matching how `gauge` gates its center.
+- fix(multi-select): the "no options found" row is now `role="presentation"`, so
+  the `role="listbox"` no longer owns a child that isn't an option. Also floors the
+  active-option index at 0: pressing ArrowDown while the filtered list was empty
+  drove it to -1, which left no row highlighted (and Enter inert) once options
+  reappeared without a keystroke in the search box — reachable with `hideSearch`
+  or async-loaded options.
 
 ## 2026-07-19 — quality sweep
 

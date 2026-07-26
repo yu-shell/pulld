@@ -157,7 +157,8 @@ export function MultiSelect({
   function handlePanelKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      setActive((a) => Math.min(a + 1, filtered.length - 1))
+      // Floor at 0 so an empty list can't leave the index negative and dead.
+      setActive((a) => Math.max(0, Math.min(a + 1, filtered.length - 1)))
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
       setActive((a) => Math.max(a - 1, 0))
@@ -272,7 +273,11 @@ export function MultiSelect({
             className="max-h-60 overflow-y-auto p-1 focus-visible:outline-none"
           >
             {filtered.length === 0 && (
-              <li className="px-2 py-4 text-center text-sm text-muted-foreground">
+              // Not an option, so keep it out of the listbox's owned children.
+              <li
+                role="presentation"
+                className="px-2 py-4 text-center text-sm text-muted-foreground"
+              >
                 {emptyMessage}
               </li>
             )}
