@@ -10,6 +10,10 @@ copies code into your project, so existing installs are never changed automatica
   event handlers were silently dropped on linked cards while working fine on plain
   ones. The props type widened from `ComponentPropsWithoutRef<"div">` to
   `HTMLAttributes<HTMLElement>` to cover both elements the card renders.
+- fix(progress-ring): center content that is present but falsy — `children={0}`,
+  for instance a remaining-items count — now renders. The center was gated with
+  `??` on a truthiness test, so a `0` or `""` child fell through to nothing. It now
+  tests for null/undefined, matching how `gauge` gates its center.
 
 ## 2026-07-19 — quality sweep
 

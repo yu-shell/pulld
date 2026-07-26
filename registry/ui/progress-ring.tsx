@@ -99,7 +99,7 @@ export const ProgressRing = React.forwardRef<HTMLDivElement, ProgressRingProps>(
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
         </svg>
-        {(children ?? (showValue && !indeterminate)) ? (
+        {children != null || (showValue && !indeterminate) ? (
           <span className="absolute inset-0 flex items-center justify-center text-xs font-medium tabular-nums text-foreground">
             {children ?? `${Math.round(pct)}%`}
           </span>
