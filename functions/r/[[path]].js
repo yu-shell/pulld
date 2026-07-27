@@ -17,8 +17,16 @@ export async function onRequestGet(context) {
   const url = new URL(request.url)
   const m = url.pathname.match(/^\/r\/([a-z0-9-]+)\.json$/i)
 
+  // A 304 is a delivered component too: the client asked for the item and left with a usable
+  // copy, it just already had the bytes. ASSETS answers If-None-Match itself, so every client
+  // that caches (a browser, a catalogue mirror re-checking what it holds) revalidates into a
+  // 304 — and `res.ok` is false for 304, which silently dropped those rows. The count that
+  // learn.mjs rewards and sweep.mjs prioritises on was therefore biased toward clients that
+  // never cache. Anything else (404, 5xx) is not a fetch of a component and stays unlogged.
+  const served = res.ok || res.status === 304
+
   try {
-    if (res.ok && m && env.DB) {
+    if (served && m && env.DB) {
       const item = m[1]
       const ua = request.headers.get("user-agent") || ""
       const country = (request.headers.get("cf-ipcountry") || "").slice(0, 8)
@@ -42,6 +50,7 @@ export async function onRequestGet(context) {
 
   // Note: Pages sets `max-age=0, must-revalidate` on /r/*.json (a Cache-Control override from
   // the Function is ignored by Pages). must-revalidate means the origin is revalidated on every
-  // request, so the Function runs each time and no fetch is missed from the log.
+  // request, so the Function runs each time — and because a revalidation is counted above, no
+  // fetch is missed from the log.
   return res
 }
