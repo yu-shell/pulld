@@ -33,9 +33,21 @@ export async function onRequestPost(context) {
   // Tail chunk ids to prune after upserting (see below): when a doc is re-indexed with fewer
   // chunks than a previous version, the higher-index chunks would otherwise linger.
   const staleIds = []
+  // What the request actually indexed, versus what it silently dropped. Not every entry in
+  // `documents` becomes a document: one with no `id`, or with no text in title+content, produces no
+  // chunks and is never written. Counting those charges the customer's monthly `docs` usage — which
+  // usage-alert.mjs turns into a doc-quota alert — for content that isn't there, and reports them
+  // back as indexed, so a caller with a broken field mapping sees `ok` and a full count while
+  // search stays empty. Distinct ids: the same id twice in one request is the one document it
+  // overwrites into.
+  const indexedIds = new Set()
+  let skipped = 0
   for (const d of docs) {
     const id = String(d?.id ?? "").slice(0, 200)
-    if (!id) continue
+    if (!id) {
+      skipped++
+      continue
+    }
     const parts = chunk(`${d.title ?? ""}\n${d.content ?? ""}`).slice(0, MAX_CHUNKS_PER_DOC)
     // A doc can shrink on re-index. Upserting only overwrites chunks 0..N-1; any higher-index
     // chunks from a previous, longer version would survive and keep matching queries —
@@ -43,9 +55,12 @@ export async function onRequestPost(context) {
     // now-unused tail (N..MAX_CHUNKS_PER_DOC-1) for deletion. Skip empty docs (0 chunks): removing
     // a document is the delete endpoint's job, not a silent side effect of empty-content ingest.
     if (parts.length > 0) {
+      indexedIds.add(id)
       for (let ci = parts.length; ci < MAX_CHUNKS_PER_DOC; ci++) {
         staleIds.push(vecId(project.id, id, ci))
       }
+    } else {
+      skipped++
     }
     for (let ci = 0; ci < parts.length; ci++) {
       if (texts.length >= MAX_CHUNKS_PER_REQUEST) {
@@ -115,10 +130,11 @@ export async function onRequestPost(context) {
     }
   }
 
-  const docsThisMonth = await bumpUsage(env, project.id, "docs", docs.length)
+  const docsThisMonth = await bumpUsage(env, project.id, "docs", indexedIds.size)
   return j({
     ok: true,
-    indexed_docs: docs.length,
+    indexed_docs: indexedIds.size,
+    skipped_docs: skipped,
     indexed_chunks: vectors.length,
     docs_this_month: docsThisMonth,
   })
