@@ -6,59 +6,15 @@
 // same id overwrites that document" contract (public/search-integration.md).
 //
 // The pure _lib helpers (chunk/vecId/json) are unit-tested in search-lib.test.mjs; this drives the
-// real onRequestPost with a fake env (DB/AI/VEC) so the prune computation in ingest.js is itself
-// covered. functions/ is excluded from tsconfig, so these tests are its only safety net. Chunk
-// counts are derived from the real chunk() rather than hardcoded, so the assertions can't drift.
+// real onRequestPost with a fake env (DB/AI/VEC, shared in _ingest-env.mjs) so the prune
+// computation in ingest.js is itself covered. functions/ is excluded from tsconfig, so these tests
+// are its only safety net. Chunk counts are derived from the real chunk() rather than hardcoded, so
+// the assertions can't drift.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { onRequestPost } from "../functions/api/search/ingest.js"
 import { chunk, MAX_CHUNKS_PER_DOC, vecId } from "../functions/api/search/_lib.js"
-
-const PROJECT = "prj_test"
-
-// Minimal fake of the Cloudflare bindings ingest touches: D1 (project lookup + usage bump), Workers
-// AI (embeddings), and Vectorize (upsert/deleteByIds). Records the ids upserted and deleted so the
-// prune contract can be asserted without a real Vectorize index.
-function fakeEnv() {
-  const upserted = []
-  const deleted = []
-  const DB = {
-    prepare(sql) {
-      return {
-        bind() {
-          return {
-            async first() {
-              // projectByKey: SELECT * FROM search_projects ... → an active project row.
-              if (/FROM search_projects/.test(sql)) return { id: PROJECT, doc_limit: 5000 }
-              // bumpUsage: SELECT <counter> AS n FROM search_usage ... → the running total.
-              if (/FROM search_usage/.test(sql)) return { n: 1 }
-              return null
-            },
-            async run() {},
-          }
-        },
-      }
-    },
-  }
-  const AI = { run: async (_model, { text }) => ({ data: text.map(() => [0.1, 0.2, 0.3]) }) }
-  const VEC = {
-    async upsert(vectors) {
-      upserted.push(...vectors.map((v) => v.id))
-    },
-    async deleteByIds(ids) {
-      deleted.push(...ids)
-    },
-  }
-  return { env: { DB, AI, VEC }, upserted, deleted }
-}
-
-function request(documents, adminKey = "ak_test") {
-  return {
-    url: "https://pulld.pages.dev/api/search/ingest",
-    headers: { get: (k) => (k === "x-pulld-admin-key" ? adminKey : null) },
-    json: async () => ({ documents }),
-  }
-}
+import { PROJECT, fakeEnv, request } from "./_ingest-env.mjs"
 
 // ingest chunks `${title ?? ""}\n${content ?? ""}`; with no title this is what it splits on.
 const chunkCount = (content) => chunk(`\n${content}`).length

@@ -45,7 +45,7 @@ POST https://pulld.pages.dev/api/search/ingest
 Headers: x-pulld-admin-key: <admin_key>
          content-type: application/json
 Body:    { "documents": [ { "id", "title", "url", "content" } ] }
-→ { "ok": true, "indexed_docs": N, "indexed_chunks": M, "docs_this_month": K }
+→ { "ok": true, "indexed_docs": N, "skipped_docs": S, "indexed_chunks": M, "docs_this_month": K }
 ```
 
 Rules:
@@ -54,6 +54,10 @@ Rules:
 - `id` is your stable key. **Re-sending the same `id` overwrites** that document — that is how you update it.
 - `url` is where a result points (the command palette navigates there on select).
 - `content` is the text searched over; `title` becomes the result label.
+- A document with no `id`, or with no text in `title` + `content`, is **skipped** and reported in
+  `skipped_docs`. `indexed_docs` counts only documents actually indexed (distinct `id`s), and only
+  those count toward your monthly doc usage — so check `skipped_docs` after a run: a non-zero value
+  usually means a field-mapping bug on your side, not an empty result set on ours.
 
 Example:
 
