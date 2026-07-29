@@ -78,6 +78,21 @@ const PREVIEWS = {
   "type-to-confirm": `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><span style="font-size:9px;color:var(--muted)">Type <span style="color:var(--ink);font-weight:600;font-family:ui-monospace,monospace">acme-prod</span></span><div class="pv-input" style="height:22px;padding:0 7px;gap:1px;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)"><span style="font-size:10px;color:var(--ink);font-family:ui-monospace,monospace">acme-pro</span><span style="width:1px;height:11px;background:var(--accent)"></span></div><span class="pv-btn pv-danger" style="height:19px;padding:0 8px;border-radius:6px;font-size:9.5px;justify-content:center;width:100%;box-sizing:border-box;opacity:.45">Delete</span></div>`,
   "bento-grid": `<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:19px;gap:4px;width:96px"><span style="grid-column:span 2;grid-row:span 2;border:1px solid var(--accent);border-radius:5px;background:color-mix(in srgb,var(--accent) 14%,transparent)"></span><span style="border:1px solid var(--line);border-radius:5px"></span><span style="border:1px solid var(--line);border-radius:5px"></span><span style="grid-column:span 3;border:1px solid var(--line);border-radius:5px"></span></div>`,
   "upload-list": `<div style="display:flex;flex-direction:column;gap:7px;width:96px;border:1px solid var(--line);border-radius:8px;padding:8px 9px"><span style="display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg><span style="font-size:9px;color:var(--ink)">logo.png</span><span style="margin-left:auto;font-size:8.5px;color:var(--muted)">62%</span></span><span style="display:block;height:3px;border-radius:2px;background:var(--line)"><span style="display:block;width:62%;height:100%;border-radius:2px;background:var(--accent)"></span></span></span><span style="display:flex;align-items:center;gap:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span style="font-size:9px;color:var(--ink)">data.csv</span><span style="margin-left:auto;font-size:10px;color:var(--muted);line-height:1">×</span></span></div>`,
+  "tree-view": `<div style="display:flex;flex-direction:column;gap:2px;width:96px">${[
+    { depth: 0, open: true, label: "src" },
+    { depth: 1, open: false, label: "app" },
+    { depth: 1, file: true, label: "index.ts", on: true },
+    { depth: 0, open: false, label: "public" },
+  ]
+    .map(
+      (r) =>
+        `<span style="display:flex;align-items:center;gap:4px;padding:2px 4px;padding-left:${4 + r.depth * 10}px;border-radius:4px;${r.on ? "background:color-mix(in srgb,var(--accent) 16%,transparent)" : ""}">${
+          r.file
+            ? `<span style="width:8px"></span><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>`
+            : `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${r.open ? ` style="transform:rotate(90deg)"` : ""}><path d="m9 18 6-6-6-6"/></svg><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`
+        }<span style="font-size:9px;color:var(--ink)">${r.label}</span></span>`
+    )
+    .join("")}</div>`,
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
