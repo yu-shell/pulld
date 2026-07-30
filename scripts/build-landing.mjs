@@ -93,6 +93,16 @@ const PREVIEWS = {
         }<span style="font-size:9px;color:var(--ink)">${r.label}</span></span>`
     )
     .join("")}</div>`,
+  "sortable-list": `<div style="display:flex;flex-direction:column;gap:4px;width:96px">${[
+    { w: 40 },
+    { w: 30, lifted: true },
+    { w: 46 },
+  ]
+    .map(
+      (r) =>
+        `<span style="display:flex;align-items:center;gap:5px;border:1px solid ${r.lifted ? "var(--accent)" : "var(--line)"};border-radius:5px;padding:4px 5px;background:var(--surface);${r.lifted ? "box-shadow:0 3px 8px rgba(0,0,0,.16);transform:translateX(5px)" : ""}"><svg width="7" height="9" viewBox="0 0 16 24" fill="${r.lifted ? "var(--accent)" : "var(--muted)"}" aria-hidden="true"><circle cx="5" cy="6" r="1.7"/><circle cx="5" cy="12" r="1.7"/><circle cx="5" cy="18" r="1.7"/><circle cx="11" cy="6" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="11" cy="18" r="1.7"/></svg><span style="height:4px;width:${r.w}px;border-radius:2px;background:var(--muted);opacity:.5"></span></span>`
+    )
+    .join("")}</div>`,
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
