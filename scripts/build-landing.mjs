@@ -103,6 +103,17 @@ const PREVIEWS = {
         `<span style="display:flex;align-items:center;gap:5px;border:1px solid ${r.lifted ? "var(--accent)" : "var(--line)"};border-radius:5px;padding:4px 5px;background:var(--surface);${r.lifted ? "box-shadow:0 3px 8px rgba(0,0,0,.16);transform:translateX(5px)" : ""}"><svg width="7" height="9" viewBox="0 0 16 24" fill="${r.lifted ? "var(--accent)" : "var(--muted)"}" aria-hidden="true"><circle cx="5" cy="6" r="1.7"/><circle cx="5" cy="12" r="1.7"/><circle cx="5" cy="18" r="1.7"/><circle cx="11" cy="6" r="1.7"/><circle cx="11" cy="12" r="1.7"/><circle cx="11" cy="18" r="1.7"/></svg><span style="height:4px;width:${r.w}px;border-radius:2px;background:var(--muted);opacity:.5"></span></span>`
     )
     .join("")}</div>`,
+  // Rows fading out into a Load more button: the list keeps going, and the button is always there.
+  "infinite-scroll": `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:96px">${[
+    { w: 46, o: 1 },
+    { w: 34, o: 0.55 },
+    { w: 42, o: 0.22 },
+  ]
+    .map(
+      (r) =>
+        `<span style="display:flex;align-items:center;gap:5px;width:100%;opacity:${r.o}"><span style="width:13px;height:13px;border-radius:4px;background:var(--line)"></span><span style="height:4px;width:${r.w}px;border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
+    )
+    .join("")}<span class="pv-btn" style="height:19px;padding:0 8px;border-radius:6px;font-size:9.5px;margin-top:3px">Load more</span></div>`,
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
