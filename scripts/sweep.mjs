@@ -10,7 +10,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { execFileSync } from "node:child_process"
-import { isInstall } from "../functions/_traffic.js"
+import { installsByItem } from "./_installs.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const STATE_PATH = join(ROOT, "data", "sweep-state.json")
@@ -35,8 +35,9 @@ function componentNames() {
   return (reg.items ?? []).map((i) => i.name)
 }
 function installCounts() {
-  // best-effort: per-item install counts from D1, crawlers excluded by user-agent (see
-  // functions/_traffic.js — the stored is_bot column under-counts automated clients)
+  // best-effort: per-item install counts from D1. Crawlers are excluded by user-agent and Pro /
+  // catalogue rows by item name, both inside installsByItem (see scripts/_installs.mjs) so this
+  // and learn.mjs's reward cannot drift apart.
   try {
     const out = execFileSync(
       "npx",
@@ -49,19 +50,13 @@ function installCounts() {
         "--remote",
         "--json",
         "--command",
-        "SELECT item, ua, COUNT(*) AS n " +
-          "FROM fetches WHERE item NOT LIKE 'pro/%' AND item != 'registry' GROUP BY item, ua",
+        "SELECT item, ua, COUNT(*) AS n FROM fetches GROUP BY item, ua",
       ],
       { encoding: "utf8", timeout: 30000 }
     )
     const parsed = JSON.parse(out)
     const rows = (Array.isArray(parsed) ? parsed[0] : parsed)?.results ?? []
-    const m = {}
-    for (const r of rows) {
-      m[r.item] = m[r.item] || 0
-      if (isInstall(r.ua)) m[r.item] += Number(r.n) || 0
-    }
-    return m
+    return installsByItem(rows)
   } catch {
     return {}
   }
