@@ -19,15 +19,26 @@
 // time, which is what lets the scripts re-classify history instead of only new traffic.
 
 // The `(+https://…)` / `(+contact)` convention inside a UA is a self-identifying automated agent —
-// a stronger and less over-fitted signal than naming each scraper we happen to have seen.
+// a stronger and less over-fitted signal than naming each scraper we happen to have seen. The
+// job words (audit, probe, recon, …) are the next best thing: an agent that describes what it is
+// doing to us is not a person, whatever it calls itself.
 const CRAWLER_UA =
-  /bot|crawl|spider|slurp|facebookexternalhit|headless|python-requests|curl\/|wget|go-http|java\/|\(\+|^node(\/|$)|node-fetch|undici|axios|okhttp|harvest|indexer|enricher|profiler|scout|-audit|research/i
+  /bot|crawl|spider|slurp|facebookexternalhit|headless|python-requests|curl\/|wget|go-http|java\/|\(\+|^node(\/|$)|node-fetch|undici|axios|okhttp|harvest|indexer|enricher|profiler|scout|audit|research|recon|probe|health|spike|directory|monitor|uptime|scraper|fetcher/i
 
 // Catalogue mirrors. Move a client out of here the moment its fetches stop looking like a sweep.
 const INDEX_UA = /shadcn-helper|-mirror\b/i
 
 // Install clients. Checked after CRAWLER_UA, so `Mozilla/5.0 shadcn-audit` stays a crawler.
-const INSTALL_UA = /^shadcn(\/|$|\s)|shadcn-mcp|@shadcn|pulld-mcp/i
+// The CLI sends bare `shadcn` (or `shadcn/<version>`) and nothing else, so the name has to end
+// there: `ShadCN Directory Search/1.1` is a directory crawling us, not somebody installing.
+const INSTALL_UA = /^shadcn(\/|$)|shadcn-mcp|@shadcn|pulld-mcp/i
+
+// A browser announces the engine it renders with; scripts that put on a Mozilla costume do not.
+// Both halves are needed: `Mozilla/5.0` alone, and `Mozilla/5.0 (compatible)`, are the two most
+// common disguises in this log — 45 fetches of the first arrived in two 0.2-second bursts of 22
+// different component names, which is an agent guessing names, not a person reading JSON.
+const BROWSER_UA = /^mozilla\/\d/i
+const BROWSER_ENGINE = /applewebkit|gecko\/|chrome\/|chromium|safari\/|firefox\/|edge?\/|opr\/|opera|trident|msie|version\/\d/i
 
 export function isCrawler(ua) {
   return CRAWLER_UA.test(String(ua || ""))
@@ -39,7 +50,11 @@ export function classify(ua) {
   if (!s || CRAWLER_UA.test(s)) return "crawler"
   if (INDEX_UA.test(s)) return "index"
   if (INSTALL_UA.test(s)) return "install"
-  return "human"
+  // Whatever is left is only a person if it looks like a browser. Unknown clients land in
+  // `crawler` on purpose: this feeds a reward signal, where wrongly ignoring a real developer
+  // costs one data point but wrongly counting a script teaches the loop to chase scrapers.
+  // A new install client belongs in INSTALL_UA above, not in this fallback.
+  return BROWSER_UA.test(s) && BROWSER_ENGINE.test(s) ? "human" : "crawler"
 }
 
 // The reward signal. Deliberately excludes `index`: a mirror refreshing its copy of the catalogue

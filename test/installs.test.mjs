@@ -14,7 +14,11 @@ import { isRewardItem, installsByItem } from "../scripts/_installs.mjs"
 // User-agents, one per bucket of functions/_traffic.js.
 const UA = {
   cli: "shadcn/2.1.0", // install — a developer adding a component
-  browser: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", // human — counts as reward
+  // human — counts as reward. Written out in full on purpose: a browser announces the engine it
+  // renders with, and _traffic.js requires that, so an abbreviated "Mozilla/5.0 (Macintosh; …)"
+  // is a script in a costume rather than a person and would (correctly) not count here.
+  browser:
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
   mirror: "shadcn-helper-intellij-plugin/1.2.0", // index — a catalogue sweep, not adoption
   bot: "Googlebot/2.1 (+http://www.google.com/bot.html)", // crawler
 }

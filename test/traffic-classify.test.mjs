@@ -52,10 +52,62 @@ test("catalogue mirrors are their own bucket and are NOT reward", () => {
 })
 
 test("humans: browsers", () => {
-  const chrome =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-  assert.equal(classify(chrome), "human")
-  assert.equal(isInstall(chrome), true)
+  for (const ua of [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 Edg/120.0",
+  ]) {
+    assert.equal(classify(ua), "human", ua)
+    assert.equal(isInstall(ua), true, ua)
+  }
+})
+
+test("a Mozilla costume without a rendering engine is not a person", () => {
+  // The single largest source of fake reward in the log: 45 fetches from a bare `Mozilla/5.0`,
+  // which arrived as two 0.2-second bursts of 22 different component names. A person does not
+  // type 22 names for one component, and no browser omits its engine.
+  for (const ua of [
+    "Mozilla/5.0",
+    "Mozilla/5.0 (compatible)",
+    "Mozilla/5.0 (compatible; ContextLayerRegistryAudit/1.0)",
+  ]) {
+    assert.equal(classify(ua), "crawler", ua)
+    assert.equal(isInstall(ua), false, ua)
+  }
+})
+
+test("named automation is not reward, whatever it calls itself", () => {
+  // Every one of these was counted as an install before: none names itself a bot, and none
+  // carries the `(+url)` marker, so only the job word in the name gives them away.
+  for (const ua of [
+    "registry.directory-health/1.0",
+    "Portal-Fizgo-readonly-recon/1.0",
+    "curio-spike/1.0",
+    "shadcn-cli-probe",
+    "ContextLayerRegistryAudit/1.0",
+  ]) {
+    assert.equal(classify(ua), "crawler", ua)
+    assert.equal(isInstall(ua), false, ua)
+  }
+})
+
+test("a directory crawling us is not the CLI installing from us", () => {
+  // `ShadCN Directory Search/1.1` fetched registry.json and nothing else, but the old rule let
+  // any UA *starting* with "shadcn " count as an install.
+  const ua = "ShadCN Directory Search/1.1"
+  assert.equal(classify(ua), "crawler")
+  assert.equal(isInstall(ua), false)
+})
+
+test("an unrecognised client is not counted as reward", () => {
+  // Deliberate asymmetry: ignoring a real developer costs one data point, counting a script
+  // teaches the loop to chase scrapers. New install clients go in INSTALL_UA, not here.
+  for (const ua of ["Convex/1.0", "m", "SomeFutureThing/2.0"]) {
+    assert.equal(classify(ua), "crawler", ua)
+    assert.equal(isInstall(ua), false, ua)
+  }
 })
 
 test("a missing user-agent is a crawler, not a human", () => {
