@@ -114,6 +114,15 @@ const PREVIEWS = {
         `<span style="display:flex;align-items:center;gap:5px;width:100%;opacity:${r.o}"><span style="width:13px;height:13px;border-radius:4px;background:var(--line)"></span><span style="height:4px;width:${r.w}px;border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
     )
     .join("")}<span class="pv-btn" style="height:19px;padding:0 8px;border-radius:6px;font-size:9.5px;margin-top:3px">Load more</span></div>`,
+  // The window: rows inside the frame are drawn, the ones outside it only take up space.
+  // 9 + 4 + 47 + 4 + 9 = 73px tall, inside the 84px the preview box leaves.
+  "virtual-list": (() => {
+    const ghost = `<span style="width:100%;height:9px;border-radius:3px;border:1px dashed var(--line);opacity:.5"></span>`
+    const row = (w) =>
+      `<span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:3px;background:var(--line)"></span><span style="height:4px;width:${w}px;border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
+    const scrollbar = `<span style="position:absolute;right:4px;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--line)"><span style="display:block;height:38%;margin-top:34%;border-radius:2px;background:var(--muted);opacity:.6"></span></span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:96px">${ghost}<span style="position:relative;display:flex;flex-direction:column;gap:4px;width:100%;padding:5px 13px 5px 5px;border:1px solid var(--accent);border-radius:6px;background:var(--surface)">${row(38)}${row(46)}${row(30)}${scrollbar}</span>${ghost}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
