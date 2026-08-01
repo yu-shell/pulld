@@ -75,11 +75,14 @@ function computeWindow(
   const top = Math.max(0, Math.min(scrollTop, offsets[count]))
   const first = findRowAt(offsets, top)
   const past = countRowsStartingBefore(offsets, top + Math.max(0, viewportHeight))
+  // A negative overscan would pull the two ends past each other and mount nothing at all — a blank
+  // list with no error, which is a miserable thing to have to diagnose from a stray minus sign.
+  const pad = Math.max(0, overscan)
   return {
-    start: Math.max(0, first - overscan),
+    start: Math.max(0, first - pad),
     // `first + 1` keeps one row mounted before the height of the box is known, which is the state
     // of the world on the very first paint.
-    end: Math.min(count, Math.max(past, first + 1) + overscan),
+    end: Math.min(count, Math.max(past, first + 1) + pad),
   }
 }
 
@@ -237,10 +240,15 @@ export const VirtualList = React.forwardRef<VirtualListHandle, VirtualListProps>
       const scroller = scrollerRef.current
       if (!scroller) return
       scroller.scrollTop = offset
+      // Read the offset back rather than trusting the one just written: the browser clamps to the
+      // scrollable range, so a request past either end (an over-large defaultScrollOffset, a saved
+      // position from when the list was longer) would otherwise leave the mounted window and the
+      // anchor describing a place the list is not.
+      const applied = scroller.scrollTop
       // The browser's own scroll event lands a frame later; setting this now keeps the mounted
       // window and the anchor in step with the position that was just written.
-      setScrollTop(offset)
-      rememberAnchor(offset)
+      setScrollTop(applied)
+      rememberAnchor(applied)
     }
 
     React.useImperativeHandle(
