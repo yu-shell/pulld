@@ -123,6 +123,13 @@ const PREVIEWS = {
     const scrollbar = `<span style="position:absolute;right:4px;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--line)"><span style="display:block;height:38%;margin-top:34%;border-radius:2px;background:var(--muted);opacity:.6"></span></span>`
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:96px">${ghost}<span style="position:relative;display:flex;flex-direction:column;gap:4px;width:100%;padding:5px 13px 5px 5px;border:1px solid var(--accent);border-radius:6px;background:var(--surface)">${row(38)}${row(46)}${row(30)}${scrollbar}</span>${ghost}</div>`
   })(),
+  // Three lines of text, a fourth cut off by the clamp, and the control that reveals it.
+  // 4+4+4+4 lines + 12px link + 4 gaps of 5 = 48px, inside the 84px the preview box leaves.
+  "read-more": (() => {
+    const line = (w, o) =>
+      `<span style="height:4px;width:${w};border-radius:2px;background:var(--muted);opacity:${o}"></span>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:96px">${line("100%", ".5")}${line("92%", ".5")}${line("68%", ".5")}${line("84%", ".16")}<span style="margin-top:2px;font-size:9.5px;color:var(--accent);text-decoration:underline;text-underline-offset:2px">Show more</span></div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`

@@ -653,6 +653,18 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "read-more",
+      "type": "registry:ui",
+      "title": "Read More",
+      "description": "Long text clamped to a few lines with a Show more / Show less toggle that appears only when the text is genuinely too long. Use it wherever text is usually short but occasionally is not: product and marketplace listing descriptions, comments, reviews and replies, user bios and profile blurbs, release notes and changelog entries, incident and error detail, log lines, AI answers and summaries, job posts, FAQ answers, and long cells in a card or table. Common asks it answers: \"read more button\", \"show more / show less\", \"expandable text\", \"truncate text with a show more link\", \"line clamp with toggle\", \"collapsible paragraph\", \"see more link\", \"clamp description to 3 lines\", \"react-show-more-text alternative\", \"text truncation with expand\". shadcn/ui ships nothing for this, and its collapsible is a different thing — a generic open/close container whose trigger is always there and which does no clamping — so the genuinely awkward part is left to you: deciding whether the toggle should exist at all. This measures the rendered text and renders the control only when the clamped box actually overflows, so a list of mostly-short entries does not sprout a pointless \"Show more\" under every one of them. It re-measures when the column resizes and the text rewraps, and again once web fonts have loaded, because a clamped box keeps its height while the line count underneath it changes; an element that is off screen in a closed tab or accordion measures zero, which it treats as \"unknown\" rather than \"it fits\", so the toggle is not dropped while the text is out of view. The clamp is applied as inline style rather than Tailwind's line-clamp-N utility, because `lines` is a runtime value and a dynamic `line-clamp-${n}` class is invisible to Tailwind's scanner — it would work in dev and silently vanish from the production build. Accessibility is where the hand-rolled version usually goes wrong: the full text always stays in the DOM and is only clipped visually, so screen readers read all of it and find-in-page still reaches it, instead of the usual text.slice(0, 200) that destroys the content for everybody; the control is a real button carrying aria-expanded and aria-controls pointing at the text. Clipped is not hidden, so a link inside the invisible part is still in the tab order — focus landing there expands the block rather than letting the browser scroll the clamped box and shear the text mid-line. Collapsing pulls the block back into view when it has already scrolled off the top, so the reader is not dumped further down the page. Uncontrolled by default; pass expanded and onExpandedChange to drive it from an \"expand all\" control. Styled with shadcn tokens (ring, muted-foreground) so it follows light and dark themes, and ships with no dependencies beyond your own cn util.",
+      "files": [
+        {
+          "path": "registry/ui/read-more.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }
