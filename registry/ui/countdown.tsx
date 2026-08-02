@@ -95,16 +95,20 @@ export const Countdown = React.forwardRef<HTMLDivElement, CountdownProps>(
       onCompleteRef.current = onComplete
     })
 
+    // Which deadline onComplete has already fired for. Kept outside the effect
+    // so re-arming the timer (a changed `interval`) cannot fire it a second
+    // time for a target that already elapsed, while a new `to` still can.
+    const firedForRef = React.useRef<number | null>(null)
+
     React.useEffect(() => {
       if (!valid) return
-      const completedRef = { current: false }
       const fireIfDone = (current: number) => {
-        if (!completedRef.current && current >= targetMs) {
-          completedRef.current = true
+        if (current < targetMs) return false
+        if (firedForRef.current !== targetMs) {
+          firedForRef.current = targetMs
           onCompleteRef.current?.()
-          return true
         }
-        return false
+        return true
       }
 
       setNow(Date.now())

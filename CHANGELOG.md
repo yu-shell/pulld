@@ -13,6 +13,11 @@ copies code into your project, so existing installs are never changed automatica
   are in the component's public props type but were overwritten by its own handlers,
   so a consumer's handlers never fired (`onKeyDown` already forwarded — these match it
   now).
+- fix(countdown): `onComplete` fires once per deadline. The "already fired" latch
+  lived inside the timer effect, so changing the `interval` prop after the countdown
+  finished re-armed the effect, reset the latch, and fired `onComplete` again for the
+  same target. The latch now records which target it fired for — a new `to` still
+  fires again, a re-arm does not.
 
 ## 2026-07-26 — quality sweep
 
