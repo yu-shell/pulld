@@ -148,7 +148,10 @@ const cards = items
             <h3>${esc(it.title || it.name)}</h3>
             ${composes}
           </div>
-          <p>${esc(it.description || "")}</p>
+          <div class="desc-wrap">
+            <p class="desc">${esc(it.description || "")}</p>
+            <button type="button" class="desc-more" aria-label="Read the full description of ${esc(it.title || it.name)}">… more</button>
+          </div>
           <div class="cmd">
             <code>${esc(cmd)}</code>
             <button type="button" class="copy" data-cmd="${esc(cmd)}" aria-label="Copy install command">copy</button>
@@ -204,7 +207,10 @@ if (existsSync(proRegPath)) {
             <h3>${esc(it.title || it.name)} <span class="badge">PRO</span></h3>
             ${deps}
           </div>
-          <p>${esc(it.description || "")}</p>
+          <div class="desc-wrap">
+            <p class="desc">${esc(it.description || "")}</p>
+            <button type="button" class="desc-more" aria-label="Read the full description of ${esc(it.title || it.name)}">… more</button>
+          </div>
           <div class="cmd"><code>${esc(cmd)}</code></div>
           <a class="buy" rel="nofollow" href="${esc(PRO_CHECKOUT)}">Get a license — ${esc(PRO_PRICE)} one-time</a>
         </div>
@@ -262,6 +268,24 @@ const html = `<!doctype html>
   .card h3{margin:0;font-size:17px;letter-spacing:-.01em}
   .dep{color:var(--accent);font-size:12px;font-weight:500;white-space:nowrap}
   .card p{color:var(--muted);font-size:14.5px;margin:6px 0 12px}
+  /* Descriptions are written long on purpose — they are what an agent matches against — but at
+     ~1400 characters each they made every card 4-7x taller than its 104px preview. Clamp to two
+     lines so the row settles just above the preview, and open the full text in a dialog. The clamp
+     is CSS only: the whole description stays in the DOM, so nothing an agent or crawler reads is
+     lost. The height is fixed rather than capped so a short description leaves the row the same
+     height as every other one. */
+  .desc-wrap{position:relative;margin:6px 0 12px}
+  .card p.desc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+    height:calc(2 * 1.6 * 14.5px);margin:0}
+  /* Sits on the end of the clamped second line rather than on a row of its own — a row would cost
+     another 31px on every card, which is most of the breathing room the clamp just bought. The
+     gradient is the card's own background, so the trigger never lands on top of a word. */
+  .desc-more{position:absolute;right:0;bottom:0;border:0;cursor:pointer;
+    padding:0 0 0 30px;color:var(--accent);font:inherit;font-size:14.5px;line-height:1.6;
+    background:linear-gradient(90deg,transparent,var(--surface) 26%)}
+  .desc-more:hover{text-decoration:underline;text-underline-offset:2px}
+  /* Hidden, not removed: a description short enough to need no dialog must not shift its card. */
+  .desc-more.off{visibility:hidden}
   .cmd{display:flex;align-items:center;gap:8px;background:var(--code-bg);
     border:1px solid var(--line);border-radius:9px;padding:8px 10px;overflow:auto}
   .cmd code{white-space:nowrap;flex:1}
@@ -366,6 +390,15 @@ const html = `<!doctype html>
   .pp-empty{padding:14px 12px;color:var(--muted);font-size:13.5px}
   .pp-foot{border-top:1px solid var(--line);padding:8px 14px;font-size:11.5px;color:var(--muted)}
   .card.flash{outline:2px solid var(--accent);outline-offset:3px}
+  /* Full-description dialog. Shares the palette's overlay so both modals feel like one thing;
+     wider and scrollable, because this one is here to be read. Declared after .pp-modal so the
+     scroll override wins. */
+  .dd-modal{max-width:640px;max-height:78vh;overflow:auto;padding:24px 26px 26px}
+  /* The page's h2 is an uppercase muted section label; this heading is a component name, so every
+     one of those inherited properties has to be undone. */
+  .dd-title{margin:0 34px 12px 0;font-size:19px;letter-spacing:-.01em;text-transform:none;
+    color:var(--ink);font-weight:600}
+  .dd-body{margin:0;color:var(--muted);font-size:15px;line-height:1.75}
 </style>
 </head>
 <body>
@@ -406,6 +439,13 @@ ${proSection}
       <div class="pp-foot">powered by <strong>pulld Search</strong> · ↑↓ navigate · ↵ jump · esc close</div>
     </div>
   </div>
+  <div id="dd-overlay" class="pp-overlay" hidden>
+    <div class="pp-modal dd-modal" role="dialog" aria-modal="true" aria-labelledby="dd-title">
+      <button type="button" id="dd-close" class="pp-close" aria-label="Close description">✕</button>
+      <h2 id="dd-title" class="dd-title"></h2>
+      <p id="dd-body" class="dd-body"></p>
+    </div>
+  </div>
   <script>
     document.querySelectorAll(".copy").forEach(function(b){
       b.addEventListener("click", function(){
@@ -414,6 +454,44 @@ ${proSection}
         }).catch(function(){});
       });
     });
+    // Full-description dialog. The card shows two clamped lines; this opens the rest.
+    // The text is read out of the card's own <p>, so the description is stored once, in the DOM,
+    // where crawlers and agents still see all of it.
+    (function(){
+      var overlay=document.getElementById("dd-overlay"), title=document.getElementById("dd-title"), body=document.getElementById("dd-body");
+      if(!overlay||!title||!body) return;
+      var opener=null;
+      function show(card){
+        var p=card.querySelector(".desc"), h=card.querySelector("h3");
+        if(!p) return;
+        title.textContent = h ? h.textContent.trim() : "";
+        body.textContent = p.textContent;
+        overlay.hidden=false; document.body.style.overflow="hidden";
+        var c=document.getElementById("dd-close"); if(c) c.focus();
+      }
+      function hide(){
+        if(overlay.hidden) return;
+        overlay.hidden=true; document.body.style.overflow="";
+        if(opener){ opener.focus(); opener=null; }
+      }
+      document.addEventListener("click", function(e){
+        var b=e.target.closest(".desc-more"); if(!b) return;
+        var card=b.closest(".card"); if(!card) return;
+        opener=b; show(card);
+      });
+      var cb=document.getElementById("dd-close"); if(cb) cb.addEventListener("click", hide);
+      overlay.addEventListener("click", function(e){ if(e.target===overlay) hide(); });
+      document.addEventListener("keydown", function(e){
+        // ⌘K belongs to the palette; step out of its way rather than stacking two dialogs.
+        if(e.key==="Escape" || ((e.metaKey||e.ctrlKey) && String(e.key).toLowerCase()==="k")) hide();
+      });
+      // Offer the dialog only where there is actually more to read, but keep the button's space so
+      // a card with a short description stays the same height as the rest of the row.
+      document.querySelectorAll(".card .desc").forEach(function(p){
+        var b=p.parentNode.querySelector(".desc-more");
+        if(b && p.scrollHeight <= p.clientHeight + 1) b.classList.add("off");
+      });
+    })();
     // Live ⌘K demo: search this page's own components via pulld Search, jump to the matched card.
     (function(){
       var KEY="${DEMO_QUERY_KEY}", ENDPOINT="${BASE}/api/search/query";
