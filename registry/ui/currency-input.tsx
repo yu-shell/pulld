@@ -58,6 +58,17 @@ export const CurrencyInput = React.forwardRef<
     [formatter]
   )
 
+  // This locale's own group and decimal characters (de-DE → "." and ","), so the
+  // field can be typed in the same notation it displays back. Without them a
+  // comma locale mis-reads its own output: "1.234,50" parsed as 1.2345.
+  const separators = React.useMemo(() => {
+    const parts = new Intl.NumberFormat(locale).formatToParts(11111.1)
+    return {
+      group: parts.find((p) => p.type === "group")?.value ?? ",",
+      decimal: parts.find((p) => p.type === "decimal")?.value ?? ".",
+    }
+  }, [locale])
+
   const isControlled = value !== undefined
   const [internal, setInternal] = React.useState<number | null>(
     () => defaultValue ?? null
@@ -67,33 +78,47 @@ export const CurrencyInput = React.forwardRef<
   const [focused, setFocused] = React.useState(false)
   const [editing, setEditing] = React.useState("")
 
-  // Keep only digits, a single decimal point, and an optional leading minus so
-  // the raw editing string is always a parseable number-in-progress.
+  // Keep only digits, a single decimal separator, and an optional leading minus
+  // so the raw editing string is always a parseable number-in-progress. Group
+  // separators — and anything else pasted in, like a currency symbol — are
+  // dropped. A plain "." also counts as the decimal unless this locale groups
+  // with it, which keeps numeric keypads usable where that is unambiguous.
   function sanitize(raw: string) {
     let out = ""
-    let seenDot = false
+    let seenDecimal = false
     for (const ch of raw) {
       if (ch >= "0" && ch <= "9") out += ch
-      else if (ch === "." && !seenDot) {
-        out += "."
-        seenDot = true
+      else if (ch === separators.group) continue
+      else if (
+        !seenDecimal &&
+        (ch === separators.decimal || (ch === "." && separators.group !== "."))
+      ) {
+        out += separators.decimal
+        seenDecimal = true
       } else if (ch === "-" && allowNegative && out === "") out += "-"
     }
     return out
   }
 
-  // "" / "-" / "." / "-." are in-progress, not a number yet → null.
+  // "" / "-" / a lone separator are in-progress, not a number yet → null.
   function parse(str: string): number | null {
-    if (str === "" || str === "-" || str === "." || str === "-.") return null
-    const n = Number(str)
+    const normalized = str.split(separators.decimal).join(".")
+    if (
+      normalized === "" ||
+      normalized === "-" ||
+      normalized === "." ||
+      normalized === "-."
+    )
+      return null
+    const n = Number(normalized)
     return Number.isFinite(n) ? n : null
   }
 
   // Round to the currency's precision and drop float noise (0.1+0.2) before it
-  // seeds the raw editing string.
+  // seeds the raw editing string, in this locale's decimal notation.
   function toEditString(n: number) {
     const factor = 10 ** fractionDigits
-    return String(Math.round(n * factor) / factor)
+    return String(Math.round(n * factor) / factor).replace(".", separators.decimal)
   }
 
   // Show the grouped, symbol-prefixed amount when idle and the raw number while

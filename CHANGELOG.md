@@ -24,6 +24,13 @@ copies code into your project, so existing installs are never changed automatica
   stale. It now observes the element itself (`ResizeObserver`, reacting to width only
   so its own height writes cannot feed back), falling back to the window listener
   where that API is unavailable.
+- fix(currency-input): amounts are parsed in the notation the field displays. The
+  `locale` prop drove formatting, but parsing was hardcoded to a `.` decimal, so in
+  comma-decimal locales the component misread its own output — de-DE "1.234,50" came
+  back as 1.2345 and "1234,50" as 123450. The group and decimal characters now come
+  from `Intl.NumberFormat` for the configured locale. en-US, ja-JP and en-IN parse
+  exactly as before; a plain `.` is still taken as the decimal except in locales that
+  group with it.
 
 ## 2026-07-26 — quality sweep
 
