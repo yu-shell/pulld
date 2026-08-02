@@ -70,10 +70,26 @@ export const AutosizeTextarea = React.forwardRef<
   // Re-measure on every controlled value change, and once on mount.
   useIsomorphicLayoutEffect(resize, [resize, value])
 
-  // A narrower field rewraps its text, which changes the height it needs.
+  // A narrower field rewraps its text, which changes the height it needs. Watch
+  // the element rather than the window so a collapsing sidebar, an opening
+  // panel, or a tab becoming visible is caught too — none of those resize the
+  // window. Falls back to the window where ResizeObserver is unavailable.
   React.useEffect(() => {
-    window.addEventListener("resize", resize)
-    return () => window.removeEventListener("resize", resize)
+    const el = innerRef.current
+    if (typeof ResizeObserver === "undefined" || !el) {
+      window.addEventListener("resize", resize)
+      return () => window.removeEventListener("resize", resize)
+    }
+    // Only width is worth reacting to: the height is ours to set, so responding
+    // to our own write would feed the observer back into itself.
+    let lastWidth = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return
+      lastWidth = el.clientWidth
+      resize()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [resize])
 
   function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {

@@ -18,6 +18,12 @@ copies code into your project, so existing installs are never changed automatica
   finished re-armed the effect, reset the latch, and fired `onComplete` again for the
   same target. The latch now records which target it fired for — a new `to` still
   fires again, a re-arm does not.
+- fix(autosize-textarea): the field re-measures when its own width changes, not only
+  when the window resizes. A collapsing sidebar, an opening panel, or a tab becoming
+  visible rewraps the text without ever resizing the window, which left the height
+  stale. It now observes the element itself (`ResizeObserver`, reacting to width only
+  so its own height writes cannot feed back), falling back to the window listener
+  where that API is unavailable.
 
 ## 2026-07-26 — quality sweep
 
