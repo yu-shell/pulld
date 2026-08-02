@@ -39,19 +39,33 @@ export function InlineEdit({
   className,
   disabled,
   onKeyDown,
+  onChange,
+  onBlur,
   ...props
 }: InlineEditProps) {
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(value)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  // Set when the user leaves the input by keyboard. Enter/Escape unmount the
+  // input while it still holds focus, which drops focus to <body> and sends the
+  // next Tab back to the top of the page — so hand it back to the trigger.
+  // Blur exits are excluded: focus has already gone where the user put it.
+  const returnFocus = React.useRef(false)
 
-  // Focus and select the input once it mounts so typing replaces the value.
   React.useEffect(() => {
-    if (!editing) return
-    const input = inputRef.current
-    if (!input) return
-    input.focus()
-    input.select()
+    // Focus and select the input once it mounts so typing replaces the value.
+    if (editing) {
+      const input = inputRef.current
+      if (!input) return
+      input.focus()
+      input.select()
+      return
+    }
+    if (returnFocus.current) {
+      returnFocus.current = false
+      triggerRef.current?.focus()
+    }
   }, [editing])
 
   function startEditing() {
@@ -75,11 +89,24 @@ export function InlineEdit({
     if (event.defaultPrevented) return
     if (event.key === "Enter") {
       event.preventDefault()
+      returnFocus.current = true
       commit()
     } else if (event.key === "Escape") {
       event.preventDefault()
+      returnFocus.current = true
       cancel()
     }
+  }
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    onChange?.(event)
+    setDraft(event.target.value)
+  }
+
+  function handleBlur(event: React.FocusEvent<HTMLInputElement>) {
+    onBlur?.(event)
+    if (saveOnBlur) commit()
+    else cancel()
   }
 
   if (editing) {
@@ -94,9 +121,9 @@ export function InlineEdit({
         {...props}
         value={draft}
         aria-label={label}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onBlur={saveOnBlur ? commit : cancel}
+        onBlur={handleBlur}
       />
     )
   }
@@ -105,6 +132,7 @@ export function InlineEdit({
 
   return (
     <button
+      ref={triggerRef}
       type="button"
       disabled={disabled}
       aria-label={`Edit ${label}`}

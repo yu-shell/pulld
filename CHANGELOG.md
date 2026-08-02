@@ -3,6 +3,17 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-02 — quality sweep
+
+- a11y(inline-edit): keyboard focus no longer falls to the top of the page when an
+  edit ends. Enter and Escape unmount the input while it still holds focus, dropping
+  focus to `<body>` and sending the next Tab back to the start of the document; focus
+  now returns to the edit trigger. Blur exits are deliberately excluded, since focus
+  has already gone where the user put it. Also forwards `onChange` and `onBlur`: both
+  are in the component's public props type but were overwritten by its own handlers,
+  so a consumer's handlers never fired (`onKeyDown` already forwarded — these match it
+  now).
+
 ## 2026-07-26 — quality sweep
 
 - fix(feature-card): props passed alongside `href` now reach the rendered `<a>`.
