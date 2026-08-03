@@ -9,7 +9,10 @@
 
 export const PROJECT = "prj_test"
 
-export function fakeEnv() {
+// `docLimit` is the project's monthly doc quota and `docsUsed` the running `docs` total the usage
+// table reports; the defaults keep a normal request far under the limit, so quota enforcement is
+// invisible to the tests that aren't about it. Override them to drive the quota path.
+export function fakeEnv({ docLimit = 5000, docsUsed = 1 } = {}) {
   const upserted = []
   const deleted = []
   // Amounts added to the month's `docs` counter, in call order (bumpUsage binds `by` twice: once
@@ -23,9 +26,9 @@ export function fakeEnv() {
           return {
             async first() {
               // projectByKey: SELECT * FROM search_projects ... → an active project row.
-              if (/FROM search_projects/.test(sql)) return { id: PROJECT, doc_limit: 5000 }
-              // bumpUsage: SELECT <counter> AS n FROM search_usage ... → the running total.
-              if (/FROM search_usage/.test(sql)) return { n: 1 }
+              if (/FROM search_projects/.test(sql)) return { id: PROJECT, doc_limit: docLimit }
+              // The `docs` usage total, read both by the pre-ingest quota check and by bumpUsage.
+              if (/FROM search_usage/.test(sql)) return { n: docsUsed }
               return null
             },
             async run() {},

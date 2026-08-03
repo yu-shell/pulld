@@ -109,6 +109,28 @@ export async function rateLimited(env, key) {
 
 const COUNTERS = new Set(["queries", "docs"])
 
+async function readUsage(env, project, counter, month) {
+  const row = await env.DB.prepare(
+    `SELECT ${counter} AS n FROM search_usage WHERE project = ? AND month = ?`
+  )
+    .bind(project, month)
+    .first()
+  return Number(row?.n) || 0
+}
+
+// The read-only companion to bumpUsage. A query costs one unit, so query.js can bump first and
+// compare the new total against the plan. Ingest cannot: by the time a total exists it has already
+// embedded and upserted every chunk of the request, which is the cost the quota is there to bound.
+// Reading the running total up front is what lets that quota be enforced before the work runs.
+export async function usageThisMonth(env, project, counter) {
+  if (!COUNTERS.has(counter) || !env.DB) return 0
+  try {
+    return await readUsage(env, project, counter, monthKey())
+  } catch {
+    return 0
+  }
+}
+
 // Increment a usage counter for this month and return the new total.
 export async function bumpUsage(env, project, counter, by = 1) {
   if (!COUNTERS.has(counter) || !env.DB) return 0
@@ -120,12 +142,7 @@ export async function bumpUsage(env, project, counter, by = 1) {
     )
       .bind(project, m, by, by)
       .run()
-    const row = await env.DB.prepare(
-      `SELECT ${counter} AS n FROM search_usage WHERE project = ? AND month = ?`
-    )
-      .bind(project, m)
-      .first()
-    return row?.n ?? 0
+    return await readUsage(env, project, counter, m)
   } catch {
     return 0
   }

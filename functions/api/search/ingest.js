@@ -2,7 +2,16 @@
 // Server-to-server only: admin_key is a secret write key, so no CORS is offered.
 // Body: { documents: [{ id, title, url, content }] }. Chunks + embeds + upserts to Vectorize
 // under the project's namespace.
-import { json, embed, chunk, projectByKey, bumpUsage, MAX_CHUNKS_PER_DOC, vecId } from "./_lib.js"
+import {
+  json,
+  embed,
+  chunk,
+  projectByKey,
+  bumpUsage,
+  usageThisMonth,
+  MAX_CHUNKS_PER_DOC,
+  vecId,
+} from "./_lib.js"
 
 const MAX_CHUNKS_PER_REQUEST = 400
 const PRUNE_BATCH = 1000 // vector ids per deleteByIds call (mirrors delete.js)
@@ -83,6 +92,32 @@ export async function onRequestPost(context) {
     }
   }
   if (!texts.length) return j({ error: "nothing to index" }, 400)
+
+  // Enforce the plan's monthly document quota, mirroring the query quota in query.js. It was
+  // already defined (search_projects.doc_limit), metered (the `docs` bump below) and reported on
+  // (usage-alert.mjs alerts at 80% of it; public/search-integration.md sells "5,000 indexed docs")
+  // — but nothing refused a request over it, so indexing was effectively unlimited and the alert
+  // had no backstop. Checked after parsing and before embed/upsert, because those are the Workers
+  // AI and Vectorize costs the quota exists to bound; a query is one cheap unit, so query.js can
+  // afford to bump first and compare afterwards. Only the documents that will actually be indexed
+  // count, matching what the meter charges. An absent limit falls back to the schema default the
+  // same way q_limit does; a non-numeric one fails open, since blocking a paying customer over a
+  // bad column value is the worse failure.
+  const docLimit = Number(project.doc_limit ?? 200)
+  if (Number.isFinite(docLimit)) {
+    const already = await usageThisMonth(env, project.id, "docs")
+    if (already + indexedIds.size > docLimit) {
+      return j(
+        {
+          error: "quota_exceeded",
+          message: `Monthly document limit reached (${already}/${docLimit} indexed this month).`,
+          docs_this_month: already,
+          doc_limit: docLimit,
+        },
+        429
+      )
+    }
+  }
 
   let embeddings
   try {
