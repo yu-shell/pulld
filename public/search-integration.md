@@ -58,6 +58,9 @@ Rules:
   `skipped_docs`. `indexed_docs` counts only documents actually indexed (distinct `id`s), and only
   those count toward your monthly doc usage — so check `skipped_docs` after a run: a non-zero value
   usually means a field-mapping bug on your side, not an empty result set on ours.
+- A request that would take you past your monthly doc quota is rejected whole, with
+  `429 { "error": "quota_exceeded", "docs_this_month", "doc_limit" }`, and nothing in it is indexed
+  or charged. Send fewer documents per run, or wait for the next month.
 
 Example:
 
