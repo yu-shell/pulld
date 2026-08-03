@@ -130,6 +130,13 @@ const PREVIEWS = {
       `<span style="height:4px;width:${w};border-radius:2px;background:var(--muted);opacity:${o}"></span>`
     return `<div style="display:flex;flex-direction:column;gap:5px;width:96px">${line("100%", ".5")}${line("92%", ".5")}${line("68%", ".5")}${line("84%", ".16")}<span style="margin-top:2px;font-size:9.5px;color:var(--accent);text-decoration:underline;text-underline-offset:2px">Show more</span></div>`
   })(),
+  "middle-truncate": (() => {
+    const mono = (text, color, weight = "400") =>
+      `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`
+    // A width rule under the field: the cut is made to fit the container, not at a fixed count.
+    const rule = `<svg width="96" height="9" viewBox="0 0 96 9" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 1v7M94 1v7M6 4.5h84"/><path d="m6 4.5 4-2.5M6 4.5l4 2.5M90 4.5l-4-2.5M90 4.5l-4 2.5"/></svg>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:96px"><div class="pv-input" style="width:96px;box-sizing:border-box;justify-content:center;gap:0;padding:0 7px">${mono("quarterly", "var(--ink)")}${mono("…", "var(--accent)", "700")}${mono("v3.xlsx", "var(--ink)")}</div>${rule}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
