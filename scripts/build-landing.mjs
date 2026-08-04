@@ -137,6 +137,20 @@ const PREVIEWS = {
     const rule = `<svg width="96" height="9" viewBox="0 0 96 9" fill="none" stroke="var(--muted)" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 1v7M94 1v7M6 4.5h84"/><path d="m6 4.5 4-2.5M6 4.5l4 2.5M90 4.5l-4-2.5M90 4.5l-4 2.5"/></svg>`
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:96px"><div class="pv-input" style="width:96px;box-sizing:border-box;justify-content:center;gap:0;padding:0 7px">${mono("quarterly", "var(--ink)")}${mono("…", "var(--accent)", "700")}${mono("v3.xlsx", "var(--ink)")}</div>${rule}</div>`
   })(),
+  // A rail of headings with the one being read marked — accent rule, darker text. One entry
+  // is indented to show the nesting. 9px caption + 4 rows of 11px + 4 gaps of 4 = 69px, inside
+  // the 84px the preview box leaves.
+  toc: (() => {
+    const row = (label, { on = false, nested = false } = {}) =>
+      `<span style="display:block;box-sizing:border-box;border-left:2px solid ${
+        on ? "var(--accent)" : "var(--line)"
+      };padding-left:${nested ? 14 : 7}px;font-size:9px;line-height:1.25;color:${
+        on ? "var(--ink)" : "var(--muted)"
+      };font-weight:${on ? "600" : "400"}">${label}</span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:96px"><span style="font-size:8px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">On this page</span>${row(
+      "Installation"
+    )}${row("Usage", { on: true })}${row("Options", { nested: true })}${row("API")}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
