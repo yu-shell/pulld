@@ -52,6 +52,7 @@ const PREVIEWS = {
   "search-input": `<div class="pv-input"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span></div>`,
   "number-input": `<div class="pv-input" style="justify-content:center;gap:8px"><span class="pv-numbtn">−</span><span style="font-size:13px;color:var(--ink);min-width:14px;text-align:center">3</span><span class="pv-numbtn">+</span></div>`,
   "otp-input": `<div class="pv-otp"><span>4</span><span>2</span><span></span><span></span></div>`,
+  "date-input": `<div class="pv-input pv-date"><span>03</span><i>/</i><span class="on">14</span><i>/</i><span>2026</span></div>`,
   "tag-input": `<div class="pv-input" style="height:auto;min-height:30px;flex-wrap:wrap;gap:4px;padding:6px 7px"><span class="pv-tag">react</span><span class="pv-tag">ui</span><span style="color:var(--muted);font-size:11px">|</span></div>`,
   "copy-field": `<div class="pv-input"><span style="font:11px ui-monospace,monospace;color:var(--ink)">tok_1a2b</span><span style="margin-left:auto;color:var(--muted);display:inline-flex">${ICON.copy}</span></div>`,
   "segmented-control": `<div class="pv-seg"><span class="on">Day</span><span>Week</span></div>`,
@@ -365,6 +366,9 @@ const html = `<!doctype html>
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-otp{display:flex;gap:5px}
   .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
+  .pv-date{gap:0;padding:0 7px;font:11px ui-monospace,monospace;color:var(--ink)}
+  .pv-date i{color:var(--muted);font-style:normal;padding:0 1px}
+  .pv-date .on{background:var(--accent);color:#fff;border-radius:3px;padding:0 2px}
   .pv-tag{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:5px;background:var(--accent);color:#fff;font-size:11px;font-weight:500}
   .pv-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:2px}
   .pv-seg span{font-size:11.5px;padding:3px 9px;border-radius:6px;color:var(--muted)}
