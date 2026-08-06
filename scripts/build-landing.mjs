@@ -152,6 +152,31 @@ const PREVIEWS = {
       "Installation"
     )}${row("Usage", { on: true })}${row("Options", { nested: true })}${row("API")}</div>`
   })(),
+  // The component's own projection in miniature, so the thumbnail can't drift
+  // from what ships: 12 points into a 96×34 box inset by the stroke, with the
+  // last value marked. 9px caption + 4 gap + 34 svg = 47px, inside the 84px the
+  // preview box leaves.
+  sparkline: (() => {
+    const data = [4, 6, 5, 9, 7, 12, 10, 14, 11, 17, 15, 20]
+    const w = 96
+    const h = 34
+    const pad = 3
+    const lo = Math.min(...data)
+    const hi = Math.max(...data)
+    const f = (n) => Math.round(n * 100) / 100
+    const pts = data.map((v, i) => [
+      pad + ((w - 2 * pad) * i) / (data.length - 1),
+      h - pad - (h - 2 * pad) * ((v - lo) / (hi - lo)),
+    ])
+    const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${f(x)},${f(y)}`).join("")
+    const [lx, ly] = pts[pts.length - 1]
+    const area = `M${f(pts[0][0])},${h - pad}${pts
+      .map(([x, y]) => `L${f(x)},${f(y)}`)
+      .join("")}L${f(lx)},${h - pad}Z`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:96px"><span style="font-size:9px;color:var(--muted)">Requests · 30d</span><svg width="96" height="34" viewBox="0 0 96 34" aria-hidden="true"><path d="${area}" fill="var(--accent)" fill-opacity=".14"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M${f(
+      lx
+    )},${f(ly)}L${f(lx)},${f(ly)}" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/></svg></div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
