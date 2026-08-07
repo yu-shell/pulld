@@ -177,6 +177,20 @@ const PREVIEWS = {
       lx
     )},${f(ly)}L${f(lx)},${f(ly)}" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"/></svg></div>`
   })(),
+  // The title above, the slug it derived below, so the thumbnail shows the one
+  // thing the component is for. 11px title + 4 gap + 8px arrow + 4 gap + 24px
+  // field = 51px, inside the 84px the preview box leaves.
+  "slug-input": (() => {
+    const mono = (text, color) =>
+      `<span style="font:10px ui-monospace,monospace;color:${color}">${text}</span>`
+    const arrow = `<svg width="9" height="8" viewBox="0 0 9 8" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 1v6M2 4.8l2.5 2.4L7 4.8"/></svg>`
+    // 13 monospace characters at 10px ≈ 78px, plus 14px of padding and the
+    // caret: inside the 96px the card gives the preview.
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:96px"><span style="align-self:flex-start;font-size:9px;color:var(--muted)">My Post!</span>${arrow}<div class="pv-input" style="width:96px;box-sizing:border-box;height:24px;gap:0;padding:0 7px">${mono(
+      "/blog/",
+      "var(--muted)"
+    )}${mono("my-post", "var(--ink)")}<span style="width:1px;height:11px;background:var(--accent);margin-left:1px"></span></div></div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
