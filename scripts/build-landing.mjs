@@ -191,6 +191,23 @@ const PREVIEWS = {
       "var(--muted)"
     )}${mono("my-post", "var(--ink)")}<span style="width:1px;height:11px;background:var(--accent);margin-left:1px"></span></div></div>`
   })(),
+  // The masked field with the meter under it, drawn the way the component draws
+  // it: four segments, filled to the band. Three of four is "Fair", the middle
+  // band, which is the one worth showing — it is the only one where the advice
+  // line has something to say. 22px field + 4 gap + 5px bar + 4 gap + 9px label
+  // = 44px, inside the 84px the preview box leaves.
+  "password-strength": (() => {
+    const filled = 3
+    const bar = [0, 1, 2, 3]
+      .map(
+        (i) =>
+          `<span style="height:5px;flex:1;border-radius:3px;background:${
+            i < filled ? "currentColor" : "var(--line)"
+          }"></span>`
+      )
+      .join("")
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:96px"><div class="pv-input" style="width:96px;box-sizing:border-box;height:22px;padding:0 7px"><span class="pv-dots">••••••••</span></div><div class="pv-warn" style="display:flex;gap:3px;width:100%">${bar}</div><span class="pv-warn" style="font-size:9px;font-weight:600">Fair</span></div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
@@ -369,6 +386,7 @@ const html = `<!doctype html>
     border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12.5px;font-weight:500}
   .pv-primary{background:var(--accent);color:#fff;border-color:transparent}
   .pv-danger{color:#dc2626;border-color:#dc2626}
+  .pv-warn{color:#d97706}
   .pv-kbd{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;
     border:1px solid var(--line);border-bottom-width:2px;background:var(--surface);font:12px ui-monospace,monospace;color:var(--muted)}
   .pv-spin{width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;
@@ -401,7 +419,7 @@ const html = `<!doctype html>
   .pv-toast{display:flex;align-items:center;gap:7px;width:100%;background:var(--surface);border:1px solid var(--line);
     border-radius:9px;padding:8px 10px;box-shadow:0 4px 14px rgba(0,0,0,.10);font-size:11.5px;color:var(--ink)}
   .pv-tok{color:#16a34a;display:inline-flex;flex:none}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} }
+  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-otp{display:flex;gap:5px}
   .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
