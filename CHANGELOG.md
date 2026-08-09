@@ -3,6 +3,21 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-09 — quality sweep
+
+- fix(bento-grid): a `colSpan` of 3 or 4 no longer invents a column at the tablet
+  breakpoint. Every layout the grid offers is two columns wide at `md` and only
+  reaches three or four at `lg`, but the spans were emitted as a bare
+  `md:col-span-3`/`md:col-span-4` — and CSS Grid does not clamp a span that overruns
+  the explicit grid, it adds the missing tracks to the implicit grid (§8.5). Those
+  tracks are `auto`, so the first cell that landed in one was sized by its own
+  content: measured in Chrome, a `md:col-span-3` cell in a two-column grid collapsed
+  the two real `1fr` columns from 448px to 95px and handed the phantom third 403px.
+  Each span is now capped per breakpoint to the tracks that tier actually has, so the
+  cell fills the row at `md` and widens at `lg`. Rendered output at `lg` is
+  unchanged. The prop docs and the registry description said the opposite — that CSS
+  Grid clamped an over-wide span — and have been corrected.
+
 ## 2026-08-02 — quality sweep
 
 - a11y(inline-edit): keyboard focus no longer falls to the top of the page when an

@@ -15,11 +15,22 @@ const GRID_COLUMNS = {
   4: "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
 } as const
 
+/**
+ * Spans step up with the grid, which is why each one lists two breakpoints. Every layout
+ * above is two columns wide at `md` and only reaches three or four at `lg`, so a bare
+ * `md:col-span-3` would ask for more columns than exist at that tier — and CSS Grid does
+ * not clamp an over-wide span, it *adds* the missing columns to the implicit grid
+ * (CSS Grid §8.5). Those extra tracks are `auto`, so the first cell that lands in one is
+ * sized by its own content: measured in Chrome, a `md:col-span-3` cell in a two-column
+ * grid collapsed the two real `1fr` columns from 448px to 95px and gave the phantom third
+ * 403px. Capping each tier at the track count it actually has keeps the span inside the
+ * explicit grid, so the cell fills the row instead of inventing a column.
+ */
 const COL_SPAN = {
   1: "",
   2: "md:col-span-2",
-  3: "md:col-span-3",
-  4: "md:col-span-4",
+  3: "md:col-span-2 lg:col-span-3",
+  4: "md:col-span-2 lg:col-span-4",
 } as const
 
 const ROW_SPAN = {
@@ -65,9 +76,11 @@ export function BentoGrid({ columns = 3, className, ...props }: BentoGridProps) 
 
 interface BentoGridItemProps extends React.ComponentPropsWithoutRef<"div"> {
   /**
-   * How many columns the cell covers from the `md` breakpoint up. A span wider than the
-   * grid at the current breakpoint is clamped by CSS Grid, so `colSpan={3}` simply fills
-   * the row on a two-column tablet layout.
+   * How many columns the cell covers, at the widest breakpoint. Every layout is two
+   * columns at `md`, so a cell asking for three or four spans the full row there and
+   * widens to its real span at `lg`. Keep it within the grid's own `columns`: a span
+   * larger than that has no tier where it fits, and CSS Grid answers an over-wide span by
+   * adding columns rather than by clamping it.
    */
   colSpan?: keyof typeof COL_SPAN
   /** How many rows the cell covers from the `md` breakpoint up. */
