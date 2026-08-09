@@ -17,6 +17,28 @@ export async function onRequestGet(context) {
   const url = new URL(request.url)
   const m = url.pathname.match(/^\/r\/([a-z0-9-]+)\.json$/i)
 
+  // This project ships no 404.html, so Pages answers an unknown asset with index.html **under
+  // status 200**. For /r/<name>.json that is worse than a plain miss: `shadcn add` — or an agent
+  // guessing a name — receives 186KB of landing page under a success status and dies on a JSON
+  // parse error instead of being told the component does not exist. The fallback is also `res.ok`,
+  // so every miss was logged as a delivered component: 1,535 rows of `fetches` name components
+  // this registry has never shipped, `index` (the path official shadcn uses for its catalogue)
+  // among them.
+  //
+  // The request asked for `.json`, so anything that did not come back as JSON is not the asset it
+  // asked for, whatever made Pages substitute it. 304 carries no content-type and is a real
+  // delivery, so it is excluded by `res.ok`.
+  if (m && res.ok && !/^application\/json/i.test(res.headers.get("content-type") || "")) {
+    return new Response(
+      JSON.stringify(
+        { error: "not_found", name: m[1], registry: new URL("/r/registry.json", url).href },
+        null,
+        2
+      ) + "\n",
+      { status: 404, headers: { "content-type": "application/json; charset=utf-8" } }
+    )
+  }
+
   // A 304 is a delivered component too: the client asked for the item and left with a usable
   // copy, it just already had the bytes. ASSETS answers If-None-Match itself, so every client
   // that caches (a browser, a catalogue mirror re-checking what it holds) revalidates into a

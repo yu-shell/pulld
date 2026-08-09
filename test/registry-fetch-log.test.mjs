@@ -29,22 +29,28 @@ function fakeDB(rows = []) {
 }
 
 // Stands in for the Pages static-asset binding. `status` is what the asset server would answer:
-// 200 for a served file, 304 when the client's If-None-Match still matches, 404 for no such item.
-function fakeAssets(status = 200, body = '{"name":"copy-button"}') {
+// 200 for a served file, 304 when the client's If-None-Match still matches.
+//
+// `type` matters as much as the status. This project ships no 404.html, so Pages does NOT answer
+// a miss with 404 — it substitutes index.html under status 200. A fake that returns a bare 404 is
+// therefore modelling a response production cannot emit, which is how the miss-handling bug below
+// stayed invisible while its test passed. Served assets carry their real content-type too, since
+// that is what tells the item apart from the substituted landing page.
+function fakeAssets(status = 200, body = '{"name":"copy-button"}', type = "application/json") {
   return {
     calls: [],
     fetch(request) {
       this.calls.push(request.url)
       const nullBody = status === 304 || status === 204
-      return Promise.resolve(
-        new Response(nullBody ? null : body, {
-          status,
-          headers: { etag: '"v1"' },
-        })
-      )
+      const headers = { etag: '"v1"' }
+      if (!nullBody) headers["content-type"] = type
+      return Promise.resolve(new Response(nullBody ? null : body, { status, headers }))
     },
   }
 }
+
+// What Pages actually serves for an unknown path: the landing page, verbatim, under status 200.
+const fakeSpaFallback = () => fakeAssets(200, "<!doctype html><html>…</html>", "text/html; charset=utf-8")
 
 function ctx({
   path = "/r/copy-button.json",
@@ -107,12 +113,68 @@ test("a crawler is served and logged, flagged as a bot", async () => {
 test("a response that delivered nothing is not counted as a fetch", async () => {
   for (const status of [404, 500]) {
     const db = fakeDB()
-    const c = ctx({ db, assets: fakeAssets(status, "not found") })
+    const c = ctx({ db, assets: fakeAssets(status, "not found", "text/plain") })
     const res = await onRequestGet(c)
     await flush(c)
     assert.equal(res.status, status)
     assert.equal(db.rows.length, 0, `status ${status} must not be logged`)
   }
+})
+
+test("an unknown component is a JSON 404, not the landing page under status 200", async () => {
+  // The bug this covers: with no 404.html, Pages answers /r/<unknown>.json with index.html and
+  // status 200. `shadcn add` then parses 186KB of HTML as a registry item and fails on a syntax
+  // error rather than reporting that the component does not exist.
+  const db = fakeDB()
+  const c = ctx({ path: "/r/does-not-exist.json", db, assets: fakeSpaFallback() })
+  const res = await onRequestGet(c)
+  await flush(c)
+
+  assert.equal(res.status, 404)
+  assert.match(res.headers.get("content-type"), /^application\/json/)
+  const body = JSON.parse(await res.text())
+  assert.equal(body.error, "not_found")
+  assert.equal(body.name, "does-not-exist")
+  assert.equal(body.registry, "https://pulld.pages.dev/r/registry.json")
+  assert.equal(db.rows.length, 0, "a miss is not a delivered component")
+})
+
+test("the substituted landing page is never logged as a component", async () => {
+  // 1,535 rows of the production log are names this registry has never shipped — they were
+  // `res.ok`, so they counted as deliveries. `index` is among them: the path official shadcn
+  // uses for its catalogue, swept daily by the IntelliJ plugin.
+  for (const name of ["index", "button", "bento-box"]) {
+    const db = fakeDB()
+    const c = ctx({ path: `/r/${name}.json`, db, assets: fakeSpaFallback() })
+    assert.equal((await onRequestGet(c)).status, 404, name)
+    await flush(c)
+    assert.equal(db.rows.length, 0, name)
+  }
+})
+
+test("the delivered type must be JSON, not merely mention it", async () => {
+  // The content-type check is anchored on purpose: a type that carries the string somewhere in a
+  // parameter is still not a registry item. Without the anchor a substring match reads as JSON.
+  const db = fakeDB()
+  const c = ctx({
+    path: "/r/does-not-exist.json",
+    db,
+    assets: fakeAssets(200, "<!doctype html>", "text/html; note=application/json"),
+  })
+  assert.equal((await onRequestGet(c)).status, 404)
+  await flush(c)
+  assert.equal(db.rows.length, 0)
+})
+
+test("a revalidated delivery is not mistaken for a miss", async () => {
+  // 304 carries no content-type, so a content-type test for the substituted page must not
+  // sweep up the one delivery shape that legitimately has none.
+  const db = fakeDB()
+  const c = ctx({ db, assets: fakeAssets(304) })
+  const res = await onRequestGet(c)
+  await flush(c)
+  assert.equal(res.status, 304)
+  assert.equal(db.rows.length, 1)
 })
 
 test("only /r/<name>.json is attributed to a component", async () => {
