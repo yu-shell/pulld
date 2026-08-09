@@ -368,7 +368,7 @@
       "name": "pricing-card",
       "type": "registry:ui",
       "title": "Pricing Card",
-      "description": "A pricing plan card for a pricing page, upsell, or paywall/subscription row: plan name, a big price with a billing period (e.g. $29 /mo), an optional short description, a checked/unchecked feature list, and a call-to-action button. Set `featured` to highlight the recommended tier with a primary ring and a \"Most popular\" badge, and compose several side by side to build a full pricing table. Pass features as plain strings for included items or as objects to mark a feature excluded (rendered muted with a strikethrough and an accessible \"Not included\" label). shadcn/ui ships no pricing card. Accessible with a configurable heading level and aria-hidden feature icons; theme-aware via shadcn tokens with dark mode. Depends only on lucide-react for the check/minus icons.",
+      "description": "A single pricing plan card — the tier box on a pricing page, a plans-and-billing settings screen, an upgrade or paywall modal, a compare-plans table, or the subscription row in an account page. It takes a plan name, a big price with its billing period ($29 /mo), an optional one-line pitch, a feature list and a call-to-action, and several of them sit side by side to make the whole pricing table. Features are the part that is usually got wrong. Pass a string for an included feature or an object to mark one excluded; an excluded row is muted and struck through, and it also carries a screen-reader-only \"Not included:\" prefix — because text-decoration: line-through is not announced, so a purely visual strikethrough tells a sighted reader the feature is missing and tells a screen-reader user it is included. The check and minus icons are aria-hidden, since the text already says which is which. Set featured to mark the recommended tier: it draws a primary ring and a \"Most popular\" badge, and badge takes any other label (Best value, Current plan). headingLevel picks h2, h3 or h4 so three cards dropped into a section do not break the page outline — a pricing table is the classic place where a hardcoded h3 lands under the wrong h2. Against official shadcn/ui there is no pricing card to compare with, only pieces to assemble: card is a 1,828-character generic container with no price, plan, tier or feature vocabulary in it at all, item is a ten-part compound kit (ItemGroup, Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions, ItemHeader, ItemFooter, ItemSeparator) that additionally pulls in separator and is built for list rows, and badge and button each drag in @radix-ui/react-slot. None of the four contains a single pricing term. This is one component with lucide-react as its only dependency, theme-aware through shadcn tokens in light and dark.",
       "dependencies": [
         "lucide-react"
       ],
@@ -735,6 +735,18 @@
       "files": [
         {
           "path": "registry/ui/password-strength.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "diff-view",
+      "type": "registry:ui",
+      "title": "Diff View",
+      "description": "A line-by-line diff of two strings — the before/after view a screen needs when it has to show what changed: a config or settings change, a record edited in an admin panel, a document revision, a webhook payload against the last one, an audit-log entry, a restored backup next to what is live, or the edit an AI agent is proposing before the user accepts it. Pass before and after and it renders a git-style diff, unified by default or side by side with view=\"split\". Unchanged lines collapse into a counted gap, so a 400-line file with a three-line change shows three lines and a summary instead of 400; context sets how many surrounding lines survive and context={Infinity} shows the whole text. Both line-number gutters are select-none, so selecting the diff copies the code and not a column of numbers. CRLF and LF are folded together, because a file that changed only its line endings would otherwise report every single line as rewritten. It is meaning-first rather than colour-first: every changed row carries a + or - sign and a screen-reader-only \"Added line:\" / \"Removed line:\" prefix, so the diff still reads for someone who cannot tell the red and green backgrounds apart — conveying the change by colour alone, which fails WCAG 1.4.1, is the single most common defect in a hand-rolled diff. The table also gets an sr-only caption stating how many lines were added and removed. The diff is a longest-common-subsequence over lines with the shared prefix and suffix trimmed off first, which keeps a large document with a small edit fast (a 4,000-line file with one changed line diffs in well under a millisecond) and makes an appended line read as appended instead of shifting everything by one. Pathologically large inputs degrade to \"this block was replaced\" rather than allocating a table of hundreds of megabytes during a render. No dependencies, no diff library and no hooks, so it renders inside a React server component without a \"use client\" of its own and ships no client JavaScript — which is the common case, because the text being compared has usually just been fetched on the server. Official shadcn/ui has no diff component of any kind: table is an unstyled table and chart is a Recharts wrapper, and neither computes or displays a change.",
+      "files": [
+        {
+          "path": "registry/ui/diff-view.tsx",
           "type": "registry:ui"
         }
       ]
