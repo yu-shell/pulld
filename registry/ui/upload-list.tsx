@@ -95,6 +95,17 @@ export function UploadList({
   React.useEffect(() => {
     const before = seen.current
     seen.current = new Map(items.map((item) => [item.id, item.status]))
+
+    // An empty queue unmounts the region below, so whatever it last said would come back
+    // mounted-with-text on the next batch — and the batch after an emptied queue is a new
+    // starting state, not a set of transitions: without this, re-opening a picker on files
+    // that are already `done` announces them as if they had just finished uploading.
+    if (items.length === 0) {
+      mounted.current = false
+      setAnnounce("")
+      return
+    }
+
     if (!mounted.current) {
       mounted.current = true
       return

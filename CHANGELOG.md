@@ -17,6 +17,15 @@ copies code into your project, so existing installs are never changed automatica
   cell fills the row at `md` and widens at `lg`. Rendered output at `lg` is
   unchanged. The prop docs and the registry description said the opposite — that CSS
   Grid clamped an over-wide span — and have been corrected.
+- a11y(upload-list): a queue that empties and refills no longer announces files that
+  were already finished when they arrived. The component promises that "the first
+  render is treated as the starting state", so a list mounting with finished rows
+  stays quiet — but the flag holding that promise was only ever set, never reset, so
+  the guarantee applied to the first batch and no other. Re-opening a picker on
+  attachments that are already `done` announced them as if they had just uploaded.
+  Emptying the queue also unmounts the live region while leaving its last message in
+  state, so the next batch remounted the region with stale text. Both now reset when
+  the queue goes empty.
 
 ## 2026-08-02 — quality sweep
 
