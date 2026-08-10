@@ -8,10 +8,21 @@
 //     used to flow into `env.VEC.query({ topK: NaN*3 })` and the `results.length >= NaN` dedup
 //     guard, breaking search on the public path from trivial input.
 //   - over-fetch (topK*3) then dedup-by-docId, first-seen wins, capped at the requested limit.
+//   - every topK the handler can ask for is one Vectorize will actually accept: a whole number no
+//     greater than 50. Both halves of that were violated in production — `?limit=17` and up sent
+//     51..60, and `?limit=2.5` sent 7.5, each answered with a 502 from a limit the endpoint itself
+//     documents as valid. The assertions below sweep the whole advertised range rather than
+//     spot-checking, because the broken part was the top fifth of it.
 //   - the quota (429) and burst rate-limit (429) gates.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { onRequestGet, onRequestPost, clampLimit } from "../functions/api/search/query.js"
+import {
+  onRequestGet,
+  onRequestPost,
+  clampLimit,
+  overFetch,
+  VEC_TOPK_MAX,
+} from "../functions/api/search/query.js"
 
 const PROJECT = "prj_test"
 const QUERY_KEY = "pk_test"
@@ -83,6 +94,30 @@ test("clampLimit: clamps to [1,20], defaults on missing/empty/non-numeric input"
   assert.equal(clampLimit(12, 8), 12)
 })
 
+// topK counts rows, so a fractional one is not a smaller request — it is a rejected one.
+test("clampLimit: floors to a whole number (topK is a count, not a measurement)", () => {
+  assert.equal(clampLimit("2.5", 8), 2) // the bug: 2.5 survived, over-fetched to 7.5, 502
+  assert.equal(clampLimit("8.5", 8), 8)
+  assert.equal(clampLimit("19.9", 8), 19)
+  assert.equal(clampLimit("0.5", 8), 1) // floors to 0, then clamped up into range
+  assert.equal(clampLimit("1e1", 8), 10) // Number() accepts more shapes than the docs advertise
+  assert.equal(clampLimit(" 4 ", 8), 4)
+  for (const raw of ["2.5", "8.5", "19.9", "0.5", "1e1", " 4 "]) {
+    assert.ok(Number.isInteger(clampLimit(raw, 8)), `clampLimit(${JSON.stringify(raw)}) not integer`)
+  }
+})
+
+// The ceiling itself, asserted directly: Vectorize serves at most 50 matches when they carry
+// metadata, and this query asks for `returnMetadata: "all"`.
+test("overFetch: 3x headroom, clamped to the Vectorize topK ceiling", () => {
+  assert.equal(VEC_TOPK_MAX, 50)
+  assert.equal(overFetch(1), 3)
+  assert.equal(overFetch(8), 24) // the default, unaffected
+  assert.equal(overFetch(16), 48) // last limit that fit under the cap before the fix
+  assert.equal(overFetch(17), 50) // was 51 → Vectorize rejected the query
+  assert.equal(overFetch(20), 50) // was 60
+})
+
 test("query: a non-numeric limit falls back to the default (topK stays finite, not NaN)", async () => {
   const { env, queries } = fakeEnv({ matches: [] })
   const res = await onRequestGet({ request: get("hello", { limit: "abc" }), env })
@@ -96,11 +131,53 @@ test("query: a non-numeric limit falls back to the default (topK stays finite, n
 })
 
 test("query: limit is clamped to [1,20] and over-fetched 3x for the Vectorize query", async () => {
-  for (const [limit, wantTopK] of [[undefined, 8], [3, 3], [100, 20], [0, 1]]) {
+  // [requested limit, clamped limit, topK asked of Vectorize]
+  const cases = [
+    [undefined, 8, 24], // default
+    [3, 3, 9],
+    [0, 1, 3], // clamped up
+    [100, 20, 50], // clamped down to 20, then the over-fetch meets the 50 ceiling
+  ]
+  for (const [limit, clamped, wantTopK] of cases) {
     const { env, queries } = fakeEnv()
-    await onRequestGet({ request: get("hi", limit == null ? {} : { limit }), env })
-    assert.equal(queries[0].topK, wantTopK * 3, `limit=${limit} → topK ${wantTopK}`)
+    await onRequestGet({ request: get("hi", limit === undefined ? {} : { limit }), env })
+    assert.equal(queries[0].topK, wantTopK, `limit=${limit} → clamped ${clamped} → topK ${wantTopK}`)
   }
+})
+
+// The regression that reached production: the endpoint documents limit up to 20, but the 3x
+// over-fetch turned the top of that range into a topK Vectorize refuses, so `?limit=17` and above
+// answered 502 "search failed". Sweeping the whole advertised range is the point — a spot check at
+// the default (8) passes either way.
+test("query: every limit the endpoint accepts asks Vectorize for a topK it accepts", async () => {
+  for (let limit = 1; limit <= 20; limit++) {
+    const { env, queries } = fakeEnv()
+    const res = await onRequestGet({ request: get("hi", { limit }), env })
+
+    assert.equal(res.status, 200, `limit=${limit} should not error`)
+    const { topK } = queries[0]
+    assert.ok(Number.isInteger(topK), `limit=${limit} → topK ${topK} is not a whole number`)
+    assert.ok(topK >= 1 && topK <= VEC_TOPK_MAX, `limit=${limit} → topK ${topK} outside [1,50]`)
+    assert.ok(topK >= limit, `limit=${limit} → topK ${topK} cannot fill the requested count`)
+  }
+})
+
+test("query: a fractional limit still asks for a whole topK", async () => {
+  const { env, queries } = fakeEnv()
+  const res = await onRequestGet({ request: get("hi", { limit: "2.5" }), env })
+
+  assert.equal(res.status, 200)
+  assert.equal(queries[0].topK, 6) // pre-fix: 7.5, which Vectorize rejected
+})
+
+// The dedup guard reads the same clamped value, so flooring has to reach it too: `results.length
+// >= 2.5` would have let a third document through a request that asked for two.
+test("query: a fractional limit caps the result list at a whole number of documents", async () => {
+  const { env } = fakeEnv({ matches: [match("a"), match("b"), match("c"), match("d")] })
+  const res = await onRequestGet({ request: get("hi", { limit: "2.5" }), env })
+
+  const { results } = await res.json()
+  assert.deepEqual(results.map((r) => r.id), ["a", "b"])
 })
 
 test("query: results are deduped by docId (first-seen wins) and capped at the requested limit", async () => {
