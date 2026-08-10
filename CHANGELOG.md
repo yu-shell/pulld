@@ -3,6 +3,22 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-10
+
+- feat(calendar-heatmap): new. A year of daily counts as a grid of shaded squares —
+  the contribution-graph shape, for commits, orders, sign-ins, workouts or any other
+  per-day total. Days are held as integers (days since the epoch, UTC) rather than
+  `Date` objects, so the grid cannot rotate by a row west of Greenwich, and the
+  window is anchored to the last date in the data rather than to `Date.now()`, so
+  the server and the browser always render the same markup. Shading is by quartile
+  of the days that had activity, so one busy day does not flatten the year. Real
+  table semantics with a screen-reader name on every square. No dependencies, no
+  hooks, no `"use client"`.
+- docs(announcement-bar): description rewritten against the AEO rubric — concrete
+  triggers, the hydration/flash problem it solves, and what `alert`, `alert-dialog`
+  and `sonner` actually do instead (checked against their published source, not
+  from memory).
+
 ## 2026-08-09 — quality sweep
 
 - fix(bento-grid): a `colSpan` of 3 or 4 no longer invents a column at the tablet

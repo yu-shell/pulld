@@ -34,8 +34,35 @@ const ICON = {
   check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
   upload: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/></svg>`,
 }
+// A miniature 11-week grid for the calendar-heatmap card: one digit per square, row-major, 0 for a
+// day with nothing up to 4 for the busiest. Written out rather than generated so the built page is
+// byte-identical on every run — a card that reshuffled itself each deploy would churn the diff.
+const HEATMAP_CELLS =
+  "01002300110" +
+  "10240031200" +
+  "00131042010" +
+  "21003210043" +
+  "00210031100" +
+  "13002100320" +
+  "00120004011"
+const HEATMAP_TONE = [
+  "var(--line)",
+  "color-mix(in srgb,var(--accent) 25%,transparent)",
+  "color-mix(in srgb,var(--accent) 50%,transparent)",
+  "color-mix(in srgb,var(--accent) 75%,transparent)",
+  "var(--accent)",
+]
+
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
+  "calendar-heatmap": `<div style="display:grid;grid-template-columns:repeat(11,6px);gap:2px">${[
+    ...HEATMAP_CELLS,
+  ]
+    .map(
+      (d) =>
+        `<span style="width:6px;height:6px;border-radius:1px;background:${HEATMAP_TONE[Number(d)]}"></span>`
+    )
+    .join("")}</div>`,
   kbd: `<span class="pv-kbd">⌘</span><span class="pv-kbd">K</span>`,
   "empty-state": `<div class="pv-empty">${ICON.inbox}<span>No results</span></div>`,
   "stat-card": `<div class="pv-card"><div class="pv-muted">Revenue</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><span class="pv-big">$12.4k</span><span class="pv-up">↑12%</span></div></div>`,

@@ -12,6 +12,26 @@ CREATE TABLE IF NOT EXISTS fetches (
 CREATE INDEX IF NOT EXISTS idx_fetches_item ON fetches(item);
 CREATE INDEX IF NOT EXISTS idx_fetches_date ON fetches(date);
 
+-- Names asked for under /r/<name>.json that this registry has never shipped. Kept OUT of
+-- `fetches` on purpose: a miss is not a delivered component, and `fetches` is the reward
+-- learn.mjs tunes against. They are still the most direct answer to "what do agents come here
+-- looking for?" — the daily routine picks the next component partly from this list.
+--
+-- Until 2026-08-09 misses were unreadable for the opposite reason: with no 404.html, Pages
+-- substituted index.html under status 200, so every miss landed in `fetches` as a delivery.
+-- Returning a real JSON 404 fixed the reward but blanked the signal — nothing was recorded at
+-- all. This table is where the signal lives now, with the two roles finally separated.
+CREATE TABLE IF NOT EXISTS misses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,        -- YYYY-MM-DD (UTC)
+  item TEXT NOT NULL,        -- the name that was asked for and does not exist
+  ts INTEGER NOT NULL,       -- epoch ms
+  ua TEXT,                   -- user-agent (first 256 chars)
+  country TEXT,              -- cf-ipcountry
+  is_bot INTEGER DEFAULT 0   -- 1 for a clear automated user-agent
+);
+CREATE INDEX IF NOT EXISTS idx_misses_date ON misses(date);
+
 -- Buy-button clicks (functions/go/[target].js), recorded before the redirect to Polar. Polar
 -- opens a new Checkout Session on every visit to a checkout link, so its checkout count can't
 -- tell a buyer from a crawler that followed the link; this is the funnel's real denominator.
