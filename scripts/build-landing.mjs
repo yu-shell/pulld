@@ -73,6 +73,7 @@ const PREVIEWS = {
   "code-block": `<div class="pv-code">add …<span class="pv-codecopy">${ICON.copy}</span></div>`,
   "loading-button": `<button class="pv-btn pv-primary"><span class="pv-spin pv-spin-on-primary"></span> Saving…</button>`,
   "confirm-button": `<button class="pv-btn pv-danger">Delete</button>`,
+  "ansi-log": `<div class="pv-log"><span><i>$</i>npm run build</span><span class="pv-log-g">✓ built in 1.2s</span><span class="pv-log-r">✗ 2 errors</span><span class="pv-log-d">exit code 1</span></div>`,
   "diff-view": `<div class="pv-diff"><span><i></i>retries: 3</span><span class="pv-dif-del"><i>-</i>timeout: 30</span><span class="pv-dif-ins"><i>+</i>timeout: 60</span><span><i></i>debug: off</span></div>`,
   "dashboard-overview": `<div class="pv-dash"><div class="pv-dbar"></div><div class="pv-drow"><span></span><span></span><span></span></div></div>`,
   "command-palette": `<div class="pv-input" style="gap:6px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span><span style="margin-left:auto;display:flex;gap:3px"><span class="pv-kbd">⌘</span><span class="pv-kbd">K</span></span></div>`,
@@ -455,7 +456,14 @@ const html = `<!doctype html>
   .pv-dif-del i{color:#dc2626}
   .pv-dif-ins{background:color-mix(in srgb,#16a34a 15%,transparent)}
   .pv-dif-ins i{color:#16a34a}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} }
+  .pv-log{width:96px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--code-bg);
+    padding:5px 0;font:9.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .pv-log span{display:flex;gap:3px;padding:0 6px;color:var(--ink);white-space:nowrap}
+  .pv-log i{font-style:normal;color:var(--muted)}
+  .pv-log-g{color:#16a34a}
+  .pv-log-r{color:#dc2626}
+  .pv-log-d{color:var(--muted)}
+  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-otp{display:flex;gap:5px}
   .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
