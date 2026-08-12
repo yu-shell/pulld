@@ -74,8 +74,13 @@ CREATE TABLE IF NOT EXISTS search_projects (
   admin_key TEXT UNIQUE,
   query_key TEXT UNIQUE,
   email TEXT,
-  ls_license TEXT UNIQUE,         -- Lemon Squeezy license key = the customer's retrieval token
-  ls_subscription TEXT,           -- LS subscription/order id (best-effort, for lifecycle)
+  -- The customer's license key = their retrieval token, and the subscription it came from. Both
+  -- are written by functions/api/polar-webhook.js and hold Polar values. The `ls_` prefix is
+  -- historical: billing started on Lemon Squeezy, and renaming a column that live rows are keyed
+  -- on (ON CONFLICT(ls_license), and /account's lookup) needs a D1 migration these comments are
+  -- not worth. Read `ls_` as "license source", not as the vendor.
+  ls_license TEXT UNIQUE,         -- Polar license key = the customer's retrieval token
+  ls_subscription TEXT,           -- Polar subscription/order id (best-effort, for lifecycle)
   plan TEXT DEFAULT 'free',
   q_limit INTEGER DEFAULT 1000,   -- queries per month
   doc_limit INTEGER DEFAULT 200,  -- indexed docs
