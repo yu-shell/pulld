@@ -3,6 +3,35 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-12
+
+- feat(cron-expression): new. Renders a cron expression as an English sentence and,
+  given a reference instant, the next times it fires. The day-of-month and
+  day-of-week fields are ORed when neither is a literal star and ANDed when either
+  one is, so `0 0 13 * 5` reads and behaves as "the 13th **or** every Friday" and
+  `0 0 13 * 0-6` as every day — the rule keys off syntax rather than coverage, and
+  the component says so on screen when it applies. Sunday folds from 7 to 0 after a
+  range is expanded, so `5-7` is Friday through Sunday. Next runs are computed in
+  UTC by stepping whichever field fails rather than a minute at a time, so a
+  February-29 schedule costs thousands of comparisons instead of millions and
+  February 30 ends empty instead of hanging. Run times are formatted without `Intl`
+  to keep server and client markup identical. Nothing reads the clock. No
+  dependencies, no hooks, no `"use client"`.
+- docs(loading-button): description rewritten against the AEO rubric — the
+  double-submit problem it exists for, the two form gotchas (`type="submit"`, and a
+  disabled button leaving the tab order), and what official `button` and `spinner`
+  actually provide, checked against their published source rather than from memory.
+
+## 2026-08-11
+
+- feat(ansi-log): new. Renders raw terminal output — escape sequences and all — as
+  styled, theme-aware HTML. A carriage return moves the cursor rather than breaking
+  the line, so a progress bar that redraws itself stays one line. 16 named colours
+  as light/dark pairs, the 256-colour cube, truecolor, and translucent background
+  washes so text can never land on a saturated slab below contrast. Unimplemented
+  sequences are consumed rather than printed. No dependencies, no hooks, no
+  `"use client"`. (Entry added on 2026-08-12; the component shipped on 08-11.)
+
 ## 2026-08-10
 
 - feat(calendar-heatmap): new. A year of daily counts as a grid of shaded squares —
