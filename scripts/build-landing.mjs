@@ -53,6 +53,14 @@ const HEATMAP_TONE = [
   "var(--accent)",
 ]
 
+// The ratio-bar card's ramp: one hue at three strengths, as the component itself does with
+// tints of --primary.
+const RATIO_TONE = [
+  "var(--accent)",
+  "color-mix(in srgb,var(--accent) 62%,transparent)",
+  "color-mix(in srgb,var(--accent) 34%,transparent)",
+]
+
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
   "calendar-heatmap": `<div style="display:grid;grid-template-columns:repeat(11,6px);gap:2px">${[
@@ -75,6 +83,18 @@ const PREVIEWS = {
   "confirm-button": `<button class="pv-btn pv-danger">Delete</button>`,
   "ansi-log": `<div class="pv-log"><span><i>$</i>npm run build</span><span class="pv-log-g">✓ built in 1.2s</span><span class="pv-log-r">✗ 2 errors</span><span class="pv-log-d">exit code 1</span></div>`,
   "cron-expression": `<div class="pv-cron"><code>0 9 * * 1-5</code><b>At 09:00, Mon\u2013Fri</b><span>Thu 09:00 UTC</span><span>Fri 09:00 UTC</span></div>`,
+  "ratio-bar": `<div style="display:flex;flex-direction:column;gap:8px;width:96px"><span style="display:flex;gap:1px;height:6px;border-radius:99px;overflow:hidden;background:var(--line)">${[46, 30, 24]
+    .map((share, i) => `<span style="flex:${share} 1 0;background:${RATIO_TONE[i]}"></span>`)
+    .join("")}</span>${[
+    ["Images", "46%"],
+    ["Video", "30%"],
+    ["Other", "24%"],
+  ]
+    .map(
+      ([label, pct], i) =>
+        `<span style="display:flex;align-items:center;gap:5px;font-size:9px;line-height:1.2"><span style="width:6px;height:6px;border-radius:99px;background:${RATIO_TONE[i]}"></span><span style="color:var(--ink)">${label}</span><span style="margin-left:auto;color:var(--muted)">${pct}</span></span>`
+    )
+    .join("")}</div>`,
   "diff-view": `<div class="pv-diff"><span><i></i>retries: 3</span><span class="pv-dif-del"><i>-</i>timeout: 30</span><span class="pv-dif-ins"><i>+</i>timeout: 60</span><span><i></i>debug: off</span></div>`,
   "dashboard-overview": `<div class="pv-dash"><div class="pv-dbar"></div><div class="pv-drow"><span></span><span></span><span></span></div></div>`,
   "command-palette": `<div class="pv-input" style="gap:6px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span><span style="margin-left:auto;display:flex;gap:3px"><span class="pv-kbd">⌘</span><span class="pv-kbd">K</span></span></div>`,

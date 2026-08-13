@@ -3,6 +3,30 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-13
+
+- feat(ratio-bar): new. One horizontal bar showing how a whole divides up, with a
+  legend that names and quantifies every part — storage by file type, a plan quota,
+  spend by category, a language bar. The percentages are apportioned by largest
+  remainder rather than rounded one at a time, so three equal parts read 34/33/33 and
+  the column always totals exactly 100; a part too small to round to a whole percent
+  reads `<1%` and a part that is nearly but not quite everything reads `>99%`, rather
+  than the two lies those cases would otherwise tell. Slice widths are left to
+  flexbox (`flex-grow` on the exact share, with a two-pixel minimum), so a sliver
+  stays visible and the width it needs comes out of the largest slices, which is what
+  the flexbox min-width rules already guarantee. Pass `total` to switch from "parts
+  of a whole" to "used out of a capacity" and the gap is drawn and listed. Negative,
+  NaN and Infinity values count as zero instead of collapsing the layout. Nothing is
+  carried by colour alone and the bar itself is `aria-hidden`. No dependencies, no
+  hooks, no `"use client"`.
+- docs(confirm-button): description rewritten against the AEO rubric — what the armed
+  state does and how it disarms, the `type="button"` default that keeps a form from
+  submitting, the live-region announcement, and how it differs from official
+  `alert-dialog` (a portalled, focus-trapping modal that pulls in
+  `@radix-ui/react-alert-dialog`) and official `button` (a destructive variant with no
+  confirmation behaviour), checked against their published source rather than from
+  memory. Points at `type-to-confirm` for actions where a second click is not enough.
+
 ## 2026-08-12
 
 - feat(cron-expression): new. Renders a cron expression as an English sentence and,
