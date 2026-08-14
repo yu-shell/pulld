@@ -5,7 +5,7 @@
 // in particular, the duplicate-name guard that a silent name collision would otherwise slip past.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { verifyRegistry } from "../scripts/verify-registry.mjs"
+import { verifyRegistry, CATALOGUE_INDEX } from "../scripts/verify-registry.mjs"
 
 // A minimal item that passes every check (valid type, one existing file, title, long-enough desc).
 const okItem = (over = {}) => ({
@@ -106,10 +106,38 @@ test("a too-short description is a warning", () => {
 test("build output: a missing built file warns and the count is reported", () => {
   const r = verifyRegistry(
     { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
-    { fileExists: () => true, builtNames: ["copy-button", "registry"] }
+    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX] }
   )
   assert.ok(hasMsg(r, "build output public/r/toast.json is missing"))
-  assert.ok(hasMsg(r, "build output: 2 files"))
+  // One of the two items was built. The catalogue index is a build output too, but it is not an
+  // item, and counting it made the tally read as full coverage when half the registry was missing.
+  assert.ok(hasMsg(r, "build output: 1 of 2 items built"))
+})
+
+// The other direction, which nothing else in the pipeline looks at. `shadcn build` writes the
+// items it is given and removes nothing, and public/r is gitignored — so a component that is
+// renamed or dropped leaves its old JSON behind, `npm run deploy` uploads public/ wholesale, and
+// the URL keeps serving code the registry no longer lists. Confirmed by planting a file in
+// public/r and rebuilding: it survives.
+test("build output: a built file with no registry item is flagged as stale", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, builtNames: ["copy-button", "copy-btn"] }
+  )
+  assert.equal(r.alert, 0, "a stale artifact is recoverable with rm; it must not fail the gate")
+  assert.ok(hasMsg(r, "copy-btn: stale build output"))
+  assert.ok(hasMsg(r, "rm public/r/copy-btn.json"))
+  // The stale file is not an item, so it must not pad the tally either.
+  assert.ok(hasMsg(r, "build output: 1 of 1 items built"))
+})
+
+test("build output: the catalogue index is never stale", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX] }
+  )
+  assert.equal(r.warn, 0)
+  assert.ok(!hasMsg(r, "stale build output"))
 })
 
 test("no build output yields an INFO line, not a warning", () => {
