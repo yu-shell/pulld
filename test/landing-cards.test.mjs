@@ -57,6 +57,26 @@ test("each component card carries a clamped description and a way to open the re
   }
 })
 
+// Every component needs a thumbnail of its own, or the grid stops working as a catalogue.
+//
+// A name missing from PREVIEWS does not fail the build: `preview()` quietly substitutes a generic
+// box icon, so the page still looks finished and nothing in review points at the gap — it shows up
+// only as several cards sharing one anonymous thumbnail, noticed by whoever happens to scroll the
+// grid. Adding the preview is a written step in the daily routine, which is exactly the kind of
+// instruction that gets skipped on a busy day, so the machine checks it instead.
+test("every component card renders its own preview, not the fallback box", () => {
+  const cards = html.match(/<article class="card"[\s\S]*?<\/article>/g) ?? []
+  assert.equal(cards.length, registry.items.length)
+  const missing = cards
+    .filter((card) => /<div class="preview"><span class="pv-ph"/.test(card))
+    .map((card) => card.match(/id="c-([^"]+)"/)?.[1])
+  assert.deepEqual(
+    missing,
+    [],
+    "these components have no entry in PREVIEWS (scripts/build-landing.mjs) and fall back to the generic box"
+  )
+})
+
 test("the dialog the trigger opens is a labelled, modal dialog", () => {
   assert.match(html, /id="dd-overlay"/)
   assert.match(html, /class="pp-modal dd-modal" role="dialog" aria-modal="true" aria-labelledby="dd-title"/)

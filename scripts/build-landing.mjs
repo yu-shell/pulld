@@ -181,6 +181,16 @@ const PREVIEWS = {
       `<span style="height:4px;width:${w};border-radius:2px;background:var(--muted);opacity:${o}"></span>`
     return `<div style="display:flex;flex-direction:column;gap:5px;width:96px">${line("100%", ".5")}${line("92%", ".5")}${line("68%", ".5")}${line("84%", ".16")}<span style="margin-top:2px;font-size:9.5px;color:var(--accent);text-decoration:underline;text-underline-offset:2px">Show more</span></div>`
   })(),
+  // The bar across the top of an article, with the text below it going faint where the fill
+  // stops — on its own a part-filled bar is every other progress component, so the thumbnail
+  // has to show what the fill is measuring. 4px track + 8 + 5 lines of 4 + 4 gaps of 6 = 56px,
+  // inside the 84px the preview box leaves.
+  "scroll-progress": (() => {
+    const line = (w, o) =>
+      `<span style="height:4px;width:${w};border-radius:2px;background:var(--muted);opacity:${o}"></span>`
+    const track = `<span style="position:relative;display:block;width:100%;height:4px;border-radius:99px;overflow:hidden;background:var(--line)"><span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:99px;background:var(--accent)"></span></span>`
+    return `<div style="display:flex;flex-direction:column;width:96px">${track}<span style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${line("100%", ".5")}${line("88%", ".5")}${line("96%", ".5")}${line("72%", ".16")}${line("90%", ".16")}</span></div>`
+  })(),
   "middle-truncate": (() => {
     const mono = (text, color, weight = "400") =>
       `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`
