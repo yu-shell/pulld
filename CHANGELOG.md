@@ -3,6 +3,46 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-15
+
+- feat(duration-input): new. A text field that takes a length of time written the way
+  people write one — `90m`, `1h30m`, `2d 4h 15m`, `1:30`, `1.5h`, `500ms`,
+  `90 minutes` — reads it into milliseconds, and echoes the reading back in words
+  underneath it, for timeouts, TTLs, session lifetimes, retry and polling intervals,
+  SLA targets and estimates. It settles the two things hand-rolled duration parsers
+  get wrong: the whole run of letters is read before any lookup, so `500ms` can never
+  come out as 500 minutes; and two colon fields are read as `mm:ss` while three are
+  `hh:mm:ss`, with blur rewriting the entry to its canonical short form so `1:30`
+  visibly becomes `1m 30s`. Months and years are refused by name rather than given an
+  invented length, which also settles the `m`/`M` question — parsing is
+  case-insensitive and `M` is minutes. `minMs`/`maxMs` mark the field `aria-invalid`
+  with a polite live message naming the bound in words; a value that is unusable or
+  out of range is withheld from `onValueChange` and from the form, so nothing handed
+  to the caller or the server needs validating twice; text that does not parse stays
+  on screen instead of being deleted out from under the reader. Giving the field a
+  `name` posts the milliseconds through a hidden input. `parseDuration` and
+  `formatDuration` are exported for the rest of the app to share. No dependencies
+  beyond React.
+- docs(segmented-control): description rewritten against the AEO rubric. The old text
+  compared the component only to Tabs and Switch, which left out the two neighbours
+  official shadcn/ui ships alongside them: `toggle-group` and `button-group`. Checked
+  against their published source rather than from memory — `tabs` and `toggle-group`
+  each require a Radix package, and `button-group` is a layout wrapper with no
+  selection of its own, against one file with no dependencies and true
+  `radiogroup`/`radio` semantics here. Spells out the keyboard contract (arrows move
+  and select in one press and wrap, Home/End, disabled segments stepped over, roving
+  tabindex keeping the group a single tab stop) and the triggers an agent would match.
+
+## 2026-08-14
+
+- feat(scroll-progress): new. A bar that fills as the reader scrolls — the reading
+  indicator across the top of an article and the "how much is left?" cue on anything
+  long. Decorative by design: the scrollbar already tells assistive technology where
+  the reader is, so the element is `aria-hidden` rather than a `progressbar`
+  announcing a stream of numbers over whatever is being read. `useScrollProgress` is
+  exported so indicators this component does not draw share one number instead of a
+  second implementation that disagrees at the edges.
+
 ## 2026-08-13
 
 - feat(ratio-bar): new. One horizontal bar showing how a whole divides up, with a
