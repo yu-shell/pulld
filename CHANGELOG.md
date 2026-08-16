@@ -13,6 +13,10 @@ copies code into your project, so existing installs are never changed automatica
   `react-dom@18.3.1`, and confirmed absent from 19.2.7, which dropped the warning. So
   this is noise React 18 installs were eating and React 19 installs were not; the
   browser behaviour is identical either way.
+- fix(virtual-list): the same fix, across all four of its layout effects — the
+  ResizeObserver setup, the per-render re-observe, the scroll-anchor correction and
+  the `defaultScrollOffset` restore. This one was the loudest of the two, since it
+  warned four times per mounted list.
 
 ## 2026-08-15
 

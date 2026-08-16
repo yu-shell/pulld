@@ -15,6 +15,12 @@ export interface VirtualListHandle {
   getScrollOffset: () => number
 }
 
+// useLayoutEffect measures the rows and corrects the scroll offset before paint, which is the
+// whole reason the list doesn't visibly jump; it warns during SSR — fall back to useEffect on the
+// server, where there is nothing to measure and no scroll position to hold.
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? React.useEffect : React.useLayoutEffect
+
 /**
  * The top edge of every row, plus one last entry holding the total height: `offsets[i]` is where
  * row `i` starts and `offsets[count]` is how tall the whole list is. Everything else here is
@@ -276,7 +282,7 @@ export const VirtualList = React.forwardRef<VirtualListHandle, VirtualListProps>
     // One observer for the scroll box and every mounted row. Rows are watched rather than measured
     // once, so a row that grows later (an image finishing, a details row opening) is accounted for
     // instead of leaving a gap.
-    React.useLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       const scroller = scrollerRef.current
       if (!scroller) return
       setViewportHeight(scroller.clientHeight)
@@ -315,7 +321,7 @@ export const VirtualList = React.forwardRef<VirtualListHandle, VirtualListProps>
     // Runs after every render: watch the rows that just mounted, stop watching the ones that left.
     // Re-observing an element that is already watched would fire a fresh measurement each render,
     // so the set of watched rows is reconciled rather than rebuilt.
-    React.useLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       const observer = observerRef.current
       const scroller = scrollerRef.current
       if (!observer || !scroller) return
@@ -337,7 +343,7 @@ export const VirtualList = React.forwardRef<VirtualListHandle, VirtualListProps>
     // or rows were prepended — everything below shifts by that difference and the list appears to
     // jump under the pointer. Putting the anchor row back where it was, in a layout effect, means
     // the correction happens before the browser paints, so there is nothing to see.
-    React.useLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       const scroller = scrollerRef.current
       const anchor = anchorRef.current
       if (!scroller || !anchor) return
@@ -350,7 +356,7 @@ export const VirtualList = React.forwardRef<VirtualListHandle, VirtualListProps>
       setScrollTop(next)
     }, [offsets, indexByKey, count])
 
-    React.useLayoutEffect(() => {
+    useIsomorphicLayoutEffect(() => {
       if (!defaultScrollOffset) return
       // Only the estimate is known this early, so a restored offset is approximate until the rows
       // above it have been measured — at which point the anchor set here holds the view steady.
