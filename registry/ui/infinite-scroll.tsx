@@ -86,8 +86,13 @@ function shouldAutoLoad(s: AutoLoadState): boolean {
 /**
  * The footer of a paginated list: an invisible sentinel that loads the next page as it scrolls
  * into view, a button that always does the same job by hand, and a live region that says what
- * arrived. Render it directly after the rows — it draws no list of its own, so it works the same
- * under a `<ul>`, a table, or a grid.
+ * arrived. Render it directly after the rows — it draws no list of its own, so it sits happily at
+ * the end of a `<ul>` or a grid.
+ *
+ * A table is the one exception, and not because of anything here: this renders a `<div>`, and the
+ * HTML parser moves a `<div>` written inside `<tbody>` out of the table altogether, landing it
+ * *above* the table and taking the hydration pass with it. Put it after the `</table>`, or inside
+ * a `<td colSpan>` in a footer row.
  *
  * Three things a hand-rolled IntersectionObserver almost always gets wrong are handled here:
  * the page footer stays reachable (automatic loading yields to the button after `autoLoadLimit`

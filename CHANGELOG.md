@@ -17,6 +17,15 @@ copies code into your project, so existing installs are never changed automatica
   ResizeObserver setup, the per-render re-observe, the scroll-anchor correction and
   the `defaultScrollOffset` restore. This one was the loudest of the two, since it
   warned four times per mounted list.
+- docs(infinite-scroll): the description and the component's own doc comment both
+  claimed it "works the same under a `<ul>`, a table or a grid". Two of the three are
+  right. It renders a `<div>`, and the HTML parser foster-parents a `<div>` written
+  inside `<tbody>` out of the table entirely and inserts it *before* the table —
+  verified with parse5 against the spec's parsing algorithm — so a server-rendered
+  page would show the Load more footer above the table and mismatch on hydration.
+  `<ul>` is unaffected: invalid per spec, but nothing gets reparented. Both texts now
+  say to put it after the closing table tag, or inside a `<td colSpan>` footer row.
+  No code change — the component was never the part that was wrong.
 
 ## 2026-08-15
 
