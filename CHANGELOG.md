@@ -3,6 +3,17 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-16
+
+- fix(sortable-list): the layout effect that puts focus back on the drag handle now
+  falls back to `useEffect` on the server, the idiom five other components in the
+  catalogue already use. A `"use client"` component is still server-rendered in the
+  Next.js App Router, and `useLayoutEffect` running there logs "useLayoutEffect does
+  nothing on the server" for every list on the page — confirmed against
+  `react-dom@18.3.1`, and confirmed absent from 19.2.7, which dropped the warning. So
+  this is noise React 18 installs were eating and React 19 installs were not; the
+  browser behaviour is identical either way.
+
 ## 2026-08-15
 
 - feat(duration-input): new. A text field that takes a length of time written the way

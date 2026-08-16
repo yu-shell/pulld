@@ -82,6 +82,11 @@ interface DragState {
   shift: number
 }
 
+// useLayoutEffect puts focus back on the handle before paint, so a keyboard move never lands on
+// <body> for a frame; it warns during SSR — fall back to useEffect on the server.
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? React.useEffect : React.useLayoutEffect
+
 function move<T>(list: T[], from: number, to: number): T[] {
   const next = list.slice()
   const [item] = next.splice(from, 1)
@@ -141,7 +146,7 @@ export function SortableList<T extends SortableListItem>({
   // node to get there. Pull focus back onto the handle afterwards so keystrokes keep landing
   // on the row the user is carrying — and so the row stays reachable after the final drop —
   // whatever the browser decides to do with focus while the node is moving.
-  React.useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const id = grabbedId ?? refocusId.current
     refocusId.current = null
     if (id) handleRefs.current.get(id)?.focus()
