@@ -4,7 +4,8 @@
 //  - has a unique name and no repeated file paths within an item
 //  - references source files that actually exist
 //  - has a title/description of sufficient length for discoverability
-// and, if a build output exists in public/r, that it corresponds to the items.
+// and, if a build output exists in public/r, that it corresponds to the items. The source tree is
+// checked in the same both-ways spirit: a .tsx under registry/ that no item claims is flagged too.
 //
 // The validation is exposed as a pure function (verifyRegistry) so it can be unit-tested without
 // touching the filesystem; the CLI below wires it to the real registry.json and public/r.
@@ -31,9 +32,14 @@ export const VALID_TYPES = new Set([
 ])
 
 // Pure validator. Returns { messages: [{level, msg}], alert, warn } and never touches the disk or
-// process state — callers inject `fileExists(path)` (relative to the repo root) and, when a build
-// exists, `builtNames` (the list of names under public/r, or null when no build output is present).
-export function verifyRegistry(reg, { fileExists = () => true, builtNames = null } = {}) {
+// process state — callers inject `fileExists(path)` (relative to the repo root), `sourceFiles` (the
+// component sources actually present under registry/, or null when they were not enumerated) and,
+// when a build exists, `builtNames` (the list of names under public/r, or null when no build output
+// is present).
+export function verifyRegistry(
+  reg,
+  { fileExists = () => true, builtNames = null, sourceFiles = null } = {}
+) {
   const messages = []
   let warn = 0
   let alert = 0
@@ -95,6 +101,27 @@ export function verifyRegistry(reg, { fileExists = () => true, builtNames = null
     }
   }
 
+  // The source tree, checked the way public/r is: both directions, not just the one the build
+  // happens to notice. `files[].path → does it exist` is already covered above; this is the
+  // reverse, and nothing else in the pipeline looks at it. A component written into registry/ but
+  // never added to registry.json is not built, not served, not on the landing page, not in
+  // llms.txt and not installable — it is finished work that ships to nobody, and every signal the
+  // project has stays green while it sits there. Found in the wild: registry/ui/color-picker.tsx,
+  // 636 lines, complete, uncommitted and unreferenced, invisible to `npm run check`.
+  if (sourceFiles) {
+    const claimed = new Set()
+    for (const item of reg?.items ?? []) {
+      for (const f of item.files ?? []) if (f.path) claimed.add(f.path)
+    }
+    for (const path of sourceFiles) {
+      if (claimed.has(path)) continue
+      warning(
+        `${path}: orphan source — no item in registry.json references it, so it is never built ` +
+          `and cannot be installed → add an item for it or delete the file`
+      )
+    }
+  }
+
   // If a build output exists (public/r), check it corresponds to the items (otherwise INFO).
   // "Corresponds" runs both ways. The missing direction is the obvious one; the extra direction
   // matters more, because nothing else in the pipeline looks at it: `shadcn build` writes the
@@ -151,9 +178,22 @@ function main() {
         .map((f) => f.replace(/\.json$/, ""))
     : null
 
+  // Every component source under registry/, as repo-relative paths — the same shape as the
+  // `files[].path` the items carry, so the two sets compare directly.
+  const walk = (dir, prefix) => {
+    if (!existsSync(dir)) return []
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = `${prefix}/${entry.name}`
+      if (entry.isDirectory()) return walk(join(dir, entry.name), path)
+      return entry.name.endsWith(".tsx") ? [path] : []
+    })
+  }
+  const sourceFiles = existsSync(join(ROOT, "registry")) ? walk(join(ROOT, "registry"), "registry") : null
+
   const { messages, alert } = verifyRegistry(reg, {
     fileExists: (p) => existsSync(join(ROOT, p)),
     builtNames,
+    sourceFiles,
   })
   for (const m of messages) console.log(`${m.level}\t${m.msg}`)
   process.exit(alert ? 1 : 0)

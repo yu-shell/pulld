@@ -145,3 +145,40 @@ test("no build output yields an INFO line, not a warning", () => {
   assert.equal(r.warn, 0)
   assert.ok(hasMsg(r, "public/r not generated"))
 })
+
+// The same both-ways idea one step upstream, on the source tree. `files[].path → does it exist`
+// is covered above; this is the reverse, and it is the direction nothing else in the pipeline
+// looks at. A component written into registry/ but never added to registry.json is not built, not
+// served, not on the landing page or in llms.txt, and not installable — while every check the
+// project runs stays green. Found in the wild: registry/ui/color-picker.tsx, 636 lines, complete,
+// uncommitted and unreferenced by anything.
+test("source tree: a .tsx with no registry item is flagged as orphaned", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    {
+      fileExists: () => true,
+      sourceFiles: ["registry/ui/copy-button.tsx", "registry/ui/color-picker.tsx"],
+    }
+  )
+  assert.equal(r.alert, 0, "an unshipped source is recoverable; it must not fail the deploy gate")
+  assert.ok(hasMsg(r, "registry/ui/color-picker.tsx: orphan source"))
+  // The claimed one must not be swept up with it.
+  assert.ok(!hasMsg(r, "registry/ui/copy-button.tsx: orphan source"))
+})
+
+test("source tree: a file claimed by any item is not orphaned, whichever item claims it", () => {
+  const r = verifyRegistry(
+    {
+      name: "pulld",
+      items: [okItem(), okItem({ name: "toast", files: [{ path: "registry/ui/toast.tsx", type: "registry:ui" }] })],
+    },
+    { fileExists: () => true, sourceFiles: ["registry/ui/copy-button.tsx", "registry/ui/toast.tsx"] }
+  )
+  assert.equal(r.warn, 0)
+})
+
+test("source tree: not enumerated means no opinion, not a clean bill of health", () => {
+  const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true, sourceFiles: null })
+  assert.equal(r.warn, 0)
+  assert.ok(!hasMsg(r, "orphan source"))
+})

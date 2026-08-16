@@ -26,6 +26,14 @@ copies code into your project, so existing installs are never changed automatica
   `<ul>` is unaffected: invalid per spec, but nothing gets reparented. Both texts now
   say to put it after the closing table tag, or inside a `<td colSpan>` footer row.
   No code change — the component was never the part that was wrong.
+- feat(verify): `npm run verify` now flags a `.tsx` under `registry/` that no item in
+  `registry.json` claims. The reverse direction — item points at a file that is not
+  there — was already checked; this one was not, and nothing else in the pipeline
+  looks at it, so a finished component can sit in the tree unbuilt, unserved, absent
+  from the landing page and llms.txt, and uninstallable, with every check green.
+  Which is exactly what was found this week: `registry/ui/color-picker.tsx`, 636
+  lines, complete, unreferenced. A WARN rather than an ALERT — it is recoverable and
+  must not block a deploy.
 
 ## 2026-08-15
 
