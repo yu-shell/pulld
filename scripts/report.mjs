@@ -67,7 +67,8 @@ function d1(sql) {
 function reportFetches() {
   const rows = d1(
     "SELECT item, ua, COUNT(*) AS n " +
-      `FROM fetches WHERE date >= date('now','-${DAYS} day') AND item != 'registry' ` +
+      `FROM fetches WHERE date >= date('now','-${DAYS} day') ` +
+      "AND item NOT IN ('registry','index') " +
       "GROUP BY item, ua"
   )
   if (!rows.length) {

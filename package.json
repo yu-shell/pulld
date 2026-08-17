@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Production-ready, accessible, theme-aware UI components for shadcn/ui — installable with the shadcn CLI or your AI coding agent.",
   "scripts": {
-    "registry:build": "npx --yes shadcn@latest build && node scripts/inject-base.mjs && node scripts/build-landing.mjs && node scripts/build-llms.mjs",
+    "registry:build": "npx --yes shadcn@latest build && node scripts/inject-base.mjs && node scripts/build-index.mjs && node scripts/build-landing.mjs && node scripts/build-llms.mjs",
     "serve": "npx serve public",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify-registry.mjs",

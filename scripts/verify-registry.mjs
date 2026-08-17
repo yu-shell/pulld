@@ -14,10 +14,14 @@ import { readFileSync, existsSync, readdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-// The one build output in public/r that is not a component: `shadcn build` writes the catalogue
-// index under this name alongside the per-item files (inject-base.mjs skips it for the same
-// reason). It has no registry item and never will.
+// The build outputs in public/r that are not components. `shadcn build` writes the catalogue
+// index under CATALOGUE_INDEX alongside the per-item files (inject-base.mjs skips it for the same
+// reason), and scripts/build-index.mjs writes the same catalogue again under OFFICIAL_INDEX —
+// the path clients built against ui.shadcn.com probe. Neither has a registry item, and neither
+// ever will; everything else in that directory without one is a stale artifact still being served.
 export const CATALOGUE_INDEX = "registry"
+export const OFFICIAL_INDEX = "index"
+export const NON_COMPONENT_OUTPUTS = new Set([CATALOGUE_INDEX, OFFICIAL_INDEX])
 
 export const VALID_TYPES = new Set([
   "registry:ui",
@@ -140,7 +144,7 @@ export function verifyRegistry(
         warning(`${name}: build output public/r/${name}.json is missing → npx shadcn build`)
     }
     for (const name of built) {
-      if (name === CATALOGUE_INDEX || itemNames.has(name)) continue
+      if (NON_COMPONENT_OUTPUTS.has(name) || itemNames.has(name)) continue
       warning(
         `${name}: stale build output — public/r/${name}.json has no item in registry.json and ` +
           `would still be deployed and served → rm public/r/${name}.json (shadcn build leaves it)`

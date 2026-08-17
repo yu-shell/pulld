@@ -16,10 +16,17 @@
 import { isInstall } from "../functions/_traffic.js"
 import { creditSessions } from "./_bursts.mjs"
 
+// The two catalogue names. `registry` is what `shadcn build` calls its index; `index` is the same
+// catalogue served again at official shadcn's path so clients probing there can see this registry
+// (scripts/build-index.mjs). Publishing the second one on 2026-08-17 turned what had been a 404 —
+// recorded in `misses` and harmless — into a 200 served under the item name `index`, which would
+// otherwise have walked straight into the reward as if it were a component somebody installed.
+const CATALOGUE_ITEMS = new Set(["registry", "index"])
+
 // True when a `fetches.item` value is a free component whose fetches count as install reward.
 export const isRewardItem = (item) => {
   const s = String(item ?? "")
-  return s !== "" && s !== "registry" && !s.startsWith("pro/")
+  return s !== "" && !CATALOGUE_ITEMS.has(s) && !s.startsWith("pro/")
 }
 
 // rows: the `SELECT item, ts, ua, country FROM fetches ...` shape both callers use — one row per

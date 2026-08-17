@@ -42,6 +42,9 @@ const burst = (items, ua = UA.cli, country = "US") =>
 test("isRewardItem: free components count; catalogue index and Pro rows do not", () => {
   assert.equal(isRewardItem("copy-button"), true)
   assert.equal(isRewardItem("registry"), false)
+  // The same catalogue served at official shadcn's path. It returns 200 since 2026-08-17, so
+  // unlike the 404 it replaced it lands in `fetches` and would otherwise read as an install.
+  assert.equal(isRewardItem("index"), false)
   assert.equal(isRewardItem("pro/dashboard-overview"), false)
   // A denied Pro fetch — the row that made a failed purchase look like an install.
   assert.equal(isRewardItem("pro/dashboard-overview:402"), false)
@@ -51,14 +54,16 @@ test("isRewardItem: free components count; catalogue index and Pro rows do not",
   assert.equal(isRewardItem(undefined), false)
 })
 
-test("Pro and catalogue rows are excluded entirely, not just zeroed", () => {
+test("Pro rows and both catalogue names are excluded entirely, not just zeroed", () => {
   const out = installsByItem([
     row("copy-button", UA.cli),
     row("pro/dashboard-overview", UA.cli),
     row("pro/dashboard-overview:402", UA.cli),
     row("registry", UA.cli),
+    row("index", UA.cli),
   ])
   assert.deepEqual(out, { "copy-button": 1 })
+  assert.equal("index" in out, false)
   // Absent, so learn.mjs's total install signal is not inflated by them.
   assert.equal("pro/dashboard-overview" in out, false)
   assert.equal("registry" in out, false)

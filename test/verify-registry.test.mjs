@@ -5,7 +5,7 @@
 // in particular, the duplicate-name guard that a silent name collision would otherwise slip past.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { verifyRegistry, CATALOGUE_INDEX } from "../scripts/verify-registry.mjs"
+import { verifyRegistry, CATALOGUE_INDEX, OFFICIAL_INDEX } from "../scripts/verify-registry.mjs"
 
 // A minimal item that passes every check (valid type, one existing file, title, long-enough desc).
 const okItem = (over = {}) => ({
@@ -181,4 +181,29 @@ test("source tree: not enumerated means no opinion, not a clean bill of health",
   const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true, sourceFiles: null })
   assert.equal(r.warn, 0)
   assert.ok(!hasMsg(r, "orphan source"))
+})
+
+// build-index.mjs writes the catalogue a second time, under the name official shadcn uses, so
+// clients that probe /r/index.json can see this registry at all. Like the catalogue index it has
+// no item and never will.
+test("build output: the official-shaped index is never stale", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX, OFFICIAL_INDEX] }
+  )
+  assert.equal(r.warn, 0)
+  assert.ok(!hasMsg(r, "stale build output"))
+  // Exempting it must not pad the coverage tally either.
+  assert.ok(hasMsg(r, "build output: 1 of 1 items built"))
+})
+
+test("build output: exempting the two indexes does not exempt everything else", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    {
+      fileExists: () => true,
+      builtNames: ["copy-button", CATALOGUE_INDEX, OFFICIAL_INDEX, "renamed-away"],
+    }
+  )
+  assert.ok(hasMsg(r, "renamed-away: stale build output"))
 })
