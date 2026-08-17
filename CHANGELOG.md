@@ -5,6 +5,17 @@ copies code into your project, so existing installs are never changed automatica
 
 ## 2026-08-17
 
+- docs(toast): the description claimed official shadcn/ui "no longer ships a toast of
+  its own". It does — `@radix-ui/react-toast`, with a ToastProvider, a ToastViewport
+  and a useToast hook to thread — alongside the sonner wrapper. Corrected, and the
+  contrast restated against both of them rather than against sonner alone.
+- docs(spinner): the description argued against a bare `Loader2` with `animate-spin`,
+  which is no longer the alternative a reader is choosing between: official now ships
+  a spinner, and it is announced. The real difference is that its label is the
+  hard-coded string `aria-label="Loading"` on the icon, while this one puts a real
+  sr-only text node in a wrapping live region and takes the wording as a prop, so it
+  can say what is loading and a translation pipeline can find the string.
+
 - feat(color-picker): new component. A hex/rgb/hsl text box with native hue,
   saturation and lightness sliders, optional alpha and preset swatches. HSL is the
   state of record and the hex is derived, so a colour dragged down to black still
