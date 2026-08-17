@@ -95,6 +95,28 @@ export function groupSessions(events, options = {}) {
 // begin with a space cannot be mistaken for a different country/UA split.
 const key = (event) => `${event.country ?? ""}\u0000${event.ua ?? ""}`
 
+/**
+ * Per-component reward credit: one point per distinct component in a session that was somebody
+ * choosing, and nothing at all for a sweep.
+ *
+ * A sweep is dropped rather than divided into fractions for the same reason `_traffic.js` drops
+ * the `index` class outright — a client taking the whole catalogue says nothing about which
+ * component was worth taking, so there is no share of it any one component has earned.
+ */
+export function creditSessions(events, options = {}) {
+  const { sessions } = groupSessions(events, options)
+  const byItem = {}
+  let total = 0
+  for (const session of sessions) {
+    if (session.sweep) continue
+    for (const item of session.items) {
+      byItem[item] = (byItem[item] || 0) + 1
+      total += 1
+    }
+  }
+  return { byItem, total }
+}
+
 /** `2026-08-15` from an epoch-ms timestamp, in UTC — the same day boundary the log stores. */
 export const utcDay = (ts) => new Date(Number(ts)).toISOString().slice(0, 10)
 

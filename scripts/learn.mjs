@@ -31,7 +31,7 @@ import { installsByItem } from "./_installs.mjs"
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const STATE_PATH = join(ROOT, "data", "learn-state.json")
 const WINDOW = clampInt(process.env.LEARN_WINDOW, 14, 1, 365) // rate window, days
-const MIN_SIGNAL = clampInt(process.env.LEARN_MIN_SIGNAL, 20, 1, 1e9) // clean installs in window to trust reward
+const MIN_SIGNAL = clampInt(process.env.LEARN_MIN_SIGNAL, 20, 1, 1e9) // clean install *choices* in window to trust reward
 const EVAL_AFTER = clampInt(process.env.LEARN_EVAL_AFTER, WINDOW, 1, 365) // days before judging a tuning
 export const REGRESSION_DROP = 0.3 // >=30% rate drop vs baseline = regression
 export const LIFT_GAIN = 0.15 // >=15% rate gain = lift
@@ -58,9 +58,8 @@ function d1(sql) {
 // is scoped by installsByItem (see scripts/_installs.mjs) — the same rule sweep.mjs uses.
 function ratesByItem() {
   const rows = d1(
-    "SELECT item, ua, COUNT(*) AS n " +
-      `FROM fetches WHERE date >= date('now','-${WINDOW} day') ` +
-      "GROUP BY item, ua"
+    "SELECT item, ts, ua, country " +
+      `FROM fetches WHERE date >= date('now','-${WINDOW} day')`
   )
   const out = installsByItem(rows)
   for (const k of Object.keys(out)) out[k] /= WINDOW
@@ -157,7 +156,7 @@ function evaluate() {
   const lowSignal = totalWindow < MIN_SIGNAL
 
   console.log(
-    `learn: window=${WINDOW}d, total clean installs≈${Math.round(totalWindow)} ` +
+    `learn: window=${WINDOW}d, install choices≈${Math.round(totalWindow)} ` +
       `(${lowSignal ? `< ${MIN_SIGNAL} → LOW-SIGNAL` : "reward usable"})`
   )
 

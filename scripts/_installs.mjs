@@ -14,6 +14,7 @@
 // can't drift between the loop that picks what to work on and the loop that judges whether a
 // metadata change paid off.
 import { isInstall } from "../functions/_traffic.js"
+import { creditSessions } from "./_bursts.mjs"
 
 // True when a `fetches.item` value is a free component whose fetches count as install reward.
 export const isRewardItem = (item) => {
@@ -21,17 +22,25 @@ export const isRewardItem = (item) => {
   return s !== "" && s !== "registry" && !s.startsWith("pro/")
 }
 
-// rows: the `SELECT item, ua, COUNT(*) AS n ... GROUP BY item, ua` shape both callers use.
-// Returns { [item]: cleanInstalls } over reward items only, crawlers and catalogue mirrors
-// excluded by _traffic.js's isInstall. An item that was fetched only by excluded clients stays in
-// the map with 0, so callers can tell "seen, but no real installs" from "never fetched".
+// rows: the `SELECT item, ts, ua, country FROM fetches ...` shape both callers use — one row per
+// fetch, NOT a GROUP BY count, because the count is exactly what cannot be trusted.
+//
+// Returns { [item]: choices } over reward items only, with crawlers and catalogue mirrors excluded
+// by _traffic.js's isInstall and *bursts* excluded by _bursts.js's creditSessions. Counting rows
+// read 21 fetches from one client in 0.222s as 21 installs, which is how a single mirror in VN
+// moved the 30-day column from 10 to 31 and carried this loop's reward gate over MIN_SIGNAL on
+// nothing. An item fetched only by excluded clients — or only inside a sweep — stays in the map
+// with 0, so callers can still tell "seen, but nobody chose it" from "never fetched".
 export function installsByItem(rows) {
   const out = {}
+  const events = []
   for (const r of rows ?? []) {
     const item = String(r?.item ?? "")
     if (!isRewardItem(item)) continue
     out[item] = out[item] || 0
-    if (isInstall(r?.ua)) out[item] += Number(r?.n) || 0
+    if (isInstall(r?.ua)) events.push({ item, ts: r?.ts, ua: r?.ua, country: r?.country })
   }
+  const { byItem } = creditSessions(events)
+  for (const item of Object.keys(byItem)) out[item] = byItem[item]
   return out
 }

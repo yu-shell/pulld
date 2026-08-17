@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { groupSessions, utcDay, formatSpan } from "../scripts/_bursts.mjs"
+import { groupSessions, creditSessions, utcDay, formatSpan } from "../scripts/_bursts.mjs"
 
 // The shapes below are the real ones out of D1, kept as fixtures because each of them was, at
 // some point, read as adoption. Dates are the days they actually happened.
@@ -142,4 +142,26 @@ test("spans are readable at both ends of the range", () => {
   assert.equal(formatSpan(222), "222ms")
   assert.equal(formatSpan(1787), "1.79s")
   assert.equal(formatSpan(154_000), "154s")
+})
+
+test("credit goes per distinct component, and only to sessions that chose", () => {
+  const { byItem, total } = creditSessions([...VN_SWEEP, ...US_SPREAD, ...PK_RETRY])
+  // The sweep earns nothing for any of the 21 it touched.
+  assert.equal(byItem["component-0"], undefined)
+  assert.deepEqual(
+    { "picked-0": byItem["picked-0"], "picked-1": byItem["picked-1"], "picked-2": byItem["picked-2"] },
+    { "picked-0": 1, "picked-1": 1, "picked-2": 1 }
+  )
+  assert.equal(byItem["copy-button"], 1, "a retry is one choice, not three")
+  assert.equal(total, 4)
+})
+
+test("the credit total is exactly the sum of the per-item credits", () => {
+  // These are printed side by side — report.mjs shows the total, learn.mjs divides the per-item
+  // counts — so a total that drifts from its own parts would be two numbers disagreeing in public.
+  for (const events of [VN_SWEEP, US_SPREAD, PK_RETRY, [...VN_SWEEP, ...US_SPREAD], []]) {
+    const { byItem, total } = creditSessions(events)
+    const summed = Object.values(byItem).reduce((a, b) => a + b, 0)
+    assert.equal(total, summed)
+  }
 })

@@ -98,7 +98,7 @@ function installCounts() {
         "--remote",
         "--json",
         "--command",
-        "SELECT item, ua, COUNT(*) AS n FROM fetches GROUP BY item, ua",
+        "SELECT item, ts, ua, country FROM fetches",
       ],
       { encoding: "utf8", timeout: 30000 }
     )

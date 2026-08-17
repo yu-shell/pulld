@@ -10,7 +10,8 @@
 // Best-effort (does not fail if D1 is unreachable). Usage: `node scripts/report.mjs [days]`
 import { execFileSync } from "node:child_process"
 import { classify, isInstall } from "../functions/_traffic.js"
-import { groupSessions, utcDay, formatSpan } from "./_bursts.mjs"
+import { groupSessions, creditSessions, utcDay, formatSpan } from "./_bursts.mjs"
+import { isRewardItem } from "./_installs.mjs"
 
 const rawDays = Number(process.argv[2] || 30)
 const DAYS = Number.isFinite(rawDays) && rawDays > 0 ? Math.floor(rawDays) : 30
@@ -126,16 +127,18 @@ function reportFetches() {
 function reportSessions() {
   const rows = d1(
     "SELECT item, ts, ua, country " +
-      `FROM fetches WHERE date >= date('now','-${DAYS} day') ` +
-      "AND item NOT IN ('registry','index')"
-  ).filter((r) => isInstall(r.ua))
+      `FROM fetches WHERE date >= date('now','-${DAYS} day')`
+  ).filter((r) => isRewardItem(r.item) && isInstall(r.ua))
 
   if (!rows.length) return
 
   const { sweeps, rawCount, collapsedCount } = groupSessions(rows)
+  // The same call learn.mjs's reward is built from, so the two never disagree about how much
+  // signal exists on a given morning.
+  const { total: rewardTotal } = creditSessions(rows)
   console.log(`\nreward hygiene — how many decisions the install+human columns hold (last ${DAYS} days)`)
   if (!sweeps.length) {
-    console.log(`  no bursts: ${rawCount} fetches look like ${collapsedCount} separate choices`)
+    console.log(`  no bursts: ${rawCount} fetches look like ${collapsedCount} separate choices (${rewardTotal} rewardable)`)
     return
   }
   for (const s of sweeps) {
@@ -147,8 +150,8 @@ function reportSessions() {
   }
   console.log(
     `  ^ each line is one client walking the catalogue, not that many people choosing.\n` +
-      `  counted as sessions: ${rawCount} fetches -> ${collapsedCount} choices` +
-      ` (${rawCount - collapsedCount} rows are repeats or sweeps)`
+      `  counted as sessions: ${rawCount} fetches -> ${collapsedCount} client actions,` +
+      ` of which ${rewardTotal} are per-component choices learn.mjs can reward`
   )
 }
 
