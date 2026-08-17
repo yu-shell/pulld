@@ -3,11 +3,18 @@
 // `USAGE-ALERT:` lines when a project nears its quota or total usage looks anomalous, so the
 // daily routine can surface it in its notification. Best-effort: never throws / never blocks.
 //
+// Both counters are per-month flows, and the doc one is the easy misread: `search_usage.docs` is
+// the number of documents *sent to ingest* this month, re-indexes included — not the number a
+// project has stored. "at 84% of doc quota (4200/5000)" therefore does not mean the customer is
+// nearly out of room; it usually means they re-index a whole catalogue on every deploy. Written as
+// "indexed" it read the other way, which is the wrong conversation to open with them.
+//
 // Thresholds (override via env):
 //   QUOTA_PCT       per-project query/doc usage % that triggers an alert (default 80)
 //   GLOBAL_QUERIES  total queries/month across all projects that triggers an anomaly alert
 //                   (default 500000 — far above one project's 50k plan = likely abuse/runaway)
-//   GLOBAL_DOCS     total indexed docs/month anomaly threshold (default 50000)
+//   GLOBAL_DOCS     total documents sent/month across all projects, anomaly threshold
+//                   (default 50000)
 import { execFileSync } from "node:child_process"
 
 const QUOTA_PCT = clampNum(process.env.QUOTA_PCT, 80, 1, 100)
@@ -56,7 +63,7 @@ try {
       alerts.push(`USAGE-ALERT: ${who} at ${qPct}% of query quota (${q}/${r.q_limit} this month)`)
     }
     if (dPct >= QUOTA_PCT) {
-      alerts.push(`USAGE-ALERT: ${who} at ${dPct}% of doc quota (${d}/${r.doc_limit} indexed)`)
+      alerts.push(`USAGE-ALERT: ${who} at ${dPct}% of doc quota (${d}/${r.doc_limit} sent this month)`)
     }
   }
 
@@ -66,11 +73,12 @@ try {
     )
   }
   if (totalD >= GLOBAL_DOCS) {
-    alerts.push(`USAGE-ALERT: total indexed docs this month = ${totalD} (>= ${GLOBAL_DOCS})`)
+    alerts.push(`USAGE-ALERT: total documents sent this month = ${totalD} (>= ${GLOBAL_DOCS})`)
   }
 
   console.log(
-    `pulld Search usage (${month}): ${rows.length} active project(s), ${totalQ} queries, ${totalD} docs`
+    `pulld Search usage (${month}): ${rows.length} active project(s), ${totalQ} queries, ` +
+      `${totalD} documents sent`
   )
   if (alerts.length) {
     for (const a of alerts) console.log(a)

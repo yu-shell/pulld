@@ -104,9 +104,12 @@
 
     function render(j){
       var lim = j.limits || {};
+      // Both limits are monthly counters, so both carry the "/mo". The doc quota charges each
+      // document sent, re-indexes included, rather than capping how many a project may hold —
+      // printed as a bare "docs" beside "queries/mo", the omission said the opposite.
       $("meta").textContent = j.project + "  ·  " + (j.plan || "?") + " plan  ·  "
         + (lim.queries_per_month != null ? lim.queries_per_month : "?") + " queries/mo  ·  "
-        + (lim.docs != null ? lim.docs : "?") + " docs";
+        + (lim.docs != null ? lim.docs : "?") + " docs/mo";
       $("qk").textContent = j.query_key || "";
       $("ak").textContent = j.admin_key || "";
       $("ingest").textContent =

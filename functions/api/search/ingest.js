@@ -95,7 +95,7 @@ export async function onRequestPost(context) {
 
   // Enforce the plan's monthly document quota, mirroring the query quota in query.js. It was
   // already defined (search_projects.doc_limit), metered (the `docs` bump below) and reported on
-  // (usage-alert.mjs alerts at 80% of it; public/search-integration.md sells "5,000 indexed docs")
+  // (usage-alert.mjs alerts at 80% of it; public/search-integration.md sells the Pro plan's 5,000)
   // — but nothing refused a request over it, so indexing was effectively unlimited and the alert
   // had no backstop. Checked after parsing and before embed/upsert, because those are the Workers
   // AI and Vectorize costs the quota exists to bound; a query is one cheap unit, so query.js can
@@ -103,6 +103,14 @@ export async function onRequestPost(context) {
   // count, matching what the meter charges. An absent limit falls back to the schema default the
   // same way q_limit does; a non-numeric one fails open, since blocking a paying customer over a
   // bad column value is the worse failure.
+  //
+  // What the meter charges is a *flow*, not a stock: nothing tracks which ids a project already
+  // holds, so re-indexing a document costs another unit (test/ingest-count.test.mjs pins this).
+  // The message has to say so. Called "indexed this month" it reads as a count of stored
+  // documents, and the obvious remedy — send fewer per request — does nothing, because the quota
+  // is monthly and splitting a batch changes no total. The customer following the guide's
+  // build-time recipe hits this by re-sending an unchanged catalogue on every deploy, and the only
+  // fix that works is to send less often or only what changed.
   const docLimit = Number(project.doc_limit ?? 200)
   if (Number.isFinite(docLimit)) {
     const already = await usageThisMonth(env, project.id, "docs")
@@ -110,7 +118,10 @@ export async function onRequestPost(context) {
       return j(
         {
           error: "quota_exceeded",
-          message: `Monthly document limit reached (${already}/${docLimit} indexed this month).`,
+          message:
+            `Monthly document limit reached (${already}/${docLimit} sent this month). Every ` +
+            `document sent counts, including re-indexing an id you already have — send only what ` +
+            `changed, or wait for next month. Splitting this batch will not help.`,
           docs_this_month: already,
           doc_limit: docLimit,
         },

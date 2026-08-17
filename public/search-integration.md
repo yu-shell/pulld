@@ -58,9 +58,15 @@ Rules:
   `skipped_docs`. `indexed_docs` counts only documents actually indexed (distinct `id`s), and only
   those count toward your monthly doc usage — so check `skipped_docs` after a run: a non-zero value
   usually means a field-mapping bug on your side, not an empty result set on ours.
+- **The doc quota counts documents you send each month, not documents you have stored.** Every
+  document that gets indexed is charged, including re-sending an `id` you already indexed — so a
+  full re-index of 300 documents costs 300 against the month whether it is the first one this month
+  or the twentieth. (Sending the same `id` twice *within one request* is still one document: it is
+  one overwrite. Skipped documents are never charged.) Nothing is credited back when you delete.
 - A request that would take you past your monthly doc quota is rejected whole, with
   `429 { "error": "quota_exceeded", "docs_this_month", "doc_limit" }`, and nothing in it is indexed
-  or charged. Send fewer documents per run, or wait for the next month.
+  or charged. Splitting the same content over more requests does not help — the quota is monthly,
+  not per request. Send only what changed (see step 4), or wait for the next month.
 
 Example:
 
@@ -88,10 +94,15 @@ Up to 100 ids per request. Deleting an id that doesn't exist is a harmless no-op
 
 ## 4. Keep the index in sync
 
-pulld does **not** crawl your site — you push content. Pick whichever fits your stack:
+pulld does **not** crawl your site — you push content. Pick whichever fits your stack, with one
+number in view: each document you send costs one against the month's doc quota **every time you
+send it** (see step 3). How often you re-send the whole catalogue is therefore the main thing that
+decides whether your quota fits, not how much content you have.
 
 **A. Build-time (simplest).** Add a script to your build/deploy that reads your content and POSTs it.
-It re-runs on every deploy, so the index tracks your latest content.
+It re-runs on every deploy, so the index tracks your latest content — and re-charges the whole
+catalogue each time: budget `documents × deploys per month`. Good for a small catalogue or an
+occasional deploy; if that product exceeds your quota, use B.
 
 ```ts
 // scripts/index-content.ts — run in CI/build. PULLD_ADMIN_KEY is a server-side secret.
@@ -108,16 +119,20 @@ for (let i = 0; i < docs.length; i += 100) {
 }
 ```
 
-**B. On-change (freshest).** In your CMS's publish/update webhook, POST just the changed document(s)
-with the same `id` to overwrite.
+**B. On-change (freshest, and the cheapest against the quota).** In your CMS's publish/update
+webhook, POST just the changed document(s) with the same `id` to overwrite. Only what actually
+changed is charged, so the monthly cost tracks how much you edit rather than how much you have.
 
-**C. Manual.** Run the build-time script by hand whenever content changes.
+**C. Manual.** Run the build-time script by hand whenever content changes. Same cost as A, once per
+run.
 
 Keep `admin_key` as a server-side secret (e.g. `PULLD_ADMIN_KEY`) — never in client code or git.
 
 ## Notes & limits
 
-- Pro plan: 50,000 queries/month, 5,000 indexed docs.
+- Pro plan: 50,000 queries/month, 5,000 documents indexed per month. Both are monthly counters and
+  both reset at the start of each UTC month — the doc one charges each document you send,
+  re-indexes included (step 3), so it is not a cap on how many documents your index may hold.
 - Multilingual (English, Japanese, and more) for both content and queries.
 - Indexing and deletion are asynchronous — a freshly ingested or removed document can take a few
   seconds to take effect in search results.
