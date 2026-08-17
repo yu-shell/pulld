@@ -9,7 +9,8 @@
 //
 // Best-effort (does not fail if D1 is unreachable). Usage: `node scripts/report.mjs [days]`
 import { execFileSync } from "node:child_process"
-import { classify } from "../functions/_traffic.js"
+import { classify, isInstall } from "../functions/_traffic.js"
+import { groupSessions, utcDay, formatSpan } from "./_bursts.mjs"
 
 const rawDays = Number(process.argv[2] || 30)
 const DAYS = Number.isFinite(rawDays) && rawDays > 0 ? Math.floor(rawDays) : 30
@@ -114,6 +115,43 @@ function reportFetches() {
   }
 }
 
+// How many separate decisions the install/human columns actually represent.
+//
+// The per-request classifier cannot see this: a bare `shadcn` UA is an install client whether it
+// belongs to a person or to a mirror, and on 2026-08-15 one of them took 21 components in 0.222
+// seconds, moving the 30-day column from 10 to 31. Five separate mornings have now been spent
+// re-deriving that by hand out of D1, which is the definition of a diagnosis that belongs in the
+// tool. This only prints; the reward `learn.mjs` tunes against is deliberately left alone, since
+// changing what counts as an install changes the meaning of every number beside it.
+function reportSessions() {
+  const rows = d1(
+    "SELECT item, ts, ua, country " +
+      `FROM fetches WHERE date >= date('now','-${DAYS} day') ` +
+      "AND item NOT IN ('registry','index')"
+  ).filter((r) => isInstall(r.ua))
+
+  if (!rows.length) return
+
+  const { sweeps, rawCount, collapsedCount } = groupSessions(rows)
+  console.log(`\nreward hygiene — how many decisions the install+human columns hold (last ${DAYS} days)`)
+  if (!sweeps.length) {
+    console.log(`  no bursts: ${rawCount} fetches look like ${collapsedCount} separate choices`)
+    return
+  }
+  for (const s of sweeps) {
+    console.log(
+      `  ${utcDay(s.first)} ${(s.country || "??").padEnd(3)}` +
+        ` ${(s.ua || "(none)").slice(0, 28).padEnd(30)}` +
+        `${String(s.distinct).padStart(3)} components in ${formatSpan(s.spanMs)}`
+    )
+  }
+  console.log(
+    `  ^ each line is one client walking the catalogue, not that many people choosing.\n` +
+      `  counted as sessions: ${rawCount} fetches -> ${collapsedCount} choices` +
+      ` (${rawCount - collapsedCount} rows are repeats or sweeps)`
+  )
+}
+
 // Names asked for that this registry does not ship. This is the closest thing to a question the
 // log ever records — everything else says what was taken, this says what was wanted — so it is
 // printed next to the fetch table rather than left for an ad-hoc query. Read it with the client
@@ -185,6 +223,11 @@ try {
   reportFetches()
 } catch (e) {
   console.log(`failed to fetch report (best-effort): ${e.message}`)
+}
+try {
+  reportSessions()
+} catch (e) {
+  console.log(`\n(no session report: ${String(e.message).split("\n")[0]})`)
 }
 try {
   reportMisses()
