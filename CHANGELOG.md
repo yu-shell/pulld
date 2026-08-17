@@ -3,6 +3,26 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-17
+
+- feat(color-picker): new component. A hex/rgb/hsl text box with native hue,
+  saturation and lightness sliders, optional alpha and preset swatches. HSL is the
+  state of record and the hex is derived, so a colour dragged down to black still
+  remembers its hue on the way back up — including under a controlled parent that
+  echoes the value back. The conversion keeps full precision and rounds once, so a
+  pasted hex returns byte-identical; verified over all 16,777,216 sRGB colours.
+  Reads hex in all four widths, `rgb()`/`hsl()` in the comma and space-with-slashed
+  -alpha forms and percentages; out-of-range channels clamp and hues wrap the way a
+  browser reads them, with blur rewriting the entry so the reading is visible.
+  Colour names are refused by name rather than guessed at. One file, no dependencies
+  beyond React.
+- docs(progress-ring): the description now states the two things that actually
+  separate it from official shadcn/ui — that official has no radial progress at all
+  (its `progress` is a linear bar requiring `@radix-ui/react-progress`), and that
+  this one has no npm dependencies and no `"use client"`, so it renders inside a
+  Server Component. Also documents that `indeterminate` drops `aria-valuenow`
+  rather than reporting a number it does not have.
+
 ## 2026-08-16
 
 - fix(sortable-list): the layout effect that puts focus back on the drag handle now
