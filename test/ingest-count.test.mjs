@@ -7,6 +7,9 @@
 //     while search stays empty), and
 //   - the monthly `docs` usage bump, which usage-alert.mjs turns into a doc-quota alert against the
 //     customer's doc_limit — charging for content that was never indexed raises false alerts.
+// And because that meter is per month rather than per document held, its shape is pinned here too:
+// re-sending a document costs again, which is the fact the plan copy, /account and the 429 message
+// are all written around.
 // The prune contract is covered separately in ingest-prune.test.mjs; both share _ingest-env.mjs.
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -67,6 +70,30 @@ test("ingest: the same id twice in one request is one document, counted once", a
   assert.equal(b.indexed_docs, 1)
   assert.equal(b.skipped_docs, 0)
   assert.deepEqual(docBumps, [1])
+})
+
+test("ingest: re-indexing the same id in a later request is charged again", async () => {
+  // The `docs` meter is a flow, not a stock. Nothing anywhere records which ids a project already
+  // holds — `search_usage` has one integer per (project, month) — so a second ingest of an
+  // unchanged document is a second charge. That is the opposite of what its own name suggested
+  // everywhere it was read: "5,000 indexed docs" on the plan, "5000 docs" on /account, "N indexed"
+  // in the usage alert, all of which describe the size of an index rather than a monthly spend.
+  //
+  // It is pinned here because the guide now states the rule in customer-facing terms, and the
+  // build-time sync recipe it recommends re-sends the entire catalogue on every deploy — the one
+  // pattern this billing shape punishes. If the meter is ever changed to charge per distinct
+  // document, this test fails, and the guide, the 429 message and /account have to change with it.
+  const { env, docBumps } = fakeEnv()
+  const doc = [{ id: "doc-1", title: "Refund policy", content: "alpha beta gamma" }]
+
+  const first = await onRequestPost({ request: request(doc), env })
+  const second = await onRequestPost({ request: request(doc), env })
+
+  assert.equal((await body(first)).indexed_docs, 1)
+  assert.equal((await body(second)).indexed_docs, 1)
+  // Two sends of one document, charged twice — contrast the same-id-twice-in-one-request case
+  // above, which is a single overwrite and charged once.
+  assert.deepEqual(docBumps, [1, 1])
 })
 
 test("ingest: an all-good request counts every document and skips none", async () => {
