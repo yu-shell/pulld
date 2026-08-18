@@ -155,6 +155,23 @@ const PREVIEWS = {
         }<span style="font-size:9px;color:var(--ink)">${r.label}</span></span>`
     )
     .join("")}</div>`,
+  // Leaf rows are padded by the indent plus the width of the arrow they do not have, so
+  // the keys line up under the container that holds them.
+  "json-viewer": `<div class="pv-json">${[
+    { pad: 0, chevron: "open", tail: `{<em>3 keys</em>` },
+    { pad: 19, tail: `<b>id</b>:<i class="pv-json-n">42</i>` },
+    { pad: 19, tail: `<b>name</b>:<i class="pv-json-s">"acme"</i>` },
+    { pad: 9, chevron: "closed", tail: `<b>tags</b>:[ … ]` },
+  ]
+    .map(
+      (r) =>
+        `<span style="padding-left:${r.pad}px">${
+          r.chevron
+            ? `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${r.chevron === "open" ? ` style="transform:rotate(90deg)"` : ""}><path d="m9 18 6-6-6-6"/></svg>`
+            : ""
+        }${r.tail}</span>`
+    )
+    .join("")}</div>`,
   "sortable-list": `<div style="display:flex;flex-direction:column;gap:4px;width:96px">${[
     { w: 40 },
     { w: 30, lifted: true },
@@ -510,7 +527,15 @@ const html = `<!doctype html>
     background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 4px}
   .pv-cron b{font-size:10px;line-height:1.3;font-weight:600;color:var(--ink)}
   .pv-cron span{font:9px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} }
+  .pv-json{width:96px;display:flex;flex-direction:column;gap:2px;
+    font:9px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .pv-json>span{display:flex;align-items:center;gap:3px;white-space:nowrap;color:var(--muted)}
+  .pv-json b{font-weight:400;color:var(--ink)}
+  .pv-json i{font-style:normal}
+  .pv-json em{font-style:normal;opacity:.65}
+  .pv-json-s{color:#16a34a}
+  .pv-json-n{color:#2563eb}
+  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-otp{display:flex;gap:5px}
   .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
