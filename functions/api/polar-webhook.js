@@ -287,7 +287,18 @@ export async function onRequestPost(context) {
       // Any other event (checkout.*, subscription.updated, …) is a no-op, but record it: an empty
       // webhook_log otherwise can't distinguish "no sales yet" from "the webhook was never
       // registered in Polar", and those need very different fixes.
-      await logEvent(env, `polar:${type}`, true, "no-op")
+      //
+      // A paid order that lands here is the case worth spelling out. It is normally a renewal —
+      // billing_reason `subscription_cycle`, with nothing to provision because the project already
+      // exists — but a bare "no-op" reads exactly the same as a purchase we silently dropped, and
+      // those two need opposite responses. Record what actually decided it.
+      const why =
+        type === "order.paid"
+          ? `no-op reason=${billingReason ?? "none"} product=${productId || "none"} ours=${isSearch || isPro}`
+          : subId
+            ? `no-op sub=${subId}`
+            : "no-op"
+      await logEvent(env, `polar:${type}`, true, why)
     }
   } catch (e) {
     console.error("polar-webhook db:", e?.message || e)

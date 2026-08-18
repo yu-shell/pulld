@@ -275,6 +275,32 @@ test("an event the handler does not act on still leaves a row in the log", async
   assert.equal(log.args[3], "no-op")
 })
 
+test("a renewal records why it did nothing, so it cannot be mistaken for a dropped sale", async () => {
+  // An order.paid that provisions nothing is either a harmless renewal or a purchase we failed to
+  // act on. The log has to say which — a bare "no-op" left an August 2026 renewal indistinguishable
+  // from a silently dropped sale, and only the note can tell them apart after the fact.
+  const db = fakeDB()
+  const res = await post(
+    {
+      type: "order.paid",
+      data: { product_id: SEARCH_PRODUCT, customer_id: "cus_1", billing_reason: "subscription_cycle" },
+    },
+    env(db)
+  )
+  assert.equal(res.status, 200)
+  assert.equal(db.forTable("INSERT INTO search_projects").length, 0, "a renewal must not re-provision")
+  const note = db.forTable("webhook_log").at(-1).args[3]
+  assert.match(note, /reason=subscription_cycle/)
+  assert.match(note, new RegExp("product=" + SEARCH_PRODUCT))
+  assert.match(note, /ours=true/, "the product was one of ours — the no-op was deliberate")
+})
+
+test("a no-op subscription event records the subscription it was about", async () => {
+  const db = fakeDB()
+  await post({ type: "subscription.updated", data: { id: "sub_abc", product_id: SEARCH_PRODUCT } }, env(db))
+  assert.match(db.forTable("webhook_log").at(-1).args[3], /no-op sub=sub_abc/)
+})
+
 test("a D1 failure on a state-changing event returns 500 so Polar retries", async () => {
   const db = fakeDB({ failOn: "UPDATE search_projects" })
   const res = await post(
