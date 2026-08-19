@@ -172,6 +172,27 @@ const PREVIEWS = {
         }${r.tail}</span>`
     )
     .join("")}</div>`,
+  // The same scene twice — plain on the left, tinted on the right — split by the divider and
+  // its knob. Drawing one picture and clipping a tinted copy of it over the other half is the
+  // component's own trick, and it is what keeps the card from reading as one more image
+  // placeholder: the thumbnail has to show a comparison, not a photo.
+  "image-comparison": (() => {
+    // width/height and preserveAspectRatio="none" both matter: an absolutely positioned SVG
+    // with inset:0 alone is sized by its own viewBox ratio rather than stretched to the box,
+    // which left the horizon floating nine pixels above the bottom edge. Distorting the scene
+    // is the right trade here — both layers are distorted identically, so they stay aligned,
+    // and the card is squeezed to the 84px the preview box leaves whatever width is asked for.
+    const scene = (fill, opacity) =>
+      `<svg viewBox="0 0 96 64" preserveAspectRatio="none" fill="${fill}" opacity="${opacity}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%"><circle cx="70" cy="17" r="7"/><path d="M0 64 26 27 50 64Z"/><path d="M36 64 60 33 86 64Z"/></svg>`
+    const split = 58
+    return `<div style="position:relative;width:96px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--line)">${scene(
+      "var(--muted)",
+      ".45"
+    )}<span style="position:absolute;inset:0;background:color-mix(in srgb,var(--accent) 18%,transparent);clip-path:inset(0 0 0 ${split}%)">${scene(
+      "var(--accent)",
+      ".85"
+    )}</span><span style="position:absolute;top:0;bottom:0;left:${split}%;width:2px;transform:translateX(-50%);background:var(--surface)"></span><span style="position:absolute;top:50%;left:${split}%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:99px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 7 5 5-5 5M10 7l-5 5 5 5"/></svg></span></div>`
+  })(),
   "sortable-list": `<div style="display:flex;flex-direction:column;gap:4px;width:96px">${[
     { w: 40 },
     { w: 30, lifted: true },
