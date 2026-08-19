@@ -134,7 +134,7 @@ test("build output: a built file with no registry item is flagged as stale", () 
 test("build output: the catalogue index is never stale", () => {
   const r = verifyRegistry(
     { name: "pulld", items: [okItem()] },
-    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX] }
+    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX, OFFICIAL_INDEX] }
   )
   assert.equal(r.warn, 0)
   assert.ok(!hasMsg(r, "stale build output"))
@@ -144,6 +144,8 @@ test("no build output yields an INFO line, not a warning", () => {
   const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true, builtNames: null })
   assert.equal(r.warn, 0)
   assert.ok(hasMsg(r, "public/r not generated"))
+  // Including the catalogue indexes: nothing was built, so nothing is missing yet.
+  assert.ok(!hasMsg(r, "catalogue index"))
 })
 
 // The same both-ways idea one step upstream, on the source tree. `files[].path → does it exist`
@@ -206,4 +208,33 @@ test("build output: exempting the two indexes does not exempt everything else", 
     }
   )
   assert.ok(hasMsg(r, "renamed-away: stale build output"))
+})
+
+// The direction that was missing. Both catalogue indexes are skipped by the stale check because
+// neither will ever have a registry item — and that exemption silently covered their absence too,
+// leaving the one build-output problem `verify` could not see. `index` is the expensive one: it is
+// written by a step of its own (scripts/build-index.mjs), and it is the path clients built against
+// ui.shadcn.com reach for, so losing it means those clients see no catalogue at all.
+test("build output: a missing catalogue index warns, in the direction the exemption used to hide", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, builtNames: ["copy-button", CATALOGUE_INDEX] }
+  )
+  assert.equal(r.alert, 0, "a missing index is recoverable with a rebuild; it must not fail the gate")
+  assert.ok(hasMsg(r, `${OFFICIAL_INDEX}: catalogue index public/r/${OFFICIAL_INDEX}.json is missing`))
+  assert.ok(hasMsg(r, "npm run registry:build"))
+  // The one that IS present must not be reported as missing.
+  assert.ok(!hasMsg(r, `${CATALOGUE_INDEX}: catalogue index`))
+  assert.equal(r.warn, 1)
+})
+
+test("build output: both indexes missing are reported separately, and neither pads the tally", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, builtNames: ["copy-button"] }
+  )
+  assert.ok(hasMsg(r, `${CATALOGUE_INDEX}: catalogue index`))
+  assert.ok(hasMsg(r, `${OFFICIAL_INDEX}: catalogue index`))
+  assert.equal(r.warn, 2)
+  assert.ok(hasMsg(r, "build output: 1 of 1 items built"))
 })

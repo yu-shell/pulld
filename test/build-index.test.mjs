@@ -8,7 +8,23 @@
 // silently disappearing from the build.
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
+import { join, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 import { buildIndex } from "../scripts/build-index.mjs"
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 
 const registry = {
   name: "pulld",
@@ -91,4 +107,40 @@ test("the result serialises to JSON a client can parse", () => {
   const parsed = JSON.parse(json)
   assert.ok(Array.isArray(parsed), "official's index is a bare array")
   assert.equal(parsed[0].name, "copy-button")
+})
+
+// The header above says these tests pin that the file keeps being generated. The pure function
+// cannot: everything that decides whether public/r/index.json appears lives in the CLI block, and
+// that block is guarded by a comparison against `import.meta.url`. Pasting argv[1] after `file://`
+// looks equivalent and is not — `import.meta.url` is percent-encoded, so one space anywhere in the
+// checkout path makes the two strings differ, the block never runs, the script still exits 0, and
+// `npm run registry:build` reports success having written nothing. So run the real script from a
+// path with a space in it and require the file on disk, rather than asserting the shape of a guard.
+test("the CLI writes the index when run from a path that needs URL-encoding", () => {
+  // realpath, because macOS's tmpdir() is a symlink and Node resolves a module's own URL through
+  // it while leaving argv[1] as given — which would fail the guard for a reason that has nothing
+  // to do with the encoding this test is about.
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), "pulld-index-")))
+  try {
+    const root = join(tmp, "a b") // the space is the point
+    mkdirSync(join(root, "scripts"), { recursive: true })
+    copyFileSync(join(ROOT, "scripts", "build-index.mjs"), join(root, "scripts", "build-index.mjs"))
+    writeFileSync(join(root, "registry.json"), JSON.stringify(registry))
+
+    const out = execFileSync(process.execPath, [join(root, "scripts", "build-index.mjs")], {
+      encoding: "utf8",
+      env: { ...process.env, SITE_BASE: "https://pulld.pages.dev" },
+    })
+
+    const written = join(root, "public", "r", "index.json")
+    assert.ok(existsSync(written), `index.json was not written — the CLI block did not run:\n${out}`)
+    const parsed = JSON.parse(readFileSync(written, "utf8"))
+    assert.deepEqual(
+      parsed.map((e) => e.name),
+      registry.items.map((i) => i.name)
+    )
+    assert.equal(parsed[0].meta.url, "https://pulld.pages.dev/r/copy-button.json")
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
 })

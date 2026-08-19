@@ -143,6 +143,19 @@ export function verifyRegistry(
       if (!built.has(name))
         warning(`${name}: build output public/r/${name}.json is missing → npx shadcn build`)
     }
+    // Exempting the two catalogue indexes from the stale check above also left them exempt from
+    // the missing check, so the only two build outputs with no registry item behind them were the
+    // only ones nothing verified in either direction. public/r/index.json in particular is written
+    // by scripts/build-index.mjs, a separate step from `shadcn build`, and it is the path clients
+    // built against ui.shadcn.com probe — one client asked for it 1,107 times in thirty days. If
+    // that step is skipped the deploy serves no catalogue there and every other signal stays green.
+    for (const name of NON_COMPONENT_OUTPUTS) {
+      if (!built.has(name))
+        warning(
+          `${name}: catalogue index public/r/${name}.json is missing — clients probing that path ` +
+            `see no catalogue → npm run registry:build`
+        )
+    }
     for (const name of built) {
       if (NON_COMPONENT_OUTPUTS.has(name) || itemNames.has(name)) continue
       warning(
