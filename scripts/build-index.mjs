@@ -21,7 +21,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SITE_BASE = (process.env.SITE_BASE || "").replace(/\/$/, "")
@@ -48,7 +48,13 @@ export function buildIndex(registry, base = "") {
   })
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Only run the CLI when invoked directly, not when imported by the unit tests — the guard the
+// other three scripts with a CLI use. It has to go through pathToFileURL rather than pasting
+// argv[1] after `file://`: `import.meta.url` is a percent-encoded URL, so any path component
+// needing encoding (a space is enough) makes the two strings differ and the block never runs.
+// Nothing announces that — the script exits 0 having written nothing, `npm run registry:build`
+// reports success, and the deploy serves no /r/index.json at all.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const registry = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf8"))
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true })
   const index = buildIndex(registry, SITE_BASE)
