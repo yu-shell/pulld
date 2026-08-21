@@ -15,7 +15,7 @@
 //                   (default 500000 — far above one project's 50k plan = likely abuse/runaway)
 //   GLOBAL_DOCS     total documents sent/month across all projects, anomaly threshold
 //                   (default 50000)
-import { execFileSync } from "node:child_process"
+import { d1 } from "./_d1.mjs"
 
 const QUOTA_PCT = clampNum(process.env.QUOTA_PCT, 80, 1, 100)
 const GLOBAL_QUERIES = clampNum(process.env.GLOBAL_QUERIES, 500000, 1, Infinity)
@@ -24,17 +24,6 @@ const GLOBAL_DOCS = clampNum(process.env.GLOBAL_DOCS, 50000, 1, Infinity)
 function clampNum(v, dflt, lo, hi) {
   const n = Number(v)
   return Number.isFinite(n) && n >= lo && n <= hi ? n : dflt
-}
-
-function d1(sql) {
-  const out = execFileSync(
-    "npx",
-    ["--yes", "wrangler@latest", "d1", "execute", "pulld", "--remote", "--json", "--command", sql],
-    { encoding: "utf8", timeout: 30000 }
-  )
-  const parsed = JSON.parse(out)
-  const block = Array.isArray(parsed) ? parsed[0] : parsed
-  return block?.results ?? []
 }
 
 const month = new Date().toISOString().slice(0, 7) // YYYY-MM

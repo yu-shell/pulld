@@ -8,61 +8,17 @@
 // a mirror sweeping the whole catalogue, which looks like adoption only in the aggregate.
 //
 // Best-effort (does not fail if D1 is unreachable). Usage: `node scripts/report.mjs [days]`
-import { execFileSync } from "node:child_process"
+//
+// D1 access — the retry a cold `npx` cache needs, and the cause `e.message` throws away — was
+// first worked out here and now lives in scripts/_d1.mjs, shared with the three other scripts on
+// the same shell-out.
 import { classify, isInstall } from "../functions/_traffic.js"
+import { d1 } from "./_d1.mjs"
 import { groupSessions, creditSessions, utcDay, formatSpan } from "./_bursts.mjs"
 import { isRewardItem } from "./_installs.mjs"
 
 const rawDays = Number(process.argv[2] || 30)
 const DAYS = Number.isFinite(rawDays) && rawDays > 0 ? Math.floor(rawDays) : 30
-
-// The first call of the day fails and the second succeeds — eight times running now, always with
-// the message swallowed to `Command failed: npx …` because execFileSync puts only the command in
-// `e.message` and the real cause in `e.stderr`, which nothing read. `npx --yes wrangler@latest`
-// resolves and installs the package on a cold cache, which does not fit the 30s budget; the
-// warmed second attempt takes under two seconds. So: one retry, and the cause is kept either way
-// rather than being rediscovered every morning.
-function d1Once(sql, timeout) {
-  const out = execFileSync(
-    "npx",
-    [
-      "--yes",
-      "wrangler@latest",
-      "d1",
-      "execute",
-      "pulld",
-      "--remote",
-      "--json",
-      "--command",
-      sql,
-    ],
-    { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"] }
-  )
-  const parsed = JSON.parse(out)
-  const block = Array.isArray(parsed) ? parsed[0] : parsed
-  return block?.results ?? []
-}
-
-const cause = (e) =>
-  String(e.stderr || e.stdout || "")
-    .trim()
-    .split("\n")
-    .slice(-4)
-    .join(" | ")
-
-function d1(sql) {
-  const failed = []
-  // A cold `npx` install is slow, not broken, so the first attempt gets the longer budget.
-  for (const timeout of [60000, 30000]) {
-    try {
-      return d1Once(sql, timeout)
-    } catch (e) {
-      const why = cause(e)
-      failed.push(`${e.message.split("\n")[0]}${why ? ` — ${why}` : ""}`)
-    }
-  }
-  throw new Error(failed.map((f, i) => `attempt ${i + 1}: ${f}`).join("\n  "))
-}
 
 function reportFetches() {
   const rows = d1(
