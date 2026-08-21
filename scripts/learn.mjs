@@ -21,12 +21,12 @@
 // whether a metadata change is kept or reverted, so a silent change in it silently rewrites the
 // catalogue's copy.
 
-import { execFileSync } from "node:child_process"
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { createHash } from "node:crypto"
 import { installsByItem } from "./_installs.mjs"
+import { d1 } from "./_d1.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const STATE_PATH = join(ROOT, "data", "learn-state.json")
@@ -39,17 +39,6 @@ export const LIFT_GAIN = 0.15 // >=15% rate gain = lift
 function clampInt(v, d, lo, hi) {
   const n = Math.floor(Number(v))
   return Number.isFinite(n) && n >= lo && n <= hi ? n : d
-}
-
-function d1(sql) {
-  const out = execFileSync(
-    "npx",
-    ["--yes", "wrangler@latest", "d1", "execute", "pulld", "--remote", "--json", "--command", sql],
-    { encoding: "utf8", timeout: 30000 }
-  )
-  const parsed = JSON.parse(out)
-  const block = Array.isArray(parsed) ? parsed[0] : parsed
-  return block?.results ?? []
 }
 
 // Installs are re-derived from the stored user-agent, not from the `is_bot` column: the column

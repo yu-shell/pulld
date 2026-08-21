@@ -13,8 +13,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { execFileSync } from "node:child_process"
 import { installsByItem } from "./_installs.mjs"
+import { d1 } from "./_d1.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const STATE_PATH = join(ROOT, "data", "sweep-state.json")
@@ -87,25 +87,12 @@ function installCounts() {
   // catalogue rows by item name, both inside installsByItem (see scripts/_installs.mjs) so this
   // and learn.mjs's reward cannot drift apart.
   try {
-    const out = execFileSync(
-      "npx",
-      [
-        "--yes",
-        "wrangler@latest",
-        "d1",
-        "execute",
-        "pulld",
-        "--remote",
-        "--json",
-        "--command",
-        "SELECT item, ts, ua, country FROM fetches",
-      ],
-      { encoding: "utf8", timeout: 30000 }
-    )
-    const parsed = JSON.parse(out)
-    const rows = (Array.isArray(parsed) ? parsed[0] : parsed)?.results ?? []
-    return installsByItem(rows)
-  } catch {
+    return installsByItem(d1("SELECT item, ts, ua, country FROM fetches"))
+  } catch (e) {
+    // Falling back to {} is not the same as "nobody installed anything": pickScope's
+    // most-installed slice silently becomes an arbitrary one, and the run still prints a
+    // perfectly ordinary batch. Say so on stderr — stdout is the JSON the routine parses.
+    console.error(`sweep: install counts unavailable, scoping without them — ${e.message}`)
     return {}
   }
 }
