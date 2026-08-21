@@ -61,6 +61,8 @@ const RATIO_TONE = [
   "color-mix(in srgb,var(--accent) 34%,transparent)",
 ]
 
+const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
   "calendar-heatmap": `<div style="display:grid;grid-template-columns:repeat(11,6px);gap:2px">${[
@@ -176,6 +178,18 @@ const PREVIEWS = {
   // its knob. Drawing one picture and clipping a tinted copy of it over the other half is the
   // component's own trick, and it is what keeps the card from reading as one more image
   // placeholder: the thumbnail has to show a comparison, not a photo.
+  // A year of months with one picked and "now" tinted, under the year and its arrows — the two
+  // things that tell this apart from a day calendar at thumbnail size.
+  "month-picker": `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><div style="display:flex;align-items:center;gap:4px;font-size:9px;line-height:1;color:var(--muted)"><span>\u2039</span><span style="flex:1;text-align:center;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums">2026</span><span>\u203a</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">${MONTH_CELLS.map(
+    (m, i) =>
+      `<span style="display:flex;align-items:center;justify-content:center;height:13px;border-radius:3px;font-size:8px;line-height:1;${
+        i === 7
+          ? "background:var(--accent);color:var(--bg);font-weight:600"
+          : i === 4
+            ? "background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--ink)"
+            : "color:var(--muted)"
+      }">${m}</span>`
+  ).join("")}</div></div>`,
   "timezone-select": `<div style="display:flex;flex-direction:column;gap:6px;width:96px"><div class="pv-input" style="width:96px;box-sizing:border-box;height:26px;padding:0 7px;gap:4px"><span style="font-size:11px;color:var(--ink)">New York</span><span style="margin-left:auto;font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums">−04:00</span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div><div style="display:flex;flex-direction:column;gap:3px;font-size:9px;line-height:1.2"><span style="color:var(--muted);font-weight:600;letter-spacing:.02em">Europe</span><span style="display:flex;align-items:center;gap:4px;color:var(--ink)">Berlin<span style="margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums">+02:00</span></span><span style="display:flex;align-items:center;gap:4px;color:var(--ink)">London<span style="margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums">+01:00</span></span></div></div>`,
   "image-comparison": (() => {
     // width/height and preserveAspectRatio="none" both matter: an absolutely positioned SVG
