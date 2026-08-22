@@ -87,6 +87,10 @@ const fakeReact = {
   useId: () => "harness-id",
   useCallback: (fn) => fn,
   forwardRef: (fn) => fn,
+  // Nothing here has a real DOM node to expose, and the harness cannot see focus move anyway, so
+  // the imperative handle is accepted and dropped rather than left to the real dispatcher (which
+  // throws outside a render).
+  useImperativeHandle: () => {},
 }
 
 /**

@@ -303,10 +303,13 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
       focusIndex(order.indexOf(seg) + delta)
     }
 
-    // Single commit path: update state when uncontrolled (controlled state flows back through the
-    // prop) and always report the ISO string.
+    // Single commit path. The segments stay local state even when the value is controlled, because a
+    // half-typed date has no value to flow back through the prop: a parent holding "" for an
+    // incomplete date would drop every keystroke but the last, and the field could never be filled
+    // in at all. The effect above is what keeps the parent authoritative — as soon as the segments
+    // read as a complete date that disagrees with the prop, they are pulled back to it.
     function commit(next: Fields) {
-      if (!isControlled) setFields(next)
+      setFields(next)
       onChange?.(toISO(next))
     }
 
