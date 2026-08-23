@@ -8,7 +8,7 @@
 // confused with the shadcn CLI (`Mozilla/5.0 shadcn-audit`, `shadcn-registry-indexer/0.1`).
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { classify, isCrawler, isInstall } from "../functions/_traffic.js"
+import { classify, classifyClick, isCrawler, isInstall } from "../functions/_traffic.js"
 
 test("crawlers: indexers, scrapers and generic HTTP clients", () => {
   for (const ua of [
@@ -122,4 +122,41 @@ test("crawler wins over tool when a user-agent looks like both", () => {
   // `Mozilla/5.0 shadcn-audit` contains the tool name but is an auditor: order matters.
   assert.equal(classify("Mozilla/5.0 shadcn-audit"), "crawler")
   assert.equal(classify("shadcn-registry-indexer/0.1"), "crawler")
+})
+
+// The buy-button click log. `classify` alone cannot answer this one: the user-agents below are
+// genuine browser strings, engine and all, so the UA test correctly calls them human. What gives
+// them away is that they never loaded the page the button lives on.
+const PIXEL = "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
+
+test("a click that came from the landing page is a person", () => {
+  assert.equal(classifyClick({ ua: PIXEL, referer: "https://pulld.pages.dev/" }), "human")
+  assert.equal(
+    classifyClick({
+      ua: PIXEL,
+      referer: "https://pulld.pages.dev/?utm_source=ui.shadcn.com&utm_medium=referral&utm_campaign=directory",
+    }),
+    "human"
+  )
+})
+
+test("a browser user-agent with no referrer never loaded the page — not a person", () => {
+  // The 2026-08-23 pattern: six search/pro pairs 0-1s apart, all from this UA, none with a
+  // referrer. Counting these as people made a traffic problem look like a conversion problem.
+  for (const referer of ["", null, undefined, "   "]) {
+    assert.equal(classifyClick({ ua: PIXEL, referer }), "direct")
+  }
+})
+
+test("a declared crawler stays a crawler even when it sends a referrer", () => {
+  assert.equal(
+    classifyClick({ ua: "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)", referer: "https://pulld.pages.dev/" }),
+    "crawler"
+  )
+  assert.equal(classifyClick({ ua: "Googlebot/2.1 (+http://www.google.com/bot.html)", referer: "" }), "crawler")
+})
+
+test("no user-agent at all is never a person, referrer or not", () => {
+  assert.equal(classifyClick({ ua: "", referer: "https://pulld.pages.dev/" }), "crawler")
+  assert.equal(classifyClick({}), "crawler")
 })

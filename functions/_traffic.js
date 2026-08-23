@@ -66,3 +66,23 @@ export const isInstall = (ua) => {
   const k = classify(ua)
   return k === "install" || k === "human"
 }
+
+// A buy button exists on exactly one page, so a real click on it arrives with that page as its
+// referrer. A hit on /go/* with no referrer never loaded the page at all — it is a script pulling
+// the two links out of the HTML. On 2026-08-23 twelve such hits arrived as six search/pro PAIRS
+// 0-1 seconds apart from a single `Android 12; Pixel 6` user-agent, and nobody clicks two
+// different buy buttons 231ms apart.
+//
+// This matters more than the fetch buckets do. 36 of the first 40 recorded clicks had no referrer,
+// which turns "35 people clicked buy and none of them bought" into "four people have ever reached
+// checkout". The first reads as a broken pricing page; the second says the pricing page has barely
+// been seen. Their fixes point in opposite directions, and only the referrer separates them.
+//
+// Deliberately asymmetric: a referrer that is present is believed, because the expensive mistake
+// is counting a script as a customer and concluding the offer is being rejected. A privacy browser
+// that strips its referrer lands in `direct` and is undercounted, which costs one data point.
+export function classifyClick({ ua, referer } = {}) {
+  const kind = classify(ua)
+  if (kind !== "human") return kind
+  return String(referer || "").trim() ? "human" : "direct"
+}

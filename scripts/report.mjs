@@ -12,7 +12,7 @@
 // D1 access — the retry a cold `npx` cache needs, and the cause `e.message` throws away — was
 // first worked out here and now lives in scripts/_d1.mjs, shared with the three other scripts on
 // the same shell-out.
-import { classify, isInstall } from "../functions/_traffic.js"
+import { classify, classifyClick, isInstall } from "../functions/_traffic.js"
 import { d1 } from "./_d1.mjs"
 import { groupSessions, creditSessions, utcDay, formatSpan } from "./_bursts.mjs"
 import { isRewardItem } from "./_installs.mjs"
@@ -156,14 +156,23 @@ function reportMisses() {
 
 function reportClicks() {
   const rows = d1(
-    "SELECT target, ua, COUNT(*) AS n " +
-      `FROM clicks WHERE date >= date('now','-${DAYS} day') GROUP BY target, ua`
+    "SELECT target, ua, referer, COUNT(*) AS n " +
+      `FROM clicks WHERE date >= date('now','-${DAYS} day') GROUP BY target, ua, referer`
   )
   const byTarget = new Map()
+  const sources = new Map()
   for (const r of rows) {
     const t = String(r.target)
-    const acc = byTarget.get(t) || { install: 0, index: 0, human: 0, crawler: 0 }
-    acc[classify(r.ua)] += Number(r.n) || 0
+    const n = Number(r.n) || 0
+    const acc = byTarget.get(t) || { human: 0, direct: 0, crawler: 0, other: 0 }
+    const kind = classifyClick({ ua: r.ua, referer: r.referer })
+    if (kind === "human") {
+      acc.human += n
+      const src = String(r.referer || "").trim()
+      sources.set(src, (sources.get(src) || 0) + n)
+    } else if (kind === "direct") acc.direct += n
+    else if (kind === "crawler") acc.crawler += n
+    else acc.other += n
     byTarget.set(t, acc)
   }
   console.log(`\nbuy-button clicks (last ${DAYS} days)`)
@@ -173,10 +182,18 @@ function reportClicks() {
   }
   for (const [t, c] of byTarget) {
     console.log(
-      `  ${t.padEnd(10)}human=${c.human}\tother-clients=${c.install + c.index}\tcrawler=${c.crawler}`
+      `  ${t.padEnd(10)}from-page=${c.human}\tdirect-hit=${c.direct + c.other}\tcrawler=${c.crawler}`
     )
   }
+  console.log("  from-page  = arrived with the landing page as referrer — the only bucket that is a person choosing to buy")
+  console.log("  direct-hit = /go/* fetched without ever loading the page; a script wearing a browser user-agent")
   console.log("  (crawlers are shown the link instead of being redirected, so they reach no checkout)")
+  if (sources.size) {
+    console.log("  which page sent the real clicks:")
+    for (const [src, n] of [...sources].sort((a, b) => b[1] - a[1]).slice(0, 8)) {
+      console.log(`    ${String(n).padStart(3)}  ${src.slice(0, 96)}`)
+    }
+  }
 }
 
 try {
