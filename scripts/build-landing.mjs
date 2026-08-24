@@ -105,6 +105,17 @@ const PREVIEWS = {
   "number-input": `<div class="pv-input" style="justify-content:center;gap:8px"><span class="pv-numbtn">−</span><span style="font-size:13px;color:var(--ink);min-width:14px;text-align:center">3</span><span class="pv-numbtn">+</span></div>`,
   "otp-input": `<div class="pv-otp"><span>4</span><span>2</span><span></span><span></span></div>`,
   "date-input": `<div class="pv-input pv-date"><span>03</span><i>/</i><span class="on">14</span><i>/</i><span>2026</span></div>`,
+  "weekly-hours": `<div style="display:flex;flex-direction:column;gap:4px;width:78px">${[
+    ["Mon", "9\u201317", true],
+    ["Fri", "9\u201317", true],
+    ["Sat", "22\u20132", true],
+    ["Sun", "Closed", false],
+  ]
+    .map(
+      ([day, span, on]) =>
+        `<span style="display:flex;align-items:center;gap:5px;font-size:9px;line-height:1.2;white-space:nowrap"><span style="position:relative;flex:none;width:12px;height:7px;border-radius:99px;background:${on ? "var(--accent)" : "var(--line)"}"><i style="position:absolute;top:1px;${on ? "right:1px" : "left:1px"};width:5px;height:5px;border-radius:99px;background:#fff"></i></span><span style="flex:none;width:20px;color:${on ? "var(--ink)" : "var(--muted)"}">${day}</span><span style="margin-left:auto;color:${on ? "var(--ink)" : "var(--muted)"};font-variant-numeric:tabular-nums">${span}</span></span>`
+    )
+    .join("")}</div>`,
   "time-input": `<div class="pv-input pv-date"><span>09</span><i>:</i><span class="on">30</span><span class="pv-ampm">AM</span></div>`,
   "tag-input": `<div class="pv-input" style="height:auto;min-height:30px;flex-wrap:wrap;gap:4px;padding:6px 7px"><span class="pv-tag">react</span><span class="pv-tag">ui</span><span style="color:var(--muted);font-size:11px">|</span></div>`,
   "copy-field": `<div class="pv-input"><span style="font:11px ui-monospace,monospace;color:var(--ink)">tok_1a2b</span><span style="margin-left:auto;color:var(--muted);display:inline-flex">${ICON.copy}</span></div>`,
