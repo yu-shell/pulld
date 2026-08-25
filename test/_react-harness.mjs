@@ -51,6 +51,18 @@ export function loadComponent(sourcePath, { stubs = {} } = {}) {
   return mod.exports
 }
 
+// The methods a component may call on a ref'd node. Assigned onto every stand-in ref, so reaching
+// for one is a no-op rather than a TypeError.
+const domStandIn = {
+  focus() {},
+  blur() {},
+  select() {},
+  scrollIntoView() {},
+  setSelectionRange() {},
+  contains: () => false,
+  querySelector: () => null,
+}
+
 // --- the dispatcher --------------------------------------------------------
 // One render at a time, which is all a single component needs. State lives in `slots` and survives
 // across passes so a re-render sees what the last one set; `dirty` says whether another pass is owed.
@@ -98,7 +110,11 @@ const fakeReact = {
  *
  * `direction` answers `getComputedStyle(...).direction`, which is how a component reads the writing
  * direction at event time. Refs left at null are given a stand-in object, so a handler guarded by
- * `ref.current ? ... : fallback` takes the mounted branch.
+ * `ref.current ? ... : fallback` takes the mounted branch. The stand-in carries no-op versions of
+ * the DOM methods a component calls on a node it is holding — focusing it, selecting its text,
+ * scrolling it into view. None of them is observable here (see the note at the top of this file),
+ * but a component that calls one is doing something ordinary, and it should not have to write
+ * `?.focus?.()` to stay testable.
  */
 export function render(Component, initialProps, { direction = "ltr", maxPasses = 12 } = {}) {
   slots = []
@@ -115,7 +131,7 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
       effects = []
       dirty = false
       tree = Component(props, null)
-      for (const ref of refs) if (ref.current === null) ref.current = {}
+      for (const ref of refs) if (ref.current === null) ref.current = { ...domStandIn }
       for (const fn of effects) fn()
       if (!dirty) return tree
     }
