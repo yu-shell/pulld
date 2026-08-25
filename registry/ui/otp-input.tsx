@@ -61,10 +61,17 @@ export const OtpInput = React.forwardRef<HTMLInputElement, OtpInputProps>(
       () => inputsRef.current[0] as HTMLInputElement
     )
 
-    // Re-sync from the prop when controlled (mirrors number-input).
+    // Re-seed from the prop when controlled, but only when the prop says something the slots do
+    // not already say. The comparison has to happen on the joined form, because that is the only
+    // thing the parent was ever told: a code with a hole in it — "" "2" "3" — joins to "23", and
+    // re-seeding from "23" would pack those digits back to the left. Skipping the echo of our own
+    // emit is what lets a slot stay empty while later ones are filled.
     React.useEffect(() => {
-      if (isControlled) setSlots(toSlots(value, length))
-    }, [isControlled, value, length])
+      if (!isControlled) return
+      const next = toSlots(value, length)
+      if (next.join("") === slots.join("")) return
+      setSlots(next)
+    }, [isControlled, value, length, slots])
 
     React.useEffect(() => {
       if (autoFocus) inputsRef.current[0]?.focus()
@@ -76,12 +83,13 @@ export const OtpInput = React.forwardRef<HTMLInputElement, OtpInputProps>(
       el?.select()
     }
 
-    // Single commit path: update state when uncontrolled (controlled state
-    // flows back through the prop), fire onChange, and fire onComplete only on
-    // the transition into a fully filled code.
+    // Single commit path: store the slots, fire onChange, and fire onComplete only on the
+    // transition into a fully filled code. The slots are always local state, controlled or not —
+    // which slot a digit sits in is not recoverable from the string the parent holds, so a
+    // controlled field that waited for the prop to come back would lose every gap.
     function commit(next: string[]) {
       const wasFull = slots.every((s) => s !== "")
-      if (!isControlled) setSlots(next)
+      setSlots(next)
       const joined = next.join("")
       onChange?.(joined)
       if (!wasFull && next.every((s) => s !== "")) onComplete?.(joined)
