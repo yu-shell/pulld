@@ -94,7 +94,39 @@ test("dependency fields are carried when present and omitted when not", () => {
   assert.equal("dependencies" in plain, false)
   assert.equal("registryDependencies" in plain, false)
   assert.deepEqual(composed.dependencies, ["lucide-react"])
-  assert.deepEqual(composed.registryDependencies, ["copy-button"])
+})
+
+test("a dependency on one of our own components is published as the URL that serves it", () => {
+  // The index used to carry the bare name while the per-item file inject-base.mjs writes carried
+  // the URL, so one deploy shipped the same dependency spelled two ways. A bare name is resolved
+  // against official's registry, and two of the names pulld composes (`spinner`, `kbd`) are names
+  // official ships — so the reader gets a different component, not an error it could report.
+  const [, composed] = buildIndex(registry, "https://pulld.pages.dev")
+  assert.deepEqual(composed.registryDependencies, ["https://pulld.pages.dev/r/copy-button.json"])
+})
+
+test("a dependency we do not ship is left alone — it belongs to whoever does", () => {
+  const withOfficial = {
+    items: [
+      registry.items[0],
+      {
+        ...registry.items[1],
+        registryDependencies: ["copy-button", "button", "https://example.com/r/x.json"],
+      },
+    ],
+  }
+  assert.deepEqual(buildIndex(withOfficial, "https://pulld.pages.dev")[1].registryDependencies, [
+    "https://pulld.pages.dev/r/copy-button.json",
+    "button",
+    "https://example.com/r/x.json",
+  ])
+})
+
+test("without a site base a dependency keeps its bare name rather than becoming a relative path", () => {
+  // meta.url can fall back to a relative URL because nothing installs from it. A registry
+  // dependency is installed from, and `/r/copy-button.json` resolves nowhere at all — strictly
+  // worse than the bare name, which at least still names the component.
+  assert.deepEqual(buildIndex(registry)[1].registryDependencies, ["copy-button"])
 })
 
 test("an empty registry is an empty array, not a throw", () => {
@@ -124,7 +156,9 @@ test("the CLI writes the index when run from a path that needs URL-encoding", ()
   try {
     const root = join(tmp, "a b") // the space is the point
     mkdirSync(join(root, "scripts"), { recursive: true })
-    copyFileSync(join(ROOT, "scripts", "build-index.mjs"), join(root, "scripts", "build-index.mjs"))
+    for (const f of ["build-index.mjs", "_registry-deps.mjs"]) {
+      copyFileSync(join(ROOT, "scripts", f), join(root, "scripts", f))
+    }
     writeFileSync(join(root, "registry.json"), JSON.stringify(registry))
 
     const out = execFileSync(process.execPath, [join(root, "scripts", "build-index.mjs")], {
@@ -140,6 +174,9 @@ test("the CLI writes the index when run from a path that needs URL-encoding", ()
       registry.items.map((i) => i.name)
     )
     assert.equal(parsed[0].meta.url, "https://pulld.pages.dev/r/copy-button.json")
+    assert.deepEqual(parsed[1].registryDependencies, [
+      "https://pulld.pages.dev/r/copy-button.json",
+    ])
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }

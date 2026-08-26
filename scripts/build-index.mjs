@@ -22,6 +22,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { expandLocalDeps, localNamesOf } from "./_registry-deps.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SITE_BASE = (process.env.SITE_BASE || "").replace(/\/$/, "")
@@ -30,6 +31,7 @@ const outDir = join(ROOT, "public", "r")
 export function buildIndex(registry, base = "") {
   const site = String(base || "").replace(/\/$/, "")
   const url = (name) => (site ? `${site}/r/${name}.json` : `/r/${name}.json`)
+  const localNames = localNamesOf(registry)
   return (registry.items ?? []).map((item) => {
     const entry = {
       name: item.name,
@@ -41,9 +43,15 @@ export function buildIndex(registry, base = "") {
     }
     // Only carry the dependency fields when the component actually has them, so the index does
     // not claim an empty dependency list where official would have written nothing at all.
+    //
+    // A dependency naming another pulld component is published as the URL that serves it, the same
+    // way inject-base.mjs writes it into the per-item file. A bare name here would be read against
+    // official's registry — and `spinner` and `kbd`, two of the six we compose, are names official
+    // ships, so the reader would not get a miss it could report but a different component under the
+    // right name. See scripts/_registry-deps.mjs.
     if (item.dependencies?.length) entry.dependencies = item.dependencies
     if (item.registryDependencies?.length)
-      entry.registryDependencies = item.registryDependencies
+      entry.registryDependencies = expandLocalDeps(item.registryDependencies, localNames, site)
     return entry
   })
 }
