@@ -3,6 +3,17 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-27
+
+- fix(registry): a component that composes another pulld component is now named by its
+  serving URL everywhere the registry publishes it, not only in the per-item file. The
+  catalogue at `/r/registry.json` and its copy at `/r/index.json` still carried the bare
+  name, which any shadcn client resolves against the official registry — and two of the
+  six names pulld composes, `spinner` and `kbd`, are names official ships, so a client
+  reading a dependency out of the catalogue was handed a different component under the
+  right name rather than a miss it could report. Affects `code-block`, `copy-field`,
+  `loading-button`, `save-status`, `keyboard-shortcuts` and `weekly-hours`.
+
 ## 2026-08-17
 
 - docs(toast): the description claimed official shadcn/ui "no longer ships a toast of
