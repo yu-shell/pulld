@@ -3,6 +3,7 @@
 //  - has the required fields (name/type/files)
 //  - has a unique name and no repeated file paths within an item
 //  - references source files that actually exist
+//  - declares, in registryDependencies, every component of ours that its source imports
 //  - has a title/description of sufficient length for discoverability
 // and, if a build output exists in public/r, that it corresponds to the items. The source tree is
 // checked in the same both-ways spirit: a .tsx under registry/ that no item claims is flagged too.
@@ -23,6 +24,27 @@ export const CATALOGUE_INDEX = "registry"
 export const OFFICIAL_INDEX = "index"
 export const NON_COMPONENT_OUTPUTS = new Set([CATALOGUE_INDEX, OFFICIAL_INDEX])
 
+// The components of this registry that one source imports. components.json maps the `ui` alias to
+// @/registry/ui, so that is the spelling every self-composed import carries in the source, and the
+// shadcn CLI rewrites it to the consumer's own `ui` alias on install. Matching the string literal
+// rather than an `import ... from` line keeps `import()` and `export ... from` in scope for free —
+// every form that makes the consumer need the file. The pattern is built per call rather than
+// shared: a global regex carries `lastIndex` between uses, and one stray `.test()` on a shared one
+// would make later scans start mid-file and silently find nothing.
+const localImports = (src) => {
+  const names = new Set()
+  for (const [, name] of src.matchAll(/["'`]@\/registry\/ui\/([a-z0-9-]+)["'`]/g)) names.add(name)
+  return names
+}
+
+// The name a registryDependencies entry declares. registry.json spells these bare, but an absolute
+// URL to our own /r/<name>.json is equally installable — it is what the build outputs carry after
+// inject-base.mjs — so both spellings have to count as declaring the same component.
+const declaredName = (dep) =>
+  typeof dep === "string"
+    ? dep.replace(/^https?:\/\/[^?#]*\/r\//, "").replace(/\.json([?#].*)?$/, "")
+    : ""
+
 export const VALID_TYPES = new Set([
   "registry:ui",
   "registry:block",
@@ -37,12 +59,13 @@ export const VALID_TYPES = new Set([
 
 // Pure validator. Returns { messages: [{level, msg}], alert, warn } and never touches the disk or
 // process state — callers inject `fileExists(path)` (relative to the repo root), `sourceFiles` (the
-// component sources actually present under registry/, or null when they were not enumerated) and,
+// component sources actually present under registry/, or null when they were not enumerated),
+// `readSource(path)` (the text of one item file, or null when sources are not being read) and,
 // when a build exists, `builtNames` (the list of names under public/r, or null when no build output
 // is present).
 export function verifyRegistry(
   reg,
-  { fileExists = () => true, builtNames = null, sourceFiles = null } = {}
+  { fileExists = () => true, builtNames = null, sourceFiles = null, readSource = null } = {}
 ) {
   const messages = []
   let warn = 0
@@ -105,6 +128,59 @@ export function verifyRegistry(
     }
   }
 
+  // The names this registry ships. Both checks below ask the same question of it — "is this one of
+  // ours?" for a dependency, and "does an item still claim this?" for a build output.
+  const itemNames = new Set((reg?.items ?? []).map((i) => i?.name).filter(Boolean))
+
+  // registryDependencies, checked against what the sources actually import — the one field whose
+  // correctness is invisible from inside this repo. `shadcn add` fetches an item plus the
+  // components its registryDependencies name, and nothing else; an import that list omits ships a
+  // file whose import resolves to nothing in the consumer's project. The install reports success
+  // and their next build fails. Every signal here stays green through it: `npm run typecheck`
+  // resolves the import against this tree, where the file is obviously present, and `shadcn build`
+  // copies the source faithfully, so the wrong thing is published intact. The only place the two
+  // sides meet is here.
+  //
+  // Read both ways, like the source tree and public/r below. Declaring a component nobody imports
+  // only makes consumers install one they do not use, so that half warns rather than fails.
+  if (readSource) {
+    for (const item of reg?.items ?? []) {
+      const id = item.name ?? "(no name)"
+      const imported = new Set()
+      for (const f of item.files ?? []) {
+        const src = f?.path ? readSource(f.path) : null
+        if (typeof src !== "string") continue
+        for (const dep of localImports(src)) imported.add(dep)
+      }
+      // A component importing its own file is the item itself, not a dependency on one.
+      imported.delete(item.name)
+      const declared = new Set((item.registryDependencies ?? []).map(declaredName).filter(Boolean))
+
+      for (const dep of imported) {
+        if (declared.has(dep)) continue
+        if (itemNames.has(dep)) {
+          fail(
+            `${id}: imports @/registry/ui/${dep} but registryDependencies does not list it — ` +
+              `\`shadcn add ${id}\` installs this file without ${dep} and the consumer's build ` +
+              `fails on the import → add "${dep}" to its registryDependencies`
+          )
+        } else {
+          fail(
+            `${id}: imports @/registry/ui/${dep}, which no item in registry.json ships — nothing ` +
+              `installs it alongside ${id} → add an item for ${dep} or drop the import`
+          )
+        }
+      }
+      for (const dep of declared) {
+        if (!itemNames.has(dep) || imported.has(dep)) continue
+        warning(
+          `${id}: registryDependencies lists "${dep}" but no file imports it — consumers install ` +
+            `a component ${id} does not use → drop it from registryDependencies`
+        )
+      }
+    }
+  }
+
   // The source tree, checked the way public/r is: both directions, not just the one the build
   // happens to notice. `files[].path → does it exist` is already covered above; this is the
   // reverse, and nothing else in the pipeline looks at it. A component written into registry/ but
@@ -138,7 +214,6 @@ export function verifyRegistry(
   // a CLI that cached the name goes on installing a component this project stopped shipping.
   if (builtNames) {
     const built = new Set(builtNames)
-    const itemNames = new Set((reg?.items ?? []).map((i) => i.name).filter(Boolean))
     for (const name of itemNames) {
       if (!built.has(name))
         warning(`${name}: build output public/r/${name}.json is missing → npx shadcn build`)
@@ -207,10 +282,21 @@ function main() {
   }
   const sourceFiles = existsSync(join(ROOT, "registry")) ? walk(join(ROOT, "registry"), "registry") : null
 
+  // A file the item claims but that is not there is already reported by fileExists; returning null
+  // here keeps that one failure to one message instead of a second, vaguer one about its imports.
+  const readSource = (p) => {
+    try {
+      return readFileSync(join(ROOT, p), "utf8")
+    } catch {
+      return null
+    }
+  }
+
   const { messages, alert } = verifyRegistry(reg, {
     fileExists: (p) => existsSync(join(ROOT, p)),
     builtNames,
     sourceFiles,
+    readSource,
   })
   for (const m of messages) console.log(`${m.level}\t${m.msg}`)
   process.exit(alert ? 1 : 0)

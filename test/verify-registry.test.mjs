@@ -185,6 +185,117 @@ test("source tree: not enumerated means no opinion, not a clean bill of health",
   assert.ok(!hasMsg(r, "orphan source"))
 })
 
+// registryDependencies against the imports the sources actually carry. This is the one field
+// whose correctness cannot be observed from inside this repo: `npm run typecheck` resolves
+// @/registry/ui/<name> against this tree, where the file is present, and `shadcn build` copies the
+// source faithfully — so an item that forgets to declare what it composes passes every check here
+// and ships an install that does not compile in the consumer's project.
+const composed = {
+  name: "code-block",
+  type: "registry:ui",
+  title: "Code Block",
+  description: "A code block with a copy button and a language label, for docs and READMEs. Fifty plus.",
+  files: [{ path: "registry/ui/code-block.tsx", type: "registry:ui" }],
+}
+// Reads as the composing source and nothing else, so an item under test is only judged on its own
+// files — the same way `readSource` returns null in the CLI for a file that is not there.
+const importsCopyButton = (p) =>
+  p === "registry/ui/code-block.tsx" ? 'import { CopyButton } from "@/registry/ui/copy-button"' : ""
+
+test("deps: an imported component missing from registryDependencies is an alert", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed, okItem()] },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.equal(r.alert, 1, "the published install would not compile; a rebuild does not fix it")
+  assert.ok(hasMsg(r, "code-block: imports @/registry/ui/copy-button but registryDependencies does not list it"))
+})
+
+test("deps: declaring the import silences it", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, registryDependencies: ["copy-button"] }, okItem()] },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+// inject-base.mjs rewrites our own dependencies into /r/<name>.json URLs, so that spelling is a
+// legitimate way to write one by hand too. Reading only bare names would fail the gate on a
+// registry that installs perfectly well.
+test("deps: an absolute URL to our own item declares it just as a bare name does", () => {
+  const r = verifyRegistry(
+    {
+      name: "pulld",
+      items: [
+        { ...composed, registryDependencies: ["https://pulld.pages.dev/r/copy-button.json"] },
+        okItem(),
+      ],
+    },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("deps: importing a name no item ships is an alert of its own", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.ok(hasMsg(r, "imports @/registry/ui/copy-button, which no item in registry.json ships"))
+  assert.equal(r.alert, 1)
+})
+
+// A dependency on ui.shadcn.com's own components is the common case and says nothing about this
+// registry's sources — it must not be read as an over-declaration.
+test("deps: a dependency on a component we do not ship is left alone", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, registryDependencies: ["button", "copy-button"] }, okItem()] },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("deps: declaring one of ours that nothing imports warns without failing the gate", () => {
+  const r = verifyRegistry(
+    {
+      name: "pulld",
+      items: [
+        { ...composed, registryDependencies: ["copy-button", "spinner"] },
+        okItem(),
+        okItem({ name: "spinner", files: [{ path: "registry/ui/spinner.tsx", type: "registry:ui" }] }),
+      ],
+    },
+    { fileExists: () => true, readSource: importsCopyButton }
+  )
+  assert.equal(r.alert, 0, "an unused dependency installs too much, it does not break the install")
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, 'code-block: registryDependencies lists "spinner" but no file imports it'))
+})
+
+test("deps: an item importing its own file is not a dependency on itself", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    {
+      fileExists: () => true,
+      readSource: () => 'export { CopyButton } from "@/registry/ui/copy-button"',
+    }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("deps: sources not read means no opinion, not a clean bill of health", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed, okItem()] },
+    { fileExists: () => true, readSource: null }
+  )
+  assert.equal(r.alert, 0)
+  assert.ok(!hasMsg(r, "registryDependencies"))
+})
+
 // build-index.mjs writes the catalogue a second time, under the name official shadcn uses, so
 // clients that probe /r/index.json can see this registry at all. Like the catalogue index it has
 // no item and never will.
