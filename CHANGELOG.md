@@ -17,6 +17,12 @@ copies code into your project, so existing installs are never changed automatica
   its date. A native `<input type="date" disabled>` is barred from submission; this one
   was not. Brings it in line with `color-picker`, `duration-input` and `rating`, which
   already pass `disabled` through to their mirror.
+- docs(password-strength): the description said flatly that the advice line is tied to
+  the meter with `aria-describedby`. It is, but only when the caller gives the component
+  an `id` to derive one from — the component uses no hooks by design, so it has no
+  `useId` to fall back on and a dangling reference would be worse than none. Stated with
+  its precondition, and with what happens without one (the advice is still read, in
+  document order).
 
 ## 2026-08-27
 
