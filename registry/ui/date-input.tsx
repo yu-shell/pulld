@@ -475,7 +475,11 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
             />
           )
         )}
-        {name ? <input type="hidden" name={name} value={iso} /> : null}
+        {/* Disabled too, or the field still posts its value from a control the reader was
+            not allowed to touch — a native date input barred from submission does not. */}
+        {name ? (
+          <input type="hidden" name={name} value={iso} disabled={disabled} />
+        ) : null}
       </div>
     )
   }

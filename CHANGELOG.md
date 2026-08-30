@@ -12,6 +12,11 @@ copies code into your project, so existing installs are never changed automatica
   now means no lines — which is most of what this component is pointed at: a config
   value that was unset, a blank field in an admin panel, the first revision of a
   document. A text that really is one blank line (`"\n"`) still counts as one.
+- fix(date-input): `disabled` reached every visible segment but not the hidden input
+  that mirrors the ISO value for a native form submit, so a disabled field still posted
+  its date. A native `<input type="date" disabled>` is barred from submission; this one
+  was not. Brings it in line with `color-picker`, `duration-input` and `rating`, which
+  already pass `disabled` through to their mirror.
 
 ## 2026-08-27
 
