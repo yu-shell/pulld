@@ -3,6 +3,16 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-08-30
+
+- fix(diff-view): an empty `before` or `after` was diffed as a document containing one
+  blank line, because splitting `""` on newlines yields `[""]`. Filling in a field that
+  had been empty therefore reported "1 line added, 1 line removed" and rendered a row a
+  screen reader announced as "Removed line:", for a line that had never existed. Empty
+  now means no lines — which is most of what this component is pointed at: a config
+  value that was unset, a blank field in an admin panel, the first revision of a
+  document. A text that really is one blank line (`"\n"`) still counts as one.
+
 ## 2026-08-27
 
 - fix(registry): a component that composes another pulld component is now named by its

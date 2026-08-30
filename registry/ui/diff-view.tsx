@@ -26,7 +26,13 @@ type Row = Op | { type: "gap"; count: number }
  * trailing newlines mean there really is a blank last line, and that one stays.
  */
 function splitLines(text: string): string[] {
-  const lines = String(text ?? "").split(/\r?\n/)
+  const source = String(text ?? "")
+  // An empty text has no lines at all. Splitting it yields [""], which is a blank line that
+  // nobody wrote, and the diff then reports it as removed the first time a field is filled in
+  // — so an empty-to-filled change, which is most of what an admin panel shows a diff of,
+  // came out as "1 line added, 1 line removed" with a phantom "Removed line:" row.
+  if (source === "") return []
+  const lines = source.split(/\r?\n/)
   if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop()
   return lines
 }
