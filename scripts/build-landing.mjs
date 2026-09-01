@@ -124,6 +124,7 @@ const PREVIEWS = {
   rating: `<div style="font-size:19px;letter-spacing:2px"><span style="color:var(--accent)">★★★★</span><span style="color:var(--line)">★</span></div>`,
   timeline: `<div class="pv-timeline"><span class="d on"></span><span class="b" style="width:46px"></span><span class="d"></span><span class="b" style="width:30px"></span><span class="d"></span><span class="b" style="width:40px"></span></div>`,
   "announcement-bar": `<div class="pv-annc"><span>New — try it →</span><span class="x">×</span></div>`,
+  "network-status": `<div class="pv-net"><span class="i"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M16 11.1a10 10 0 0 1 3 1.8"/><path d="M2 8.8a16 16 0 0 1 4.7-2.8"/><path d="M11 5a16 16 0 0 1 11 3.8"/><path d="M12 20h.01"/></svg></span><span>Offline</span><span class="r">Retry</span></div>`,
   "file-dropzone": `<div class="pv-empty">${ICON.upload}<span>Drop files</span></div>`,
   "progress-ring": `<svg width="54" height="54" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="20" cy="20" r="16" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="72 101" transform="rotate(-90 20 20)"/><text x="20" y="24" text-anchor="middle" font-size="11" fill="var(--ink)" font-weight="600">72%</text></svg>`,
   "pricing-card": `<div class="pv-card" style="width:96px;padding:9px 10px;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)"><div style="font-size:11px;font-weight:600;color:var(--ink)">Pro</div><div style="display:flex;align-items:baseline;gap:2px;margin-top:1px"><span class="pv-big" style="font-size:15px">$29</span><span class="pv-muted">/mo</span></div><div style="display:flex;flex-direction:column;gap:3px;margin-top:7px"><span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Unlimited</span><span style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ink)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Analytics</span></div></div>`,
@@ -588,7 +589,7 @@ const html = `<!doctype html>
   .pv-json em{font-style:normal;opacity:.65}
   .pv-json-s{color:#16a34a}
   .pv-json-n{color:#2563eb}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
+  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-net .i{color:#f87171} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-otp{display:flex;gap:5px}
   .pv-otp span{width:18px;height:24px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font:13px ui-monospace,monospace;color:var(--ink);background:var(--surface)}
@@ -613,6 +614,11 @@ const html = `<!doctype html>
   .pv-annc{display:flex;align-items:center;gap:6px;width:100%;border-radius:8px;padding:6px 8px;font-size:11px;color:var(--ink);
     background:color-mix(in srgb,var(--accent) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line))}
   .pv-annc .x{margin-left:auto;color:var(--muted)}
+  .pv-net{display:flex;align-items:center;gap:5px;width:100px;box-sizing:border-box;border-radius:8px;padding:7px;
+    font-size:9.5px;line-height:1.2;color:var(--ink);white-space:nowrap;
+    background:color-mix(in srgb,#dc2626 10%,var(--surface));border:1px solid color-mix(in srgb,#dc2626 30%,var(--line))}
+  .pv-net .i{color:#dc2626;display:inline-flex;flex:none}
+  .pv-net .r{margin-left:auto;color:var(--muted);text-decoration:underline;text-underline-offset:2px}
   .card.search{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));
     background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
   .pv-search{color:var(--accent);display:inline-flex}

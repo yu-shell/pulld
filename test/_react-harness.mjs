@@ -124,6 +124,13 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
   let props = initialProps
   let tree = null
 
+  // Every cleanup an effect has handed back, in the order they were created. A commit would run the
+  // previous one before re-running its effect; this does not, because a pass here is not a commit —
+  // it is the same effect settling — and tearing down between passes would undo the very work being
+  // settled. They are kept instead so `unmount` can run all of them, which is what a component
+  // holding a timer or a listener needs before the test process can end.
+  const cleanups = []
+
   const settle = () => {
     for (let pass = 0; pass < maxPasses; pass++) {
       slot = 0
@@ -132,7 +139,10 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
       dirty = false
       tree = Component(props, null)
       for (const ref of refs) if (ref.current === null) ref.current = { ...domStandIn }
-      for (const fn of effects) fn()
+      for (const fn of effects) {
+        const cleanup = fn()
+        if (typeof cleanup === "function") cleanups.push(cleanup)
+      }
       if (!dirty) return tree
     }
     throw new Error("render did not settle — a state update is looping")
@@ -149,6 +159,15 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
     update: (nextProps) => {
       props = nextProps
       return settle()
+    },
+    /**
+     * Runs every cleanup this instance collected, newest first, the way unmounting would.
+     *
+     * Only components that leave something running need it — a pending timer keeps the node process
+     * alive after the test has passed, and one that reschedules itself keeps it alive forever.
+     */
+    unmount: () => {
+      while (cleanups.length) cleanups.pop()()
     },
   }
 }

@@ -3,6 +3,26 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-01
+
+- feat(network-status): an offline banner that verifies before it clears. `navigator.onLine`
+  reports whether a network interface is up, not whether anything can be reached, so it reads
+  true behind a captive portal, on Wi-Fi with a dead upstream, and when DNS alone has stopped
+  resolving; the `online` event fires on the same interface change. This believes the `false`
+  direction immediately and treats `true` as a claim to be checked with a real request, backing
+  off with jitter while unreachable, probing nothing in a hidden tab or when the interface itself
+  is down, and never probing on mount. The probe refuses to follow redirects (a captive portal's
+  302 to its own login page would otherwise return a perfectly good 200) and counts any HTTP
+  response as reachable, a 404 included, since the question is whether packets get to a server
+  and back. `useNetworkStatus`, `checkReachable` and `nextProbeDelay` are exported.
+- docs(toast): dropped "connection lost / restored notices" from its list of triggers. Toast is
+  the notifier your code calls; working out whether the network is there is network-status's job,
+  and both items claiming it left them competing for the same match.
+- docs(autosize-textarea): rewrote the description against the AEO rubric — more of the phrases
+  people actually type, and the three ways a hand-rolled version goes wrong that this one does
+  not (a `line-height` of `normal` parsing to NaN, `scrollHeight` omitting the border on a
+  border-box element, and width changes that fire no window resize).
+
 ## 2026-08-30
 
 - fix(diff-view): an empty `before` or `after` was diffed as a document containing one
