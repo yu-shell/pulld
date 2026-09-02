@@ -81,7 +81,11 @@ lines.push(
 lines.push(
   "- Search (public query_key): `GET " +
     BASE +
-    "/api/search/query?key=<query_key>&q=<text>` → `{results:[{id,label,url,snippet,score}]}`."
+    "/api/search/query?key=<query_key>&q=<text>&limit=8` → `{results:[{id,label,url,snippet,score}]}`. " +
+    "`limit` is 1-20 (default 8; out of range is clamped, not rejected) and results are one row per " +
+    "document, so a short list is normal. The key may travel in an `x-pulld-key` header instead of " +
+    "the query string, and POST takes the same fields as a JSON body. An empty `q` returns no " +
+    "results and costs no query quota."
 )
 lines.push("- Keys: `GET " + BASE + "/api/search/account?license=<license_key>`.")
 lines.push("")

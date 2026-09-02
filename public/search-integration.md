@@ -33,7 +33,30 @@ GET https://pulld.pages.dev/api/search/query?key=<query_key>&q=<text>&limit=8
 → { "results": [ { "id", "label", "url", "snippet", "score" } ] }
 ```
 
-Public and CORS-enabled. Rate-limited to 120 requests / 60s per IP.
+Public and CORS-enabled — `GET`, `POST` and the `x-pulld-key` header are all allowed from the
+browser.
+
+Rules:
+
+- `limit` is how many documents come back. Default **8**, range **1–20**. A value outside that
+  range is clamped rather than rejected, a fractional one is floored, and a non-numeric one falls
+  back to the default — so a stray `?limit=` never fails the request.
+- **Fewer than `limit` results is normal, not an error.** A long document is stored as several
+  neighbouring chunks; matches are over-fetched and then deduped to one row per document, so a
+  query whose best matches all come from the same few documents returns a shorter list.
+- `key` may travel in an `x-pulld-key` header instead of the query string. It is the same public
+  `query_key` — the header just keeps it out of URLs, referrers and access logs.
+- `POST` takes the same three fields as a JSON body: `{ "q", "key", "limit" }`. Use it when the
+  query text is long enough to be awkward in a URL. A field present in the body wins over the same
+  one in the query string.
+- **An empty or whitespace-only `q` returns `{ "results": [] }` without spending a query against
+  your monthly quota**, so a palette that fires on every keystroke pays nothing for the empty box
+  it opens in. It still counts against the burst limit below — keep the debounce.
+- Errors: `401 { "error": "unauthorized" }` for a missing, unknown or deactivated `query_key`;
+  `429 { "error": "rate_limited" }` with a `retry-after` header when the burst limit is hit; and
+  `429 { "error": "quota_exceeded" }` once the month's queries are spent (see Notes & limits).
+
+Rate-limited to 120 requests / 60s per `query_key` + IP.
 
 ## 3. Index your content (ingest)
 
