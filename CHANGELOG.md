@@ -3,6 +3,31 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-03
+
+- feat(unsaved-changes-guard): a leave guard that covers the departure `beforeunload` never sees.
+  `beforeunload` fires when the browser unloads the document, and clicking a `next/link` or a
+  React Router `Link` is not that — the document stays, the router swaps what is rendered, and the
+  half-filled form is gone with the browser never consulted, so a guard built on it alone protects
+  the tab button and lets every in-app route change past. Link clicks are held by a capture-phase
+  listener on `document` (both `preventDefault()` and `stopPropagation()`, since routers differ on
+  whether they check `defaultPrevented`) and resumed by replaying the original click on the same
+  anchor, which keeps the router's own transition. Back and forward are held with the Navigation
+  API's `navigate` event, the only thing that can refuse a traversal; where `window.navigation` is
+  missing they are not intercepted, and the `guard` prop takes your router's blocker instead. Never
+  held: the app's own `router.push` (the redirect after a save is exactly that), cross-origin links,
+  hash links, downloads, and modified or middle clicks. `useUnsavedChanges` and `useBeforeUnload`
+  are exported.
+- fix(code-block): the scrolling panel is now a tab stop. `<pre>` scrolls horizontally and holds
+  nothing focusable — the copy button is a sibling, outside it — so the right-hand end of a long
+  line was reachable with a mouse and with nothing else (WCAG 2.1.1). It now takes `tabIndex={0}`
+  with a visible focus ring. Additive: no prop or markup a caller depends on has changed.
+- docs(code-block): the description now says when to reach for it in the words people use for it
+  (MDX, Nextra, Docusaurus, Starlight, Storybook, `.env` and YAML samples, a stack trace in a
+  support article, the code an assistant hands back), and draws the boundary against its pulld
+  siblings by what the string is rather than how it looks — copy-field for a single-line value,
+  ansi-log for a process's own output, diff-view for before and after.
+
 ## 2026-09-01
 
 - feat(network-status): an offline banner that verifies before it clears. `navigator.onLine`
