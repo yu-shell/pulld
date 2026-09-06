@@ -16,7 +16,14 @@
 // is `Command failed: npx …`, which is what made the original diagnosis take eight days.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { d1, parseRows, causeOf, BUDGETS_MS } from "../scripts/_d1.mjs"
+import {
+  d1,
+  parseRows,
+  causeOf,
+  wranglerD1,
+  BUDGETS_MS,
+  MAX_OUTPUT_BYTES,
+} from "../scripts/_d1.mjs"
 
 const SQL = "SELECT item FROM fetches"
 
@@ -124,4 +131,54 @@ test("causeOf reads stderr, falls back to stdout, and keeps only the last lines"
   assert.equal(causeOf({ stderr: "a\nb\nc\nd\ne\nf" }), "c | d | e | f")
   assert.equal(causeOf({}), "")
   assert.equal(causeOf(undefined), "")
+})
+
+// --- the output buffer ------------------------------------------------------
+// The second way this shell-out fails quietly, and the one that arrives on its own. `execFileSync`
+// holds the child's whole stdout in memory and Node caps that at 1 MiB, so the reply that worked
+// yesterday throws ENOBUFS today purely because more has been logged since. It hit sweep.mjs first
+// — it reads the entire `fetches` table, because which rows count as an install is installsByItem's
+// rule and re-deriving it in SQL is the drift _installs.mjs exists to prevent — at roughly 8,000
+// rows of ~140 bytes. The retry above is no defence: both budgets are timeouts, and a reply that is
+// too large is exactly as large on the second attempt.
+//
+// So these pin the option itself rather than a number of rows, which is the only part a unit test
+// can see and the part a reformat would drop.
+
+test("the output buffer is raised past Node's 1 MiB default, which ENOBUFS is a property of", () => {
+  assert.ok(
+    MAX_OUTPUT_BYTES > 1024 * 1024,
+    `a cap at or below Node's default cannot help — got ${MAX_OUTPUT_BYTES}`
+  )
+})
+
+test("wranglerD1 actually passes that buffer to the child, along with the piped stderr", () => {
+  let options = null
+  wranglerD1(SQL, 30000, {
+    exec: (_file, _args, opts) => {
+      options = opts
+      return ROWS
+    },
+  })
+  assert.equal(options.maxBuffer, MAX_OUTPUT_BYTES)
+  // The other two are load-bearing for the tests above: without piped stderr there is no `e.stderr`
+  // for causeOf to read, and without the timeout the retry has no budget to spend.
+  assert.deepEqual(options.stdio, ["ignore", "pipe", "pipe"])
+  assert.equal(options.timeout, 30000)
+})
+
+test("wranglerD1 sends the caller's SQL as one argv entry, never through a shell", () => {
+  let argv = null
+  wranglerD1("SELECT item FROM fetches WHERE ua LIKE '%bot%'", 30000, {
+    exec: (_file, args) => {
+      argv = args
+      return ROWS
+    },
+  })
+  // `--command` and its value adjacent and unquoted: a SQL string that reached a shell would need
+  // quoting, and the one place that would show up is a query containing a quote of its own.
+  const i = argv.indexOf("--command")
+  assert.ok(i >= 0)
+  assert.equal(argv[i + 1], "SELECT item FROM fetches WHERE ua LIKE '%bot%'")
+  assert.equal(argv.length, i + 2, "the SQL must be the last argument")
 })

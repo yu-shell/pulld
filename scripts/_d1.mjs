@@ -23,10 +23,27 @@ import { execFileSync } from "node:child_process"
 // First attempt gets the longer budget: a cold `npx` install is slow, not broken.
 export const BUDGETS_MS = [60000, 30000]
 
+// `execFileSync` buffers the whole child stdout in memory and Node caps that at 1 MiB by default,
+// throwing ENOBUFS the moment a reply crosses it. That cap is a property of how much has been
+// logged, not of the query, so it arrives one morning with nothing changed: sweep.mjs reads the
+// whole `fetches` table (it has to — which rows count as an install is `installsByItem`'s rule,
+// and re-expressing it in SQL is exactly the drift _installs.mjs exists to prevent), and at ~140
+// bytes a row it crossed 1 MiB at around 8,000 fetches. learn.mjs's windowed copy of the same
+// query is the next one in line.
+//
+// It also defeats the retry above rather than being caught by it: both budgets are timeouts, and
+// a reply that is too large is no smaller on the second attempt. So the cap is lifted here, at the
+// one shell-out all four scripts share, instead of at whichever caller notices first. 64 MiB is
+// room for a few hundred thousand rows — far past the point where this should be a windowed query
+// rather than a bigger buffer, but it fails loudly at that size instead of silently at 1 MiB.
+export const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+
 // The command every caller was already running, with stderr piped rather than inherited so the
-// cause survives on the error object instead of scrolling past on the parent's stderr.
-export function wranglerD1(sql, timeout) {
-  return execFileSync(
+// cause survives on the error object instead of scrolling past on the parent's stderr. `exec` is
+// injectable for the same reason `run` is below: the options here are the whole defence against
+// ENOBUFS, and a test that cannot see them cannot notice one going missing in a reformat.
+export function wranglerD1(sql, timeout, { exec = execFileSync } = {}) {
+  return exec(
     "npx",
     [
       "--yes",
@@ -39,7 +56,12 @@ export function wranglerD1(sql, timeout) {
       "--command",
       sql,
     ],
-    { encoding: "utf8", timeout, stdio: ["ignore", "pipe", "pipe"] }
+    {
+      encoding: "utf8",
+      timeout,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: MAX_OUTPUT_BYTES,
+    }
   )
 }
 

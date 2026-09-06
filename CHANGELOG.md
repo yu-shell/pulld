@@ -13,6 +13,18 @@ copies code into your project, so existing installs are never changed automatica
   because the signature was right and the implementation was the thing disagreeing
   with it. The line is now composed as nodes. A `formatValue` returning a string
   renders character for character as it did.
+- fix(routine): the D1 helper no longer trips over its own output. `execFileSync`
+  buffers a child's whole stdout in memory and Node caps that at 1 MiB, throwing
+  `ENOBUFS` past it — a cap on how much has been logged rather than on anything about
+  the query, so it arrives one morning with nothing changed. `scripts/sweep.mjs` reads
+  the entire `fetches` table (it has to: which rows count as an install is
+  `installsByItem`'s rule, and re-deriving it in SQL is the drift `_installs.mjs`
+  exists to prevent) and at ~140 bytes a row it crossed 1 MiB at around 8,000 fetches;
+  the table now holds 9,523 and the reply is 1.27 MiB. The retry beside it was no
+  defence, since both of its budgets are timeouts and an over-large reply is exactly
+  as large on the second attempt. The four scripts in the daily routine share this one
+  shell-out, so the buffer is raised there. `learn.mjs`'s windowed copy of the same
+  query was next in line.
 
 ## 2026-09-03
 
