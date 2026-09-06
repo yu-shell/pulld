@@ -3,6 +3,17 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-06 — quality sweep
+
+- fix(ratio-bar): a `formatValue` that returns an element renders it, instead of
+  "[object Object]". The prop is declared `(value: number) => React.ReactNode`, so a
+  caller returning `<strong>1.2 GB</strong>` — or any other node — is doing exactly
+  what the type invites; the share line was assembled with a template literal, which
+  stringifies everything that is not already a string. TypeScript raised nothing,
+  because the signature was right and the implementation was the thing disagreeing
+  with it. The line is now composed as nodes. A `formatValue` returning a string
+  renders character for character as it did.
+
 ## 2026-09-03
 
 - feat(unsaved-changes-guard): a leave guard that covers the departure `beforeunload` never sees.

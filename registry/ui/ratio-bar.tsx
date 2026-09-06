@@ -171,9 +171,19 @@ export const RatioBar = React.forwardRef<HTMLDivElement, RatioBarProps>(
     const colorFor = (part: RatioBarPart, index: number) =>
       part.className ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]
 
-    const describe = (value: number, percent: number) => {
+    // Composed as nodes rather than interpolated into a template string: `formatValue` is
+    // declared to return a `ReactNode`, and a template literal would render anything that is not
+    // already a string as "[object Object]" — so the type says an element is welcome while the
+    // output says otherwise. A string return renders exactly as it did.
+    const describe = (value: number, percent: number): React.ReactNode => {
       const share = formatPercent(percent, decimals, value, capacity)
-      return formatValue ? `${formatValue(value)} (${share})` : share
+      return formatValue ? (
+        <>
+          {formatValue(value)} ({share})
+        </>
+      ) : (
+        share
+      )
     }
 
     return (
