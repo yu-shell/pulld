@@ -4,6 +4,7 @@
 //  - has a unique name and no repeated file paths within an item
 //  - references source files that actually exist
 //  - declares, in registryDependencies, every component of ours that its source imports
+//  - declares, in dependencies, every npm package its source imports
 //  - has a title/description of sufficient length for discoverability
 // and, if a build output exists in public/r, that it corresponds to the items. The source tree is
 // checked in the same both-ways spirit: a .tsx under registry/ that no item claims is flagged too.
@@ -44,6 +45,52 @@ const declaredName = (dep) =>
   typeof dep === "string"
     ? dep.replace(/^https?:\/\/[^?#]*\/r\//, "").replace(/\.json([?#].*)?$/, "")
     : ""
+
+// react and react-dom are the runtime a shadcn consumer necessarily already has; official
+// shadcn's own items do not list them in `dependencies` either, so importing one is not an
+// undeclared dependency.
+export const ASSUMED_PACKAGES = new Set(["react", "react-dom"])
+
+// The npm packages one source imports — the other half of what `localImports` deliberately
+// ignores. A specifier that is neither relative nor an alias into this repo (`@/…`) resolves to
+// something the consumer's own node_modules has to carry, and `dependencies` is the only field
+// that makes `shadcn add` install it.
+//
+// Matched at statement granularity rather than by bare string literal, which is the difference
+// from `localImports` above: `@/registry/ui/<name>` is a spelling prose never contains, but
+// package names are ordinary words and these sources carry long prose comments. So a match has to
+// both begin a line with `import`/`export` (or close a multi-line clause with `}`) and end that
+// line at the specifier — two conditions a sentence containing the word "from", a `// import …`
+// example, or a ` * import …` doc-comment line does not satisfy together. Built per call for the
+// same reason as `localImports`: a shared global regex carries `lastIndex` between uses.
+const externalImports = (src) => {
+  const statements = [
+    // import … from "x" / export … from "x", on one line.
+    /^[ \t]*(?:import|export)[^\n]*?\bfrom[ \t]*(["'])([^"'\n]+)\1[ \t]*;?[ \t]*$/gm,
+    // Side-effect import: import "x".
+    /^[ \t]*import[ \t]*(["'])([^"'\n]+)\1[ \t]*;?[ \t]*$/gm,
+    // The closing line of a multi-line named import: } from "x".
+    /^[ \t]*\}[ \t]*from[ \t]*(["'])([^"'\n]+)\1[ \t]*;?[ \t]*$/gm,
+  ]
+  const names = new Set()
+  for (const re of statements) {
+    for (const [, , spec] of src.matchAll(re)) {
+      if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("@/")) continue
+      // A subpath import still installs the package: "lucide-react/icons" is lucide-react.
+      const pkg = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]
+      if (pkg && !ASSUMED_PACKAGES.has(pkg)) names.add(pkg)
+    }
+  }
+  return names
+}
+
+// The package a `dependencies` entry names. shadcn lets an entry pin a range ("lucide-react@^0.4"),
+// and a scoped package carries an @ of its own, so only a later @ is a version.
+const packageOf = (dep) => {
+  const s = String(dep ?? "").trim()
+  const at = s.lastIndexOf("@")
+  return at > 0 ? s.slice(0, at) : s
+}
 
 export const VALID_TYPES = new Set([
   "registry:ui",
@@ -147,10 +194,12 @@ export function verifyRegistry(
     for (const item of reg?.items ?? []) {
       const id = item.name ?? "(no name)"
       const imported = new Set()
+      const packages = new Set()
       for (const f of item.files ?? []) {
         const src = f?.path ? readSource(f.path) : null
         if (typeof src !== "string") continue
         for (const dep of localImports(src)) imported.add(dep)
+        for (const pkg of externalImports(src)) packages.add(pkg)
       }
       // A component importing its own file is the item itself, not a dependency on one.
       imported.delete(item.name)
@@ -176,6 +225,33 @@ export function verifyRegistry(
         warning(
           `${id}: registryDependencies lists "${dep}" but no file imports it — consumers install ` +
             `a component ${id} does not use → drop it from registryDependencies`
+        )
+      }
+
+      // The npm half of the same blind spot. `dependencies` is what makes `shadcn add` run the
+      // consumer's package manager; an import it omits ships a file whose package is simply not
+      // there. It fails exactly like an undeclared registryDependency and hides in exactly the
+      // same place: lucide-react is in this repo's own devDependencies, so `npm run typecheck`
+      // resolves the import against a tree that has it, and `shadcn build` copies the source
+      // faithfully. Every signal stays green and the consumer's build is the first thing to say
+      // "Cannot find module". Thirty-one items currently declare lucide-react and thirty-one
+      // sources import it — that correspondence has been held by hand until now.
+      const declaredPkgs = new Set((item.dependencies ?? []).map(packageOf).filter(Boolean))
+      for (const pkg of packages) {
+        if (declaredPkgs.has(pkg)) continue
+        fail(
+          `${id}: imports "${pkg}" but dependencies does not list it — \`shadcn add ${id}\` ` +
+            `installs this file without the package and the consumer's build fails on the ` +
+            `import → add "${pkg}" to its dependencies`
+        )
+      }
+      // Over-declaring only installs a package the consumer does not need, so it warns — the same
+      // asymmetry as the registryDependencies pair above.
+      for (const pkg of declaredPkgs) {
+        if (packages.has(pkg)) continue
+        warning(
+          `${id}: dependencies lists "${pkg}" but no file imports it — consumers install an npm ` +
+            `package ${id} does not use → drop it from dependencies`
         )
       }
     }
