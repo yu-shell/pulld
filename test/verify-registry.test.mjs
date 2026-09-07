@@ -296,6 +296,153 @@ test("deps: sources not read means no opinion, not a clean bill of health", () =
   assert.ok(!hasMsg(r, "registryDependencies"))
 })
 
+// `dependencies` — the npm half of the same blind spot, and invisible for the same reason: this
+// repo carries lucide-react in its own devDependencies, so typecheck resolves an import of it
+// whether or not the item declares it, and `shadcn build` publishes the source either way. Only
+// the consumer's build says "Cannot find module".
+//
+// The extraction is what these tests mostly pin. Unlike `@/registry/ui/<name>`, a package name is
+// an ordinary word, and these sources are heavily commented — so a match has to be an import
+// *statement*, not a quoted word. Over-reporting here would fail the gate on a registry that
+// installs perfectly well, which is worse than the miss it is guarding against.
+const icons = (src) => (p) => (p === "registry/ui/code-block.tsx" ? src : "")
+
+test("npm: an imported package missing from dependencies is an alert", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    { fileExists: () => true, readSource: icons('import { Check } from "lucide-react"') }
+  )
+  assert.equal(r.alert, 1, "the published install has no such package; a rebuild does not fix it")
+  assert.ok(hasMsg(r, 'code-block: imports "lucide-react" but dependencies does not list it'))
+})
+
+test("npm: declaring the package silences it", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["lucide-react"] }] },
+    { fileExists: () => true, readSource: icons('import { Check } from "lucide-react"') }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+// shadcn lets a dependency pin a range, and a scoped package carries an @ of its own — so the
+// version has to be stripped from the right, not from the first @.
+test("npm: a pinned version still declares the package", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["lucide-react@^0.460.0"] }] },
+    { fileExists: () => true, readSource: icons('import { Check } from "lucide-react"') }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("npm: a scoped package is read whole, version or not", () => {
+  const src = 'import * as Dialog from "@radix-ui/react-dialog"'
+  const bare = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["@radix-ui/react-dialog"] }] },
+    { fileExists: () => true, readSource: icons(src) }
+  )
+  assert.equal(bare.alert + bare.warn, 0)
+  const pinned = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["@radix-ui/react-dialog@^1.1.0"] }] },
+    { fileExists: () => true, readSource: icons(src) }
+  )
+  assert.equal(pinned.alert + pinned.warn, 0)
+  const undeclared = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    { fileExists: () => true, readSource: icons(src) }
+  )
+  assert.ok(hasMsg(undeclared, 'imports "@radix-ui/react-dialog"'), "not just the @radix-ui scope")
+})
+
+// A subpath resolves to the same install.
+test("npm: a subpath import names the package it installs", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["lucide-react"] }] },
+    { fileExists: () => true, readSource: icons('import { Check } from "lucide-react/icons"') }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+// Official shadcn's items do not list react either; a consumer without it has nothing to install
+// these components into.
+test("npm: react and react-dom are assumed, not undeclared", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    {
+      fileExists: () => true,
+      readSource: icons('import * as React from "react"\nimport { createPortal } from "react-dom"'),
+    }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("npm: relative and @/ specifiers are not packages", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    {
+      fileExists: () => true,
+      readSource: icons('import { cn } from "@/lib/utils"\nimport { helper } from "./helper"'),
+    }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("npm: a multi-line named import is still an import", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    {
+      fileExists: () => true,
+      readSource: icons('import {\n  Check,\n  Copy,\n} from "lucide-react"'),
+    }
+  )
+  assert.ok(hasMsg(r, 'imports "lucide-react"'))
+})
+
+// The reason the match is anchored to a statement. Every line here contains the word `from` next
+// to a quoted word; none of them is an import, and a gate that failed on prose would be useless
+// in sources written like these ones are.
+test("npm: prose, examples and doc comments are not imports", () => {
+  const src = [
+    "// a cell going from \"3\" to \"4\" re-measures the box",
+    "// import { format } from \"date-fns\"  ← how you would do it with a library",
+    "/**",
+    ' * import { Check } from "lucide-react"',
+    " * Values run from \"sun\" to \"sat\".",
+    " */",
+    'const WEEK = pick(days, "mon")',
+    'const label = t.startsWith("@") ? from("scope") : "plain"',
+  ].join("\n")
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    { fileExists: () => true, readSource: icons(src) }
+  )
+  assert.equal(r.alert, 0, msgs(r).join("\n"))
+  assert.equal(r.warn, 0, msgs(r).join("\n"))
+})
+
+test("npm: declaring a package nothing imports warns without failing the gate", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [{ ...composed, dependencies: ["date-fns"] }] },
+    { fileExists: () => true, readSource: icons('import * as React from "react"') }
+  )
+  assert.equal(r.alert, 0, "an unused dependency installs too much, it does not break the install")
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, 'code-block: dependencies lists "date-fns" but no file imports it'))
+})
+
+test("npm: sources not read means no opinion here either", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [composed] },
+    { fileExists: () => true, readSource: null }
+  )
+  assert.equal(r.alert, 0)
+  assert.ok(!hasMsg(r, "dependencies does not list it"))
+})
+
 // build-index.mjs writes the catalogue a second time, under the name official shadcn uses, so
 // clients that probe /r/index.json can see this registry at all. Like the catalogue index it has
 // no item and never will.
