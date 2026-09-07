@@ -288,6 +288,28 @@ const PREVIEWS = {
     const track = `<span style="position:relative;display:block;width:100%;height:4px;border-radius:99px;overflow:hidden;background:var(--line)"><span style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:99px;background:var(--accent)"></span></span>`
     return `<div style="display:flex;flex-direction:column;width:96px">${track}<span style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${line("100%", ".5")}${line("88%", ".5")}${line("96%", ".5")}${line("72%", ".16")}${line("90%", ".16")}</span></div>`
   })(),
+  // A table whose right-hand columns fade out because there are more of them, with the scrollbar
+  // thumb parked at the left to say why only that side is soft. The fade is the whole component, so
+  // the thumbnail has to be a shape that is visibly cut off rather than a bordered box like every
+  // other scroller. 5 rows of 4px + 4 gaps of 7 + 8 + a 3px bar = 59px, inside the 84px the preview
+  // box leaves.
+  "scroll-shadow": (() => {
+    const cell = (w, tone) =>
+      `<span style="flex:none;width:${w}px;height:4px;border-radius:2px;background:${tone}"></span>`
+    const row = (tone) =>
+      `<span style="display:flex;gap:6px">${[20, 28, 18, 26, 22]
+        .map((w) => cell(w, tone))
+        .join("")}</span>`
+    const fade = "linear-gradient(to right,#000 0,#000 52%,transparent 100%)"
+    const bar = `<span style="position:relative;display:block;width:100%;height:3px;border-radius:99px;background:var(--line)"><span style="position:absolute;left:0;top:0;bottom:0;width:46%;border-radius:99px;background:var(--muted);opacity:.6"></span></span>`
+    return `<div style="display:flex;flex-direction:column;gap:8px;width:96px"><span style="display:flex;flex-direction:column;gap:7px;overflow:hidden;-webkit-mask-image:${fade};mask-image:${fade}">${row(
+      "var(--accent)"
+    )}${row("color-mix(in srgb,var(--muted) 55%,transparent)")}${row(
+      "color-mix(in srgb,var(--muted) 55%,transparent)"
+    )}${row("color-mix(in srgb,var(--muted) 55%,transparent)")}${row(
+      "color-mix(in srgb,var(--muted) 55%,transparent)"
+    )}</span>${bar}</div>`
+  })(),
   "middle-truncate": (() => {
     const mono = (text, color, weight = "400") =>
       `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`

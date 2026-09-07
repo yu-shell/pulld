@@ -61,6 +61,15 @@ const domStandIn = {
   setSelectionRange() {},
   contains: () => false,
   querySelector: () => null,
+  // A component that observes the node it is holding — a scroll listener, a ResizeObserver over its
+  // children, a wait on the document's fonts — is doing something ordinary too, and the calls it
+  // makes to set that up should be no-ops here rather than the reason it cannot be rendered at all.
+  // Nothing is delivered through them: the harness has no layout, so a measurement taken here reads
+  // as "not measured yet", which is exactly the server's answer and worth asserting on its own.
+  addEventListener() {},
+  removeEventListener() {},
+  children: [],
+  ownerDocument: { fonts: null },
 }
 
 // --- the dispatcher --------------------------------------------------------
