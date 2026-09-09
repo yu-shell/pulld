@@ -388,6 +388,15 @@ const PREVIEWS = {
       .join("")
     return `<div style="display:flex;flex-direction:column;gap:4px;width:96px"><div class="pv-input" style="width:96px;box-sizing:border-box;height:22px;padding:0 7px"><span class="pv-dots">••••••••</span></div><div class="pv-warn" style="display:flex;gap:3px;width:100%">${bar}</div><span class="pv-warn" style="font-size:9px;font-weight:600">Fair</span></div>`
   })(),
+  // The mark itself, over the rule it is made on. The stroke is one path with round caps and
+  // varying curvature so it reads as handwriting rather than as a zigzag — which is the component's
+  // own point about smoothing, drawn at 96px. The ✕ and the baseline are what a signature line
+  // looks like on paper, and they are what makes the box legible as "sign here" at this size.
+  "signature-pad": (() => {
+    const ink = `<path d="M5 27C9 9 13 7 15 19c1 8 4 10 6 2 2-7 5-8 6 1 1 8 5 9 9 2 4-8 8 6 14 1 5-4 8 3 13-3 4-5 8 1 12-6" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`
+    const tail = `<path d="M74 12c6-2 9 1 6 4-2 2-5 1-3-2" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><div style="box-sizing:border-box;width:96px;height:52px;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:4px 5px 0"><svg width="86" height="36" viewBox="0 0 86 34" fill="none" aria-hidden="true">${ink}${tail}<path d="M2 32h82" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" stroke-linecap="round"/></svg></div><span style="display:flex;align-items:center;gap:4px"><span style="font-size:9px;line-height:1;color:var(--muted)">✕</span><span style="height:1px;flex:1;background:var(--line)"></span><span style="font-size:8px;line-height:1;color:var(--muted)">or type</span></span></div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
