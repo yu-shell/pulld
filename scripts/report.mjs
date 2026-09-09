@@ -12,30 +12,82 @@
 // D1 access — the retry a cold `npx` cache needs, and the cause `e.message` throws away — was
 // first worked out here and now lives in scripts/_d1.mjs, shared with the three other scripts on
 // the same shell-out.
+import { pathToFileURL } from "node:url"
 import { classify, classifyClick, isInstall } from "../functions/_traffic.js"
 import { d1 } from "./_d1.mjs"
 import { groupSessions, creditSessions, utcDay, formatSpan } from "./_bursts.mjs"
-import { isRewardItem } from "./_installs.mjs"
+import { isRewardItem, proBlockOf } from "./_installs.mjs"
 
 const rawDays = Number(process.argv[2] || 30)
 const DAYS = Number.isFinite(rawDays) && rawDays > 0 ? Math.floor(rawDays) : 30
 
-function reportFetches() {
-  const rows = d1(
-    "SELECT item, ua, COUNT(*) AS n " +
-      `FROM fetches WHERE date >= date('now','-${DAYS} day') ` +
-      "AND item NOT IN ('registry','index') " +
-      "GROUP BY item, ua"
+// Splits one window of `fetches` rows into the two tables it feeds here: free components, and
+// the Pro blocks behind the licence gate.
+//
+// Which rows the per-item table is *about* is not a question this file gets to answer for itself:
+// `isRewardItem` (scripts/_installs.mjs) is the one rule for it, shared with learn.mjs's reward
+// and sweep.mjs's scope. It used to be re-expressed here as SQL — `AND item NOT IN
+// ('registry','index')` — which is the drift _installs.mjs exists to prevent, and it had already
+// drifted: the two catalogue names were excluded, `pro/…` was not. So the per-item table listed
+// `pro/dashboard-overview:402` — a request for a paid block DENIED for want of a licence — in the
+// same columns as a component somebody installed, under a name the fixed-width column then ran
+// its own count into (`pro/dashboard-overview:4020`). _installs.mjs has a name for that row: "a
+// failed purchase attempt counted as a successful install". Worse, reportSessions() directly
+// below does filter through isRewardItem, so two reports over one window disagreed about it.
+//
+// The Pro rows are not dropped, they are moved: they are the only record the fetch log keeps of
+// the paid funnel, and they mean something the per-item table cannot say.
+export function partitionFetchRows(rows) {
+  const components = []
+  const pro = []
+  for (const r of rows ?? []) {
+    const item = String(r?.item ?? "")
+    if (isRewardItem(item)) components.push(r)
+    else if (proBlockOf(item)) pro.push(r)
+    // `registry` and `index` are the catalogue itself, not a fetch of anything — neither table.
+  }
+  return { components, pro }
+}
+
+// Per Pro block: requests a person made on each side of the licence gate, and everything else.
+// `served`/`denied` count people only — isInstall, the same install-or-browser test the reward
+// uses — for the reason the per-item table keeps its columns apart: a crawler walking /r/pro/ is
+// not somebody trying to buy, and this is the one table where that would read as demand.
+export function proFunnel(rows) {
+  const byBlock = new Map()
+  for (const r of rows ?? []) {
+    const parsed = proBlockOf(r?.item)
+    if (!parsed) continue
+    const acc = byBlock.get(parsed.name) ?? { name: parsed.name, served: 0, denied: 0, automated: 0 }
+    const n = Number(r?.n) || 0
+    if (!isInstall(r?.ua)) acc.automated += n
+    else if (parsed.denied) acc.denied += n
+    else acc.served += n
+    byBlock.set(parsed.name, acc)
+  }
+  return [...byBlock.values()].sort(
+    (a, b) => b.denied + b.served - (a.denied + a.served) || a.name.localeCompare(b.name)
   )
-  if (!rows.length) {
+}
+
+function reportFetches() {
+  const { components, pro } = partitionFetchRows(
+    d1(
+      "SELECT item, ua, COUNT(*) AS n " +
+        `FROM fetches WHERE date >= date('now','-${DAYS} day') ` +
+        "GROUP BY item, ua"
+    )
+  )
+  if (!components.length) {
     console.log(`(last ${DAYS} days: no fetch records — normal right after launch)`)
+    printProFunnel(pro)
     return
   }
 
   const byItem = new Map()
   const clients = new Map()
   const totals = { install: 0, index: 0, human: 0, crawler: 0 }
-  for (const r of rows) {
+  for (const r of components) {
     const item = String(r.item)
     const n = Number(r.n) || 0
     const kind = classify(r.ua)
@@ -71,6 +123,27 @@ function reportFetches() {
       console.log(`  ${kind.padEnd(8)}${(ua || "(none)").padEnd(42)}${n}`)
     }
   }
+
+  printProFunnel(pro)
+}
+
+// The paid funnel as the fetch log records it — the half of it that happens before /go/*, which
+// reportClicks() covers from the other end. Prints nothing when no Pro block was asked for.
+function printProFunnel(rows) {
+  const blocks = proFunnel(rows)
+  if (!blocks.length) return
+  // Width from the content, not a constant: these are the long names in this file's tables, and a
+  // fixed one is what ran `pro/dashboard-overview:402` into its own first column.
+  const w = Math.max("block".length, ...blocks.map((b) => b.name.length)) + 2
+  console.log(`\npro blocks — requests that met the licence gate (last ${DAYS} days)`)
+  console.log(`  ${"block".padEnd(w)}served\tdenied\tautomated`)
+  for (const b of blocks) {
+    console.log(`  ${b.name.padEnd(w)}${b.served}\t${b.denied}\t${b.automated}`)
+  }
+  console.log("  served/denied count people only (an install client or a browser); automated is every")
+  console.log("  crawler and mirror asking for the block, on either side of the gate.")
+  console.log("  denied = an install that hit the paywall — the top of the buy funnel, and the reason")
+  console.log("  these rows are not in the per-item table above.")
 }
 
 // How many separate decisions the install/human columns actually represent.
@@ -196,25 +269,37 @@ function reportClicks() {
   }
 }
 
-try {
-  reportFetches()
-} catch (e) {
-  console.log(`failed to fetch report (best-effort): ${e.message}`)
+function main() {
+  try {
+    reportFetches()
+  } catch (e) {
+    console.log(`failed to fetch report (best-effort): ${e.message}`)
+  }
+  try {
+    reportSessions()
+  } catch (e) {
+    console.log(`\n(no session report: ${String(e.message).split("\n")[0]})`)
+  }
+  try {
+    reportMisses()
+  } catch (e) {
+    // Missing table = the misses migration has not been applied to this D1 yet (db/schema.sql).
+    console.log(`\n(no miss report: ${String(e.message).split("\n")[0]})`)
+  }
+  try {
+    reportClicks()
+  } catch (e) {
+    // Missing table = /go/* not deployed yet (see db/schema.sql); nothing to report.
+    console.log(`\n(no click report: ${String(e.message).split("\n")[0]})`)
+  }
 }
-try {
-  reportSessions()
-} catch (e) {
-  console.log(`\n(no session report: ${String(e.message).split("\n")[0]})`)
-}
-try {
-  reportMisses()
-} catch (e) {
-  // Missing table = the misses migration has not been applied to this D1 yet (db/schema.sql).
-  console.log(`\n(no miss report: ${String(e.message).split("\n")[0]})`)
-}
-try {
-  reportClicks()
-} catch (e) {
-  // Missing table = /go/* not deployed yet (see db/schema.sql); nothing to report.
-  console.log(`\n(no click report: ${String(e.message).split("\n")[0]})`)
+
+// Only run the CLI when invoked directly (`node scripts/report.mjs [days]`), not when imported by
+// the unit tests — the guard sweep.mjs, learn.mjs and build-index.mjs already carry. Without it,
+// importing this file to test the pure helpers above runs the whole report: four shell-outs to
+// `npx --yes wrangler@latest` against the live D1, inside `node --test`. pathToFileURL rather than
+// `file://` + argv[1], because `import.meta.url` is percent-encoded and a path needing encoding
+// (one space is enough) would make the two strings differ and the report never run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
 }
