@@ -23,10 +23,32 @@ import { creditSessions } from "./_bursts.mjs"
 // otherwise have walked straight into the reward as if it were a component somebody installed.
 const CATALOGUE_ITEMS = new Set(["registry", "index"])
 
+// How functions/_pro-gate.js spells the two Pro rows above: the block's name behind `pro/`, with
+// `:402` appended when the request was refused for want of a licence.
+const PRO_PREFIX = "pro/"
+const DENIED_SUFFIX = ":402"
+
+// The block a `pro/…` item names, and which side of the licence gate the request ended on —
+// `{ name, denied }`, or null for anything that is not a Pro row (a free component, a catalogue
+// name, and the degenerate `pro/` and `pro/:402`, which name no block).
+//
+// Here rather than at the one caller for the same reason isRewardItem is: this is the grammar of
+// `fetches.item`, and a second copy of it elsewhere is how the report came to disagree with the
+// reward about the same table. isRewardItem is written against it below, so "excluded from the
+// reward" and "is a Pro row" cannot come apart.
+export const proBlockOf = (item) => {
+  const s = String(item ?? "")
+  if (!s.startsWith(PRO_PREFIX)) return null
+  const rest = s.slice(PRO_PREFIX.length)
+  const denied = rest.endsWith(DENIED_SUFFIX)
+  const name = denied ? rest.slice(0, -DENIED_SUFFIX.length) : rest
+  return name ? { name, denied } : null
+}
+
 // True when a `fetches.item` value is a free component whose fetches count as install reward.
 export const isRewardItem = (item) => {
   const s = String(item ?? "")
-  return s !== "" && !CATALOGUE_ITEMS.has(s) && !s.startsWith("pro/")
+  return s !== "" && !CATALOGUE_ITEMS.has(s) && !s.startsWith(PRO_PREFIX)
 }
 
 // rows: the `SELECT item, ts, ua, country FROM fetches ...` shape both callers use — one row per

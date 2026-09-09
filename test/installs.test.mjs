@@ -15,7 +15,7 @@
 // count is precisely what could not be trusted.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { isRewardItem, installsByItem } from "../scripts/_installs.mjs"
+import { isRewardItem, proBlockOf, installsByItem } from "../scripts/_installs.mjs"
 
 // User-agents, one per bucket of functions/_traffic.js.
 const UA = {
@@ -52,6 +52,41 @@ test("isRewardItem: free components count; catalogue index and Pro rows do not",
   assert.equal(isRewardItem(""), false)
   assert.equal(isRewardItem(null), false)
   assert.equal(isRewardItem(undefined), false)
+})
+
+// The other half of the same grammar: isRewardItem says a `pro/…` row is not reward, proBlockOf
+// says which block it was and whether the licence gate let it through. report.mjs reads the funnel
+// off it, so the two answers have to come from one place — a second copy is how the report came to
+// list a denied purchase in the same column as an install.
+test("proBlockOf: the two shapes _pro-gate.js writes are told apart", () => {
+  assert.deepEqual(proBlockOf("pro/dashboard-overview"), {
+    name: "dashboard-overview",
+    denied: false,
+  })
+  assert.deepEqual(proBlockOf("pro/dashboard-overview:402"), {
+    name: "dashboard-overview",
+    denied: true,
+  })
+})
+
+test("proBlockOf: anything that names no block is not one", () => {
+  // A free component and both catalogue names — the rows isRewardItem keeps.
+  for (const item of ["copy-button", "registry", "index"]) {
+    assert.equal(proBlockOf(item), null, `${item} is not a Pro row`)
+  }
+  // A prefix with no block behind it. `pro/` cannot be produced by _pro-gate.js (its route
+  // requires `[a-z0-9-]+`), so a row shaped like this came from somewhere else and names nothing.
+  for (const item of ["pro/", "pro/:402", "", null, undefined]) {
+    assert.equal(proBlockOf(item), null, `${String(item)} names no block`)
+  }
+})
+
+// Every Pro row is excluded from the reward, and every excluded-for-being-Pro row parses as a
+// block: the two functions read the same prefix, and this is what says so.
+test("proBlockOf and isRewardItem agree on which rows are Pro", () => {
+  for (const item of ["pro/x", "pro/x:402", "copy-button", "registry", "index", "", null]) {
+    if (proBlockOf(item)) assert.equal(isRewardItem(item), false, `${item} should not be reward`)
+  }
 })
 
 test("Pro rows and both catalogue names are excluded entirely, not just zeroed", () => {
