@@ -129,34 +129,56 @@ test("crawler wins over tool when a user-agent looks like both", () => {
 // them away is that they never loaded the page the button lives on.
 const PIXEL = "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
 
+const SITE = "https://pulld.pages.dev"
+
 test("a click that came from the landing page is a person", () => {
-  assert.equal(classifyClick({ ua: PIXEL, referer: "https://pulld.pages.dev/" }), "human")
+  assert.equal(classifyClick({ ua: PIXEL, referer: "https://pulld.pages.dev/", site: SITE }), "human")
   assert.equal(
     classifyClick({
       ua: PIXEL,
       referer: "https://pulld.pages.dev/?utm_source=ui.shadcn.com&utm_medium=referral&utm_campaign=directory",
+      site: SITE,
     }),
     "human"
   )
+})
+
+// The three referrers that got through the first, looser version of this check. Each one looks
+// like a page and is not one, and together they turned 5 real clicks into a reported 11.
+test("a referrer that is not the landing page is a direct hit, however page-like it looks", () => {
+  for (const referer of [
+    "http://pulld.pages.dev/go/pro", // the same /go URL over http — a redirect to https, not a page
+    "http://pulld.pages.dev/go/search",
+    "https://www.google.com/search?q=pages", // a query that does not surface this site
+    "https://pulld.pages.dev/account", // a real page of ours, but one with no buy button on it
+    "not a url at all",
+  ]) {
+    assert.equal(classifyClick({ ua: PIXEL, referer, site: SITE }), "direct", referer)
+  }
+})
+
+test("with no site to compare against, nothing counts as coming from the page", () => {
+  // Fail closed: an unconfigured caller must not silently promote every click to a person.
+  assert.equal(classifyClick({ ua: PIXEL, referer: "https://pulld.pages.dev/" }), "direct")
 })
 
 test("a browser user-agent with no referrer never loaded the page — not a person", () => {
   // The 2026-08-23 pattern: six search/pro pairs 0-1s apart, all from this UA, none with a
   // referrer. Counting these as people made a traffic problem look like a conversion problem.
   for (const referer of ["", null, undefined, "   "]) {
-    assert.equal(classifyClick({ ua: PIXEL, referer }), "direct")
+    assert.equal(classifyClick({ ua: PIXEL, referer, site: SITE }), "direct")
   }
 })
 
 test("a declared crawler stays a crawler even when it sends a referrer", () => {
   assert.equal(
-    classifyClick({ ua: "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)", referer: "https://pulld.pages.dev/" }),
+    classifyClick({ ua: "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)", referer: "https://pulld.pages.dev/", site: SITE }),
     "crawler"
   )
-  assert.equal(classifyClick({ ua: "Googlebot/2.1 (+http://www.google.com/bot.html)", referer: "" }), "crawler")
+  assert.equal(classifyClick({ ua: "Googlebot/2.1 (+http://www.google.com/bot.html)", referer: "", site: SITE }), "crawler")
 })
 
 test("no user-agent at all is never a person, referrer or not", () => {
-  assert.equal(classifyClick({ ua: "", referer: "https://pulld.pages.dev/" }), "crawler")
+  assert.equal(classifyClick({ ua: "", referer: "https://pulld.pages.dev/", site: SITE }), "crawler")
   assert.equal(classifyClick({}), "crawler")
 })

@@ -18,6 +18,10 @@ import { d1 } from "./_d1.mjs"
 import { groupSessions, creditSessions, utcDay, formatSpan } from "./_bursts.mjs"
 import { isRewardItem, proBlockOf } from "./_installs.mjs"
 
+// The buy links live on this origin's root and nowhere else, so it is what a real click
+// carries as its referrer. Matches the SITE_BASE the page is built with.
+const SITE = process.env.SITE_BASE || "https://pulld.pages.dev"
+
 const rawDays = Number(process.argv[2] || 30)
 const DAYS = Number.isFinite(rawDays) && rawDays > 0 ? Math.floor(rawDays) : 30
 
@@ -238,7 +242,7 @@ function reportClicks() {
     const t = String(r.target)
     const n = Number(r.n) || 0
     const acc = byTarget.get(t) || { human: 0, direct: 0, crawler: 0, other: 0 }
-    const kind = classifyClick({ ua: r.ua, referer: r.referer })
+    const kind = classifyClick({ ua: r.ua, referer: r.referer, site: SITE })
     if (kind === "human") {
       acc.human += n
       const src = String(r.referer || "").trim()

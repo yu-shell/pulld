@@ -81,8 +81,32 @@ export const isInstall = (ua) => {
 // Deliberately asymmetric: a referrer that is present is believed, because the expensive mistake
 // is counting a script as a customer and concluding the offer is being rejected. A privacy browser
 // that strips its referrer lands in `direct` and is undercounted, which costs one data point.
-export function classifyClick({ ua, referer } = {}) {
+// A referrer only counts as "came from the landing page" when it IS the landing page. The first
+// version of this accepted any non-empty referrer, and 30 days of log showed why that is too
+// loose: 4 of the 11 clicks it called real carried `http://pulld.pages.dev/go/pro` — the same /go
+// URL over http, which is a client being redirected to https, not a page — and 2 more carried a
+// Google search for "pages", a query that does not surface this site. It reported 11 where the
+// answer was 5.
+//
+// Root only, because the buy buttons exist on exactly one page and are published nowhere else. A
+// genuine click that arrives from somewhere else therefore does not exist yet; if the links are
+// ever syndicated, this is the function that has to learn about it.
+function fromLandingPage(referer, site) {
+  const raw = String(referer || "").trim()
+  if (!raw) return false
+  let url, base
+  try {
+    url = new URL(raw)
+    base = new URL(String(site || ""))
+  } catch {
+    return false
+  }
+  if (url.host !== base.host) return false
+  return url.pathname === "/" || url.pathname === "/index.html"
+}
+
+export function classifyClick({ ua, referer, site } = {}) {
   const kind = classify(ua)
   if (kind !== "human") return kind
-  return String(referer || "").trim() ? "human" : "direct"
+  return fromLandingPage(referer, site) ? "human" : "direct"
 }
