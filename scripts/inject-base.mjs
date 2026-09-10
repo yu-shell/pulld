@@ -42,12 +42,40 @@ if (!SITE_BASE) {
 const itemsOf = (doc) => (Array.isArray(doc) ? doc : Array.isArray(doc?.items) ? doc.items : [doc])
 
 let files = 0
+// The one line this registry gets to say to the person who just installed something. shadcn's
+// `docs` field is printed by the CLI after an install, which makes it the only surface that
+// reaches the people who actually use pulld: they arrive through `npx shadcn add <url>` and never
+// load the site. Thirty days of log: 31 real install actions, against 5 people who reached the
+// site at all.
+//
+// So it is a route, not a pitch. What an installer most plausibly wants next is the second
+// component without hunting for its URL, and that is what the namespace config gives them. The
+// link carries utm_source=cli so the click log can say whether anyone ever follows it — the whole
+// point of putting something here is to find out.
+//
+// Injected at build time rather than written into registry.json so that every component has it,
+// including the one the daily routine adds tomorrow, and so the wording is changed in one place.
+const docsLine = (count) =>
+  `Install any pulld component by name: add "@pulld": "${SITE_BASE}/r/{name}.json" to the ` +
+  `registries block in components.json, then \`npx shadcn add @pulld/<name>\`. ` +
+  `All ${count} components: ${SITE_BASE}/?utm_source=cli`
+
+const DOCS = docsLine(Array.isArray(reg?.items) ? reg.items.length : 0)
+
 let deps = 0
+let docs = 0
 for (const f of readdirSync(rDir).filter((f) => f.endsWith(".json"))) {
   const p = join(rDir, f)
   const doc = JSON.parse(readFileSync(p, "utf8"))
   let changed = false
   for (const item of itemsOf(doc)) {
+    // Never overwrite a component that says something of its own — a component needing an env var
+    // or a peer install has more to say here than the catalogue does.
+    if (item && typeof item === "object" && item.name && !item.docs) {
+      item.docs = DOCS
+      docs++
+      changed = true
+    }
     if (!Array.isArray(item?.registryDependencies)) continue
     const expanded = expandLocalDeps(item.registryDependencies, localNames, SITE_BASE)
     const moved = expanded.filter((dep, i) => dep !== item.registryDependencies[i]).length
@@ -64,3 +92,4 @@ for (const f of readdirSync(rDir).filter((f) => f.endsWith(".json"))) {
 console.log(
   `OK\tinjected SITE_BASE into registryDependencies: ${deps} in ${files} files (${SITE_BASE})`
 )
+console.log(`OK\tinjected the install-time docs line into ${docs} items`)
