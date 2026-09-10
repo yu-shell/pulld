@@ -397,6 +397,17 @@ const PREVIEWS = {
     const tail = `<path d="M74 12c6-2 9 1 6 4-2 2-5 1-3-2" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>`
     return `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><div style="box-sizing:border-box;width:96px;height:52px;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:4px 5px 0"><svg width="86" height="36" viewBox="0 0 86 34" fill="none" aria-hidden="true">${ink}${tail}<path d="M2 32h82" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" stroke-linecap="round"/></svg></div><span style="display:flex;align-items:center;gap:4px"><span style="font-size:9px;line-height:1;color:var(--muted)">✕</span><span style="height:1px;flex:1;background:var(--line)"></span><span style="font-size:8px;line-height:1;color:var(--muted)">or type</span></span></div>`
   })(),
+  "image-crop": (() => {
+    // The crop window is one element: a circle with an enormous spread box-shadow, clipped by the
+    // parent. That draws the outline and dims everything outside it at once, where a mask or a
+    // four-panel scrim would need the frame's size hard-coded in five more places. The ring is a
+    // fixed white rather than var(--surface) because the scrim behind it is black in both themes —
+    // a surface-coloured ring vanished into the card in dark mode, which is where it was checked.
+    const scene = `<svg viewBox="0 0 96 62" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%"><rect width="96" height="62" fill="color-mix(in srgb,var(--accent) 20%,var(--surface))"/><circle cx="74" cy="14" r="8" fill="color-mix(in srgb,var(--accent) 55%,transparent)"/><path d="M0 62 24 26 46 62Z" fill="var(--muted)" opacity=".45"/><path d="M32 62 58 30 86 62Z" fill="var(--muted)" opacity=".7"/></svg>`
+    const window_ = `<span style="position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;border:1.5px solid rgba(255,255,255,.92);box-shadow:0 0 0 999px rgba(0,0,0,.42)"></span>`
+    const zoom = `<div style="display:flex;align-items:center;height:8px;width:96px"><span style="height:3px;width:34px;border-radius:2px;background:var(--accent)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:-3px"></span><span style="height:3px;flex:1;border-radius:2px;background:var(--line);margin-left:-3px"></span></div>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><div style="position:relative;width:96px;height:62px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${window_}</div>${zoom}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
