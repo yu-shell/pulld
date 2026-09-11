@@ -408,6 +408,29 @@ const PREVIEWS = {
     const zoom = `<div style="display:flex;align-items:center;height:8px;width:96px"><span style="height:3px;width:34px;border-radius:2px;background:var(--accent)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:-3px"></span><span style="height:3px;flex:1;border-radius:2px;background:var(--line);margin-left:-3px"></span></div>`
     return `<div style="display:flex;flex-direction:column;gap:5px;width:96px"><div style="position:relative;width:96px;height:62px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${window_}</div>${zoom}</div>`
   })(),
+  "sort-header": (() => {
+    // Two headings side by side, because one heading on its own cannot show the thing the component
+    // is for: the sorted column carries a single direction in the accent colour and the one beside
+    // it shows the dim double chevron that says "sortable, not sorted". The rows below are in the
+    // order the arrow claims, so the card reads as a sorted table rather than as two icons.
+    const chevron = (d, color, opacity) =>
+      `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:${opacity}" aria-hidden="true">${d}</svg>`
+    const up = chevron(`<path d="m18 15-6-6-6 6"/>`, "var(--accent)", 1)
+    const upDown = chevron(`<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>`, "var(--muted)", 0.5)
+    const row = (name, size, head) =>
+      `<span style="display:flex;align-items:center;gap:3px;padding:0 6px;height:${head ? 15 : 13}px;${
+        head
+          ? "background:var(--surface);border-bottom:1px solid var(--line);color:var(--ink);font-weight:600"
+          : "color:var(--muted)"
+      }"><span>${name}</span>${head ? up : ""}<span style="margin-left:auto;font-variant-numeric:tabular-nums">${size}</span>${
+        head ? upDown : ""
+      }</span>`
+    return `<div style="width:96px;border:1px solid var(--line);border-radius:7px;overflow:hidden;font-size:9px;line-height:1">${row(
+      "Name",
+      "Size",
+      true
+    )}${row("Ada", "2.1")}${row("Bo", "7.4")}${row("Cy", "0.9")}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
