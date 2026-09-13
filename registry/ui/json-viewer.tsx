@@ -340,6 +340,28 @@ export function JsonViewer({
     rowRefs.current.get(path)?.focus()
   }
 
+  // Where the "… N more" row that was just asked for its next page sat. A container whose last
+  // page is revealed loses that row entirely, and with it the row the reader was standing on: the
+  // roving tab stop falls back to the root and, in a browser, focus lands on <body> — a hundred
+  // rows above where they were, outside the tree. Nothing can be focused at the moment of the
+  // click, because the rows being revealed do not exist until this render, so the index is parked
+  // here and spent below. Closing a container is the same problem solved the other way round: the
+  // row to return to is already on screen, so `setExpanded` just focuses it on the spot.
+  const revealedAt = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    const index = revealedAt.current
+    if (index === null) return
+    revealedAt.current = null
+    // The revealed entries take the position the "more" row held, so the same index is now the
+    // first of them — and is still the "more" row itself when the container has more pages left.
+    const row = rows[Math.min(index, rows.length - 1)]
+    if (row) focusRow(row.path)
+    // `focusRow` is redeclared every render and is not what this should re-run on: the rows
+    // arriving is.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows])
+
   function setExpanded(index: number, next: boolean) {
     const row = rows[index]
     if (row.type !== "value" || !row.expandable || row.expanded === next) return
@@ -379,6 +401,7 @@ export function JsonViewer({
     const row = rows[index]
     focusRow(row.path)
     if (row.type === "more") {
+      revealedAt.current = index
       revealMore(row.parentPath)
       return
     }
