@@ -324,7 +324,7 @@ function ChannelSlider({
       value={shown}
       disabled={disabled}
       aria-label={label}
-      aria-valuetext={`${unit === "%" || unit === "°" ? shown : shown}${unit}`}
+      aria-valuetext={`${shown}${unit}`}
       onChange={(event) => onValueChange(Number(event.target.value))}
       style={{ backgroundImage: track }}
       className={cn(
