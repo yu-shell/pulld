@@ -3,6 +3,29 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-13 — quality sweep
+
+- fix(time-input): a pasted "12:00 Amsterdam" is noon again, not midnight. The day
+  period was looked for as a substring, so the AM opening "Amsterdam" — and
+  "America/New_York", and "ampersand" — read as the morning, and the component turned
+  a pasted noon into 00:00. That is the same off-by-twelve the field exists to settle,
+  arriving through the clipboard rather than through the keyboard, and it only shows
+  up on the two twelves, which is why it survived a hand check. A day period now has
+  to stand as its own word, with only ASCII letters counting as a disqualifying
+  neighbour — so 午前 and 오전, which run straight into the digits with no space, still
+  match. Every wording that was a day period still is: "AM", "am.", "a.m.", "2:30AM".
+- a11y(json-viewer): asking a "… N more" row for its last page no longer drops the
+  reader out of the tree. The row that was pressed is the row that stops existing once
+  nothing is left hidden, and the tree is one Tab stop with a roving tabindex inside
+  it, so the stop fell back to the root row and the browser put focus on `<body>` — a
+  hundred rows above where the reader was. Focus now moves to the first of the entries
+  just revealed, which is the row that takes the pressed row's place. Collapsing a
+  container already handled its own half of this; this was the other direction, where
+  the row to move to does not exist until the render that follows.
+- refactor(color-picker): a slider's `aria-valuetext` was built through a conditional
+  whose two branches were the same expression. The rendered string is unchanged —
+  "217°", "91%" — so this is the dead branch going, not a fix.
+
 ## 2026-09-06 — quality sweep
 
 - fix(ratio-bar): a `formatValue` that returns an element renders it, instead of
