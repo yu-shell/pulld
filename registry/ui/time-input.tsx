@@ -312,9 +312,25 @@ function parsePasted(
   const before = lower.slice(0, m.index)
   const after = lower.slice(m.index + m[0].length)
   const near = `${before} ${after}`
-  const has = (name: string) => name.trim() !== "" && near.includes(name.toLowerCase())
-  const pm = has(names[1]) || /\bp\.?m\.?/.test(near)
-  const am = has(names[0]) || /\ba\.?m\.?/.test(near)
+  // The day period has to stand as its own word. A plain substring test reads the AM out of
+  // "12:00 Amsterdam" and hands back 00:00 — the same off-by-twelve this component exists to
+  // settle, arriving through the clipboard instead of through the keyboard. Only ASCII letters
+  // count as a disqualifying neighbour, so 午前 and 오전, which run straight into the digits with
+  // no space, still match.
+  const letterAt = (index: number) => /[a-z]/.test(near[index] ?? "")
+  const has = (name: string) => {
+    const needle = name.trim().toLowerCase()
+    if (needle === "") return false
+    for (let at = near.indexOf(needle); at !== -1; at = near.indexOf(needle, at + 1)) {
+      if (!letterAt(at - 1) && !letterAt(at + needle.length)) return true
+    }
+    return false
+  }
+  // The English forms are matched separately because a locale's own wording is not always the
+  // ASCII one, and the trailing lookahead is the `has` rule written for a pattern: "a.m." may end
+  // in a dot, but never in another letter.
+  const pm = has(names[1]) || /\bp\.?m\.?(?![a-z])/.test(near)
+  const am = has(names[0]) || /\ba\.?m\.?(?![a-z])/.test(near)
 
   let hour = Number(m[1])
   const minute = Number(m[2])

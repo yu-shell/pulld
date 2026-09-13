@@ -290,6 +290,42 @@ test("a pasted time is read the way it is written, on any clock", () => {
   assert.equal(ignored.emitted.length, 0)
 })
 
+test("a day period is a word of its own, not a run of letters inside another one", () => {
+  // A calendar entry pasted whole carries a place name beside the time, and "Amsterdam",
+  // "America/New_York" and "ampersand" all open with the letters AM. Reading one as the day period
+  // turns noon into midnight — the same off-by-twelve as above, arriving through the clipboard.
+  for (const [text, expected] of [
+    ["12:00 Amsterdam", "12:00"],
+    ["12:00 America/New_York", "12:00"],
+    ["Standup 12:00 (ampersand)", "12:00"],
+    ["9:00 Amsterdam office", "09:00"],
+    ["12:00 Pompeii", "12:00"],
+  ]) {
+    const field = show({ locale: "en-US", hour12: true })
+    field.paste(text)
+    assert.equal(field.emitted.at(-1), expected, `pasting ${JSON.stringify(text)} should give ${expected}`)
+  }
+
+  // The wordings that are a day period still are, spaced or not, dotted or not.
+  for (const [text, expected] of [
+    ["12:00 AM", "00:00"],
+    ["2:30 a.m.", "02:30"],
+    ["2:30 am.", "02:30"],
+    ["2:30AM", "02:30"],
+    ["2:30 p.m.", "14:30"],
+  ]) {
+    const field = show({ locale: "en-US", hour12: true })
+    field.paste(text)
+    assert.equal(field.emitted.at(-1), expected, `pasting ${JSON.stringify(text)} should give ${expected}`)
+  }
+
+  // A locale whose wording runs straight into the digits with no space has no word boundary to
+  // find, so the neighbour rule has to be about ASCII letters rather than about separators.
+  const kr = show({ locale: "ko-KR", hour12: true })
+  kr.paste("오후 2:30")
+  assert.equal(kr.emitted.at(-1), "14:30")
+})
+
 test("seconds are part of the value only when they are part of the field", () => {
   const without = show({ locale: "de-DE" })
   without.type("Hour", "09")
