@@ -10,7 +10,7 @@
 // without it this file would shell out to `npx wrangler` against the live D1 four times.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { partitionFetchRows, proFunnel } from "../scripts/report.mjs"
+import { partitionFetchRows, proFunnel, nameWidth } from "../scripts/report.mjs"
 
 const CLI = "shadcn/2.1.0" // an install client
 const BROWSER = "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
@@ -98,4 +98,36 @@ test("nothing to report is an empty list, not a row of zeroes", () => {
   assert.deepEqual(proFunnel([]), [])
   assert.deepEqual(proFunnel(), [])
   assert.deepEqual(proFunnel([{ item: "copy-button", ua: CLI, n: 5 }]), [])
+})
+
+// The first column of every table in report.mjs is followed immediately by a tab-separated count,
+// so a name as wide as the column runs that count into itself and the row stops being readable.
+// The Pro table learned this from `pro/dashboard-overview:4020`; the components and misses tables
+// kept a `padEnd(22)` that `unsaved-changes-guard` (21) was one character short of. These pin the
+// rule in the shared helper so a fourth table cannot re-introduce a constant.
+test("a name as long as the column still leaves a gap before the count", () => {
+  const w = nameWidth("item", ["keyboard-shortcuts-sheet"])
+  assert.ok("keyboard-shortcuts-sheet".padEnd(w).endsWith("  "))
+  assert.equal(w, "keyboard-shortcuts-sheet".length + 2)
+})
+
+test("the width is taken from the longest name, not from the first or the last", () => {
+  assert.equal(nameWidth("item", ["kbd", "unsaved-changes-guard", "qr-code"]), 23)
+})
+
+test("the header is a floor, so a table of short names is not narrower than its own heading", () => {
+  assert.equal(nameWidth("crawler", ["kbd"]), "crawler".length + 2)
+})
+
+// The miss list prints whatever name a client guessed at, and /r/<name>.json bounds that nowhere.
+test("an unbounded miss name widens the column instead of colliding with it", () => {
+  const long = "a".repeat(120)
+  const w = nameWidth("name", ["kbd", long])
+  assert.equal(w, 122)
+  assert.ok(long.padEnd(w).endsWith("  "))
+})
+
+test("an empty table falls back to the header width rather than -Infinity", () => {
+  assert.equal(nameWidth("block", []), "block".length + 2)
+  assert.ok(Number.isFinite(nameWidth("item", [])))
 })
