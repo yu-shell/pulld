@@ -74,6 +74,24 @@ export function proFunnel(rows) {
   )
 }
 
+// The width of a table's first column: the longest name that will actually be printed in it,
+// never a constant. Fixed width is not a cosmetic choice here — every table in this file puts a
+// tab-separated count immediately after the name, so a name that reaches the constant runs the
+// first count into itself and the column stops being readable at exactly the moment it has
+// something new to say. `pro/dashboard-overview:402` printing as `pro/dashboard-overview:4020` is
+// the one that was noticed.
+//
+// printProFunnel worked that out for the Pro table and kept the answer to itself, leaving the two
+// tables above it on `padEnd(22)`. For the components table that is one character of margin —
+// `unsaved-changes-guard` is 21 and this registry gains a component most days — and the misses
+// table never had the margin at all: it prints whatever name a client guessed at, and
+// `/r/<name>.json` bounds that length nowhere.
+//
+// Reduced rather than spread: `Math.max(...names)` is one argument per row, and the miss list is
+// as long as the log makes it.
+export const nameWidth = (header, names) =>
+  names.reduce((w, n) => Math.max(w, String(n ?? "").length), String(header).length) + 2
+
 function reportFetches() {
   const { components, pro } = partitionFetchRows(
     d1(
@@ -108,10 +126,11 @@ function reportFetches() {
   const ranked = [...byItem.entries()].sort(
     (a, b) => b[1].install + b[1].human - (a[1].install + a[1].human) || b[1].index - a[1].index
   )
+  const w = nameWidth("item", ranked.map(([item]) => item))
   console.log(`fetches per item (last ${DAYS} days)`)
-  console.log(`  ${"item".padEnd(22)}install\thuman\tindex\tcrawler`)
+  console.log(`  ${"item".padEnd(w)}install\thuman\tindex\tcrawler`)
   for (const [item, c] of ranked) {
-    console.log(`  ${item.padEnd(22)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
+    console.log(`  ${item.padEnd(w)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
   }
   console.log(
     `\ntotal: install=${totals.install} human=${totals.human}` +
@@ -138,7 +157,7 @@ function printProFunnel(rows) {
   if (!blocks.length) return
   // Width from the content, not a constant: these are the long names in this file's tables, and a
   // fixed one is what ran `pro/dashboard-overview:402` into its own first column.
-  const w = Math.max("block".length, ...blocks.map((b) => b.name.length)) + 2
+  const w = nameWidth("block", blocks.map((b) => b.name))
   console.log(`\npro blocks — requests that met the licence gate (last ${DAYS} days)`)
   console.log(`  ${"block".padEnd(w)}served\tdenied\tautomated`)
   for (const b of blocks) {
@@ -219,9 +238,14 @@ function reportMisses() {
     (a, b) => b[1].install + b[1].human - (a[1].install + a[1].human) || b[1].index - a[1].index
   )
   const notable = ranked.filter((r) => r[1].install || r[1].human)
-  console.log(`  ${"name".padEnd(22)}install\thuman\tindex\tcrawler`)
-  for (const [item, c] of ranked.slice(0, 25)) {
-    console.log(`  ${item.padEnd(22)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
+  // Width from the rows that are printed, not from every row ranked: the 25 shown are all that
+  // has to line up, and a single 200-character name further down the list would otherwise indent
+  // the whole table past the terminal.
+  const shown = ranked.slice(0, 25)
+  const w = nameWidth("name", shown.map(([item]) => item))
+  console.log(`  ${"name".padEnd(w)}install\thuman\tindex\tcrawler`)
+  for (const [item, c] of shown) {
+    console.log(`  ${item.padEnd(w)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
   }
   if (ranked.length > 25) console.log(`  … and ${ranked.length - 25} more names`)
   console.log(
