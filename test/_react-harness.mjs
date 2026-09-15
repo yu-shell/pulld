@@ -15,9 +15,11 @@
 // because a re-implementation only ever tests the copy.
 //
 // What this can see: the rendered tree (roles, aria, tabindex, class names, children), what an
-// event handler does to state, and how the tree changes when props change. What it cannot see:
-// layout, focus actually moving, paint, and anything a browser decides. Assert the first kind here
-// and leave the second kind to a browser.
+// event handler does to state, how the tree changes when props change, and which methods a
+// component called on a node it was holding (see `nodes` below). What it cannot see: layout, focus
+// or a caret actually moving, paint, and anything a browser decides. Assert the first kind here and
+// leave the second kind to a browser — "the component asked for the caret to go to offset 5" is the
+// first kind; "the caret is at offset 5" is the second.
 import { readFileSync } from "node:fs"
 import ts from "typescript"
 import * as React from "react"
@@ -51,14 +53,17 @@ export function loadComponent(sourcePath, { stubs = {} } = {}) {
   return mod.exports
 }
 
-// The methods a component may call on a ref'd node. Assigned onto every stand-in ref, so reaching
-// for one is a no-op rather than a TypeError.
+// The methods a component may call on a ref'd node, and what they answer. Assigned onto every
+// stand-in ref, so reaching for one is a no-op rather than a TypeError.
+//
+// The imperative ones are recorded rather than merely swallowed. Nothing here can make a caret or a
+// focus ring actually move, but *asking* for it is the component's own behaviour and worth pinning:
+// a masked field that restores the caret to the end of the text instead of to the character just
+// typed is broken in a way that only this call reveals. The recording is per-node and additive —
+// every one of them still returns undefined, so a component cannot tell the difference.
+const RECORDED = ["focus", "blur", "select", "scrollIntoView", "setSelectionRange"]
+
 const domStandIn = {
-  focus() {},
-  blur() {},
-  select() {},
-  scrollIntoView() {},
-  setSelectionRange() {},
   contains: () => false,
   querySelector: () => null,
   // A component that observes the node it is holding — a scroll listener, a ResizeObserver over its
@@ -70,6 +75,45 @@ const domStandIn = {
   removeEventListener() {},
   children: [],
   ownerDocument: { fonts: null },
+}
+
+/**
+ * The refs the tree actually hands to an element, without invoking any function component.
+ *
+ * Only these get a stand-in. Filling every null ref instead — which is what this did first — gives
+ * a DOM object to refs that were never about the DOM, and `useRef<number | null>(null)` is the
+ * ordinary way to write "nothing queued yet": a caret offset, the frame id to cancel, the value a
+ * callback last fired for. Six components in this registry hold one. Every `=== null` guard on them
+ * took the wrong branch here and only here, so the component under test was not the component that
+ * ships, and a test could be written against behaviour that exists nowhere else.
+ *
+ * Refs left null stay null, which is also what the first render sees in a browser — nothing is
+ * attached until the commit. `walk` is not reused because it invokes function components to include
+ * their output, and doing that mid-render would run their hooks against this dispatcher out of
+ * order. A ref passed down to a child component is still visible here: it sits on that child's
+ * element either way.
+ */
+function collectAttachedRefs(node, found = new Set()) {
+  if (node === null || node === undefined || typeof node !== "object") return found
+  if (Array.isArray(node)) {
+    for (const child of node) collectAttachedRefs(child, found)
+    return found
+  }
+  // React 19 keeps `ref` in props; older runtimes lift it onto the element.
+  const ref = node.props?.ref ?? node.ref
+  if (ref && typeof ref === "object" && "current" in ref) found.add(ref)
+  return collectAttachedRefs(node.props?.children, found)
+}
+
+/** One stand-in node, with its own `calls` log: `[{ name, args }, ...]` in the order they came. */
+function makeStandIn() {
+  const node = { ...domStandIn, calls: [] }
+  for (const name of RECORDED) {
+    node[name] = (...args) => {
+      node.calls.push({ name, args })
+    }
+  }
+  return node
 }
 
 // --- the dispatcher --------------------------------------------------------
@@ -147,7 +191,9 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
       effects = []
       dirty = false
       tree = Component(props, null)
-      for (const ref of refs) if (ref.current === null) ref.current = { ...domStandIn }
+      for (const ref of collectAttachedRefs(tree)) {
+        if (ref.current === null) ref.current = makeStandIn()
+      }
       for (const fn of effects) {
         const cleanup = fn()
         if (typeof cleanup === "function") cleanups.push(cleanup)
@@ -161,6 +207,14 @@ export function render(Component, initialProps, { direction = "ltr", maxPasses =
   return {
     get tree() {
       return tree
+    },
+    /**
+     * The stand-in nodes this instance handed to refs the component left null, in creation order —
+     * the same order as the `useRef` calls that produced them. Each carries a `calls` log of the
+     * imperative DOM methods the component invoked on it.
+     */
+    get nodes() {
+      return refs.map((ref) => ref.current).filter((node) => Array.isArray(node?.calls))
     },
     /** Re-render after an event handler asked for state to change. */
     rerender: () => settle(),
