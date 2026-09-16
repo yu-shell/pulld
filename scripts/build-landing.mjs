@@ -67,6 +67,16 @@ const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 const PREVIEWS = {
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
   "share-button": `<button class="pv-btn">${ICON.share} Share</button>`,
+  "fullscreen-button": `<div style="position:relative;width:104px;height:78px;border-radius:6px;background:var(--surface);border:1px solid var(--accent);overflow:hidden;display:flex;align-items:flex-end;gap:3px;padding:7px 7px 8px">${[
+    22, 34, 15, 44, 29, 52, 38,
+  ]
+    .map(
+      (h) =>
+        `<span style="flex:1;height:${h}%;border-radius:1.5px;background:var(--accent);opacity:.5"></span>`
+    )
+    .join(
+      ""
+    )}<span style="position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;justify-content:center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg></span><span style="position:absolute;left:4px;top:4px;width:7px;height:7px;border-left:1.5px solid var(--accent);border-top:1.5px solid var(--accent)"></span><span style="position:absolute;right:4px;bottom:4px;width:7px;height:7px;border-right:1.5px solid var(--accent);border-bottom:1.5px solid var(--accent)"></span></div>`,
   // The caret sitting mid-value rather than at the end is the whole component: the mask shape
   // above, the field with the caret between the 4 and the 5, and the value that gets submitted
   // below — separators gone.
