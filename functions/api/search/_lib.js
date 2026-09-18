@@ -20,7 +20,31 @@ export function json(data, status = 200, opts = {}) {
     ...extra,
   }
   // CORS only for the public query endpoint; ingest is server-to-server (secret admin key).
-  if (cors) headers["access-control-allow-origin"] = "*"
+  if (cors) {
+    headers["access-control-allow-origin"] = "*"
+    // Sending a header cross-origin is not the same as letting the page read it. A browser hands
+    // `fetch` only the seven CORS-safelisted response headers (cache-control, content-language,
+    // content-length, content-type, expires, last-modified, pragma) unless the response names the
+    // others here — everything else is on the wire and invisible to `res.headers.get(...)`.
+    //
+    // The one that mattered: the burst limiter answers 429 with `retry-after: 10`, and
+    // public/search-integration.md documents that header as part of a contract it describes in the
+    // same breath as "Public and CORS-enabled … from the browser". So the header telling the
+    // documented audience how long to back off was the one header they could not read; every
+    // browser client had to fall back to a guessed delay while the real number sat in the response.
+    // Nothing showed it: curl and the unit test both read the header straight off the response,
+    // where it has always been present, and only a real cross-origin page sees the null.
+    //
+    // Derived from the headers this helper was explicitly asked to add rather than from a literal
+    // list, so the next non-safelisted header added through the same door arrives readable instead
+    // of repeating this. Naming a safelisted one (a `cache-control` override) is a no-op, and
+    // naming one the response does not carry is allowed — so the rule needs no exceptions.
+    //
+    // It belongs on the actual response, not on the preflight: `cors()` below answers OPTIONS, and
+    // access-control-expose-headers is ignored there.
+    const exposed = Object.keys(extra)
+    if (exposed.length) headers["access-control-expose-headers"] = exposed.join(", ")
+  }
   return new Response(JSON.stringify(data), { status, headers })
 }
 

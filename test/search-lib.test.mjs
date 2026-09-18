@@ -111,6 +111,36 @@ test("json: extra opts become response headers and do not disable CORS", () => {
   assert.equal(res.headers.get("access-control-allow-origin"), "*")
 })
 
+// The other half of the test above. That one asks whether the header is on the response, which it
+// always was; this one asks whether a cross-origin page is allowed to read it, which it was not.
+// A browser exposes only the seven CORS-safelisted response headers to `fetch` unless the response
+// names the rest in access-control-expose-headers, so `retry-after` — documented in
+// public/search-integration.md as how a browser client learns its backoff — read as null.
+test("json: a header the caller added is readable cross-origin, not just present on the wire", () => {
+  const res = json({ error: "rate_limited" }, 429, { "retry-after": "10" })
+  const exposed = (res.headers.get("access-control-expose-headers") || "")
+    .split(",")
+    .map((h) => h.trim().toLowerCase())
+  assert.ok(
+    exposed.includes("retry-after"),
+    `429 sends retry-after but does not expose it — a browser reads null: ${res.headers.get(
+      "access-control-expose-headers"
+    )}`
+  )
+})
+
+test("json: an ordinary response exposes nothing, so the header is absent rather than empty", () => {
+  assert.equal(json({ ok: true }).headers.get("access-control-expose-headers"), null)
+})
+
+// Server-to-server endpoints send no allow-origin, so an expose list would be read by nobody and
+// would only advertise the shape of their responses.
+test("json: cors:false exposes nothing even when the caller adds a header", () => {
+  const res = json({ error: "rate_limited" }, 429, { cors: false, "retry-after": "10" })
+  assert.equal(res.headers.get("retry-after"), "10")
+  assert.equal(res.headers.get("access-control-expose-headers"), null)
+})
+
 test("cors: preflight response advertises the methods and custom headers the endpoints use", () => {
   const res = cors()
   assert.equal(res.headers.get("access-control-allow-origin"), "*")
