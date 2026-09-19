@@ -122,6 +122,9 @@ const PREVIEWS = {
   "command-palette": `<div class="pv-input" style="gap:6px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span><span style="margin-left:auto;display:flex;gap:3px"><span class="pv-kbd">⌘</span><span class="pv-kbd">K</span></span></div>`,
   toast: `<div class="pv-toast"><span class="pv-tok">${ICON.check}</span><span>Changes saved</span></div>`,
   "search-input": `<div class="pv-input"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="color:var(--muted);font-size:12px">Search…</span></div>`,
+  // The query above and the same word lit up twice below: the card has to say "this marks the
+  // matches", which one highlighted word on its own does not.
+  "highlight-text": `<div style="display:flex;flex-direction:column;gap:6px;width:100%"><div class="pv-input" style="width:100%;box-sizing:border-box;height:21px;padding:0 6px;gap:4px"><span style="color:var(--muted);display:inline-flex">${ICON.search}</span><span style="font-size:10px;color:var(--ink)">color</span></div><div style="display:flex;flex-direction:column;gap:2px;font-size:9px;line-height:1.5;color:var(--ink)"><span>the accent <mark class="pv-hl">color</mark></span><span>and every <mark class="pv-hl">color</mark></span><span style="color:var(--muted)">token it follows</span></div></div>`,
   "number-input": `<div class="pv-input" style="justify-content:center;gap:8px"><span class="pv-numbtn">−</span><span style="font-size:13px;color:var(--ink);min-width:14px;text-align:center">3</span><span class="pv-numbtn">+</span></div>`,
   "otp-input": `<div class="pv-otp"><span>4</span><span>2</span><span></span><span></span></div>`,
   "date-input": `<div class="pv-input pv-date"><span>03</span><i>/</i><span class="on">14</span><i>/</i><span>2026</span></div>`,
@@ -656,6 +659,7 @@ const html = `<!doctype html>
   .pv-input{display:flex;align-items:center;gap:6px;height:30px;padding:0 9px;border-radius:8px;
     border:1px solid var(--line);background:var(--surface);width:100%}
   .pv-dots{letter-spacing:2px;color:var(--ink);font-size:13px}
+  .pv-hl{background:color-mix(in srgb,var(--accent) 26%,transparent);color:inherit;border-radius:3px}
   .pv-empty{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:11px;
     border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
   .pv-code{position:relative;font:11px ui-monospace,monospace;color:var(--ink);background:var(--surface);
