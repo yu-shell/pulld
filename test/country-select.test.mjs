@@ -221,6 +221,20 @@ test("a query that matches nothing says so without offering a phantom option", (
   assert.equal(field.activeDescendant(), undefined, "and nothing is highlighted")
 })
 
+test("a query that folds away to nothing filters, rather than showing everything", () => {
+  const field = show()
+  field.open()
+  const all = field.rows().length
+  field.search("()")
+  // Folding strips punctuation, so this query becomes "". Deciding emptiness after folding would
+  // match every row and read as the filter being broken — the same rule currency-select needs for
+  // "¥" and language-select needs for "()".
+  assert.equal(field.rows().length, 0)
+  assert.equal(field.emptyText(), "No country found.")
+  field.search("")
+  assert.equal(field.rows().length, all, "and clearing it brings the list back")
+})
+
 test("the trigger is a button, so opening the list never submits the surrounding form", () => {
   const field = show()
   assert.equal(field.trigger().type, "button")

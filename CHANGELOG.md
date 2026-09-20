@@ -3,6 +3,19 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-20 — quality sweep
+
+- fix(country-select): a query made only of punctuation now filters instead of
+  showing all 249 countries. The filter decided "is anything typed?" after folding,
+  and folding strips everything that is not a letter or a digit — so "()", "…" or a
+  stray "¥" folded to the empty string, the emptiness check said the field was blank,
+  and the unfiltered list came back looking exactly like a filter that had stopped
+  working. Emptiness is now read off the raw query and the scorer refuses an empty
+  folded one, which is the rule `currency-select` already needed for symbol search and
+  `language-select` already carried: country-select was written first and never had it
+  backported. Real queries are untouched — only a query with no letter or digit in it
+  changes, and it now says "No country found."
+
 ## 2026-09-13 — quality sweep
 
 - fix(time-input): a pasted "12:00 Amsterdam" is noon again, not midnight. The day

@@ -154,6 +154,11 @@ interface CountryOption {
 function matches(option: CountryOption, query: string, rawQuery: string): number {
   // An exact code is unambiguous and wins outright: "in" should not bury India under Indonesia.
   if (rawQuery.length === 2 && option.code.toLowerCase() === rawQuery) return 4
+  // Below here every test is on the folded query, and an empty one matches everything — which is
+  // exactly wrong once the raw query was something rather than nothing. Folding strips punctuation,
+  // so a query of "()" folds to "" while the field plainly has a query in it, and every test below
+  // would say yes.
+  if (!query) return -1
   if (option.search.startsWith(query)) return 3
   if (option.searchEnglish.startsWith(query)) return 2
   if (option.search.includes(query) || option.searchEnglish.includes(query)) return 1
@@ -317,7 +322,9 @@ export function CountrySelect({
   const rows = React.useMemo(() => {
     const raw = query.trim().toLowerCase()
     const folded = fold(query)
-    if (!folded) {
+    // Emptiness is decided on the raw query, not the folded one: folding strips punctuation, so a
+    // query of "()" folds away to nothing while the field plainly has something typed in it.
+    if (!raw) {
       return {
         pinned,
         rest: options,
