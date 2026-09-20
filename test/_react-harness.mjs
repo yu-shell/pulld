@@ -61,7 +61,21 @@ export function loadComponent(sourcePath, { stubs = {} } = {}) {
 // a masked field that restores the caret to the end of the text instead of to the character just
 // typed is broken in a way that only this call reveals. The recording is per-node and additive —
 // every one of them still returns undefined, so a component cannot tell the difference.
-const RECORDED = ["focus", "blur", "select", "scrollIntoView", "setSelectionRange"]
+const RECORDED = [
+  "focus",
+  "blur",
+  "select",
+  "scrollIntoView",
+  "setSelectionRange",
+  // Registering a listener on your own node is an imperative call like the rest, and for some
+  // components it is the behaviour worth pinning rather than an implementation detail. A wheel or
+  // touchstart listener has to be added here rather than through a React prop, because React adds
+  // those passively and a passive listener's preventDefault is ignored — so "it added a wheel
+  // listener with passive: false" is the whole difference between a component that works and one
+  // that zooms while the page scrolls out from under it. Nothing is ever delivered through them.
+  "addEventListener",
+  "removeEventListener",
+]
 
 const domStandIn = {
   contains: () => false,
@@ -69,10 +83,10 @@ const domStandIn = {
   // A component that observes the node it is holding — a scroll listener, a ResizeObserver over its
   // children, a wait on the document's fonts — is doing something ordinary too, and the calls it
   // makes to set that up should be no-ops here rather than the reason it cannot be rendered at all.
-  // Nothing is delivered through them: the harness has no layout, so a measurement taken here reads
-  // as "not measured yet", which is exactly the server's answer and worth asserting on its own.
-  addEventListener() {},
-  removeEventListener() {},
+  // `addEventListener` and `removeEventListener` are no-ops too, but recorded ones: see RECORDED
+  // above. Nothing is delivered through any of them — the harness has no layout, so a measurement
+  // taken here reads as "not measured yet", which is exactly the server's answer and worth
+  // asserting on its own.
   children: [],
   ownerDocument: { fonts: null },
 }

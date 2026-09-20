@@ -461,6 +461,19 @@ const PREVIEWS = {
       true
     )}${row("Ada", "2.1")}${row("Bo", "7.4")}${row("Cy", "0.9")}</div>`
   })(),
+  "image-zoom": (() => {
+    // width:100%, not a pixel width. `.preview` is a 104px border-box carrying 10px of padding and
+    // a 1px border, so only 82px of it is usable and anything laid out wider is quietly clipped on
+    // the right by its overflow:hidden — which is how a third of the existing thumbnails lost an
+    // edge without anyone noticing.
+    const scene = `<svg viewBox="0 0 82 58" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%"><rect width="82" height="58" fill="color-mix(in srgb,var(--accent) 16%,var(--surface))"/><circle cx="63" cy="13" r="7" fill="color-mix(in srgb,var(--accent) 50%,transparent)"/><path d="M0 58 20 26 40 58Z" fill="var(--muted)" opacity=".45"/><path d="M28 58 52 30 78 58Z" fill="var(--muted)" opacity=".7"/></svg>`
+    // The glass carries a + and a handle, which is what separates this card from image-crop's at a
+    // glance: that one is a circle cut out of a dark scrim, this one is an instrument held over a
+    // picture that is otherwise untouched.
+    const glass = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.95)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:46%;top:50%;transform:translate(-50%,-50%);filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))"><circle cx="11" cy="11" r="7" fill="rgba(0,0,0,.3)"/><path d="M11 8v6M8 11h6"/><path d="m16.2 16.2 4.3 4.3"/></svg>`
+    const badge = `<span style="position:absolute;right:3px;top:3px;padding:0 3px;border-radius:4px;background:var(--surface);border:1px solid var(--line);font-size:8px;line-height:1.6;color:var(--muted)">200%</span>`
+    return `<div style="position:relative;width:100%;height:58px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${glass}${badge}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
