@@ -47,9 +47,9 @@ type LocaleWithWeekInfo = Intl.Locale & {
 }
 
 /**
- * Which day this locale starts its week on. Sunday in en-US, Monday in de-DE and ja-JP, Saturday in
- * ar-EG — a hardcoded order is wrong for most of the world, and the order is not cosmetic: people
- * read the first row as "the start of the week" and fill the grid from there.
+ * Which day this locale starts its week on. Sunday in en-US and ja-JP, Monday in de-DE and fr-FR,
+ * Saturday in ar-EG — a hardcoded order is wrong for most of the world, and the order is not
+ * cosmetic: people read the first row as "the start of the week" and fill the grid from there.
  */
 function resolveWeekStart(locale: string | undefined): Weekday {
   try {

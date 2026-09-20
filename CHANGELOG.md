@@ -15,6 +15,9 @@ copies code into your project, so existing installs are never changed automatica
   `language-select` already carried: country-select was written first and never had it
   backported. Real queries are untouched — only a query with no letter or digit in it
   changes, and it now says "No country found."
+- docs(weekly-hours): the note on `resolveWeekStart` had ja-JP starting its week on
+  Monday. `Intl` puts it on Sunday, which is what the component has always done and
+  what its own test asserts; only the comment was wrong.
 
 ## 2026-09-13 — quality sweep
 
