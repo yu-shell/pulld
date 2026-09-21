@@ -28,6 +28,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SITE_BASE = (process.env.SITE_BASE || "").replace(/\/$/, "")
 const outDir = join(ROOT, "public", "r")
 
+// The one file in public/r this script owns. It is written here from registry.json rather than
+// post-processed like the files `shadcn build` leaves behind, and it is written *after*
+// scripts/inject-base.mjs has run — so anything that step writes into it is discarded a moment
+// later. Exported so inject-base can skip exactly this name instead of carrying a second copy of
+// it that could drift.
+export const INDEX_FILE = "index.json"
+
 export function buildIndex(registry, base = "") {
   const site = String(base || "").replace(/\/$/, "")
   const url = (name) => (site ? `${site}/r/${name}.json` : `/r/${name}.json`)
@@ -66,9 +73,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const registry = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf8"))
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true })
   const index = buildIndex(registry, SITE_BASE)
-  writeFileSync(join(outDir, "index.json"), JSON.stringify(index, null, 2) + "\n")
+  writeFileSync(join(outDir, INDEX_FILE), JSON.stringify(index, null, 2) + "\n")
   console.log(
-    `OK\tpublic/r/index.json generated: ${index.length} components` +
+    `OK\tpublic/r/${INDEX_FILE} generated: ${index.length} components` +
       (SITE_BASE ? ` (base ${SITE_BASE})` : " (relative URLs — SITE_BASE not set)")
   )
 }

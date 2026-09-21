@@ -10,6 +10,12 @@
 // inject-base.mjs had no test at all before this file, which is what let the catalogue sit outside
 // its reach unremarked: it is the one build step that decides whether six components are
 // installable, and nothing ran it except the deploy.
+//
+// public/r/index.json is build-index.mjs's, not inject-base.mjs's. Both used to write it, and only
+// one of those writes survives: `npm run registry:build` runs inject-base.mjs and then
+// build-index.mjs, which regenerates the file from registry.json. The tests below therefore pin
+// the handover rather than each script's opinion of the file — inject-base leaves it alone, and it
+// still comes out of the pair with the URL in it.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
@@ -97,7 +103,9 @@ test("the input list is not mutated — callers compare against it to decide whe
 function fixture(root) {
   mkdirSync(join(root, "scripts"), { recursive: true })
   mkdirSync(join(root, "public", "r"), { recursive: true })
-  for (const f of ["inject-base.mjs", "_registry-deps.mjs"]) {
+  // build-index.mjs is copied because inject-base.mjs imports INDEX_FILE from it — the name of the
+  // one file in public/r that inject-base must not touch, kept where the script that writes it is.
+  for (const f of ["inject-base.mjs", "build-index.mjs", "_registry-deps.mjs"]) {
     copyFileSync(join(ROOT, "scripts", f), join(root, "scripts", f))
   }
   writeFileSync(join(root, "registry.json"), JSON.stringify(registry))
@@ -110,8 +118,8 @@ function fixture(root) {
   writeFileSync(join(root, "public", "r", "index.json"), JSON.stringify([item]))
 }
 
-const run = (root, env) =>
-  execFileSync(process.execPath, [join(root, "scripts", "inject-base.mjs")], {
+const run = (root, env, script = "inject-base.mjs") =>
+  execFileSync(process.execPath, [join(root, "scripts", script)], {
     encoding: "utf8",
     env: { ...process.env, ...env },
   })
@@ -134,10 +142,10 @@ const withTree = (fn) => {
   }
 }
 
-test("every file that publishes a dependency gets the URL, catalogues included", () => {
+test("every file shadcn build leaves behind gets the URL, the catalogue included", () => {
   withTree((root) => {
     const out = run(root, { SITE_BASE: BASE })
-    for (const file of ["code-block.json", "registry.json", "index.json"]) {
+    for (const file of ["code-block.json", "registry.json"]) {
       assert.deepEqual(
         readDeps(root, file),
         [`${BASE}/r/copy-button.json`],
@@ -147,10 +155,41 @@ test("every file that publishes a dependency gets the URL, catalogues included",
   })
 })
 
+test("index.json is left to build-index.mjs, which rewrites it from registry.json anyway", () => {
+  withTree((root) => {
+    const out = run(root, { SITE_BASE: BASE })
+    // Not an opinion about what index.json should contain — a statement that this step does not
+    // get one. Anything written here is thrown away by the next command in `npm run registry:build`,
+    // and the discarded entries were being counted into the docs line printed below.
+    assert.deepEqual(readDeps(root, "index.json"), ["copy-button"], out)
+    const idx = JSON.parse(readFileSync(join(root, "public", "r", "index.json"), "utf8"))
+    assert.equal(idx[0].docs, undefined, "index.json was given a docs line to discard")
+  })
+})
+
+test("the docs line is counted by component, not by the copies of it that get written", () => {
+  withTree((root) => {
+    // One component is published twice — its own file and its entry in the catalogue — so counting
+    // objects said "2 items" (and "3" while index.json was rewritten here too) for one component.
+    // The number only means something if it can be read against registry.json's item count.
+    assert.match(run(root, { SITE_BASE: BASE }), /docs line into 1 components/)
+  })
+})
+
+test("run in the order registry:build runs them, index.json still ends up with the URL", () => {
+  withTree((root) => {
+    run(root, { SITE_BASE: BASE })
+    run(root, { SITE_BASE: BASE }, "build-index.mjs")
+    const idx = JSON.parse(readFileSync(join(root, "public", "r", "index.json"), "utf8"))
+    const composed = idx.find((e) => e.name === "code-block")
+    assert.deepEqual(composed.registryDependencies, [`${BASE}/r/copy-button.json`])
+  })
+})
+
 test("without SITE_BASE nothing is rewritten, so a half-injected build is never written out", () => {
   withTree((root) => {
     run(root, { SITE_BASE: "" })
-    for (const file of ["code-block.json", "registry.json", "index.json"]) {
+    for (const file of ["code-block.json", "registry.json"]) {
       assert.deepEqual(readDeps(root, file), ["copy-button"], file)
     }
   })
