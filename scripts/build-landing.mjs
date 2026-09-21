@@ -152,6 +152,28 @@ const PREVIEWS = {
   "geolocation-button": `<div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:104px"><div style="position:relative;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h3"/><path d="M19 12h3"/><path d="M12 2v3"/><path d="M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg></div><span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--muted);font-size:8px;white-space:nowrap">Use my location</span></div>`,
   "network-status": `<div class="pv-net"><span class="i"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M16 11.1a10 10 0 0 1 3 1.8"/><path d="M2 8.8a16 16 0 0 1 4.7-2.8"/><path d="M11 5a16 16 0 0 1 11 3.8"/><path d="M12 20h.01"/></svg></span><span>Offline</span><span class="r">Retry</span></div>`,
   "file-dropzone": `<div class="pv-empty">${ICON.upload}<span>Drop files</span></div>`,
+  // Waveform either side of the microphone, then the state in words. The bars are what make it a
+  // dictation control at thumbnail size rather than one more round icon button, and the label is
+  // the component's own subject: it says "Listening" only while that is true.
+  "speech-input": `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:100%"><div style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%"><span style="display:flex;align-items:center;gap:2px;height:26px">${[
+    30, 62, 100, 48,
+  ]
+    .map(
+      (h) =>
+        `<span style="width:2px;height:${h}%;border-radius:1px;background:var(--accent);opacity:.45"></span>`
+    )
+    .join(
+      ""
+    )}</span><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;flex:none;color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11v1a7 7 0 0 1-14 0v-1"/><path d="M12 19v3"/></svg></span><span style="display:flex;align-items:center;gap:2px;height:26px">${[
+    48, 100, 62, 30,
+  ]
+    .map(
+      (h) =>
+        `<span style="width:2px;height:${h}%;border-radius:1px;background:var(--accent);opacity:.45"></span>`
+    )
+    .join(
+      ""
+    )}</span></div><span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--muted);font-size:8px;white-space:nowrap">Listening…</span></div>`,
   // A real, scannable version 2 code for the site itself, not a drawing of one — including the
   // white ground, because that is the component's own point: the quiet zone has to be light or
   // nothing will read it, and the card behind this is not.
