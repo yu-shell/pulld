@@ -10,6 +10,8 @@
 //     reconstructs the range, so the two can't silently drift.
 //   - batching: vector ids are removed in chunks of at most DELETE_BATCH, so a full-size request
 //     (100 docs × MAX_CHUNKS_PER_DOC vectors) can't exceed Vectorize's per-call id cap.
+//   - one id = one document within a request, matching what ingest charges for: `deleted_docs` is
+//     the only receipt a delete returns, and it counted a repeated id twice.
 //   - the auth (401), config (503), and input guards (bad json / no ids / >100 ids / all-empty),
 //     and that a Vectorize failure surfaces as 502 rather than a false `{ ok: true }`.
 import { test } from "node:test"
@@ -93,6 +95,27 @@ test("delete: a mix of empty and real ids only counts the real ones", async () =
   assert.equal(res.status, 200)
   assert.equal(await res.json().then((b) => b.deleted_docs), 1)
   assert.deepEqual(new Set(deletedBatches.flat()), new Set(rangeFor("doc-1")))
+})
+
+test("delete: the same id twice in one request is the one document it removes", async () => {
+  const { env, deletedBatches } = fakeEnv()
+  const res = await onRequestPost({ request: request(["refunds", "refunds", "other"]), env })
+
+  assert.equal(res.status, 200)
+  // ingest answers the same question the same way (test/ingest-count.test.mjs: "the same id twice
+  // in one request is one document, counted once"). These are the two endpoints one sync loop
+  // calls, so a caller cannot reconcile its catalogue if they disagree about what a document is.
+  assert.deepEqual(await res.json(), { ok: true, deleted_docs: 2 })
+
+  const deleted = deletedBatches.flat()
+  assert.deepEqual(new Set(deleted), new Set([...rangeFor("refunds"), ...rangeFor("other")]))
+  // Not just the count: the repeated id used to send its whole chunk range a second time, inside
+  // the same call that had already deleted it.
+  assert.equal(
+    deleted.length,
+    2 * MAX_CHUNKS_PER_DOC,
+    "a repeated id sent its chunk range to Vectorize twice"
+  )
 })
 
 test("delete: vector ids are removed in batches of at most DELETE_BATCH (1000)", async () => {
