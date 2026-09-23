@@ -128,6 +128,9 @@ const PREVIEWS = {
   "number-input": `<div class="pv-input" style="justify-content:center;gap:8px"><span class="pv-numbtn">−</span><span style="font-size:13px;color:var(--ink);min-width:14px;text-align:center">3</span><span class="pv-numbtn">+</span></div>`,
   "otp-input": `<div class="pv-otp"><span>4</span><span>2</span><span></span><span></span></div>`,
   "date-input": `<div class="pv-input pv-date"><span>03</span><i>/</i><span class="on">14</span><i>/</i><span>2026</span></div>`,
+  // The lit preset above and the dates it resolves to below: the pair is the component. Only
+  // the lit pill would read as a segmented control, and only the span as a date field.
+  "date-range-preset": `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%"><div style="display:flex;flex-wrap:wrap;justify-content:center;gap:3px"><span style="font-size:7.5px;line-height:1;padding:3.5px 5px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);white-space:nowrap">Today</span><span style="font-size:7.5px;line-height:1;padding:3.5px 5px;border-radius:4px;border:1px solid transparent;background:var(--accent);color:#fff;white-space:nowrap">7 days</span><span style="font-size:7.5px;line-height:1;padding:3.5px 5px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);white-space:nowrap">MTD</span></div><span style="font-size:9px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums">Sep 17 \u2013 23</span><span style="font-size:7px;line-height:1;color:var(--muted)">last7d</span></div>`,
   "weekly-hours": `<div style="display:flex;flex-direction:column;gap:4px;width:78px">${[
     ["Mon", "9\u201317", true],
     ["Fri", "9\u201317", true],
