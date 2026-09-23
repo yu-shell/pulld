@@ -2,8 +2,9 @@
 // Server-to-server only: admin_key is a secret write key, so no CORS is offered.
 // Body: { ids: ["doc-1", "doc-2"] } — the document ids to remove. Each doc was indexed as at most
 // MAX_CHUNKS_PER_DOC vectors (`<project>:<id>:<0..n>`), so we delete that whole id range; deleting
-// ids that don't exist is a harmless no-op. The `<project>` prefix is the authenticated project,
-// so a caller can only delete its own documents.
+// ids that don't exist is a harmless no-op, and naming the same id twice in one request is the one
+// document it removes. The `<project>` prefix is the authenticated project, so a caller can only
+// delete its own documents.
 import { json, projectByKey, MAX_CHUNKS_PER_DOC, vecId } from "./_lib.js"
 
 const MAX_IDS_PER_REQUEST = 100
@@ -31,12 +32,22 @@ export async function onRequestPost(context) {
   if (ids.length > MAX_IDS_PER_REQUEST)
     return j({ error: `max ${MAX_IDS_PER_REQUEST} ids per request` }, 400)
 
+  // Distinct ids, the way ingest counts them. The same id twice in one request names one document —
+  // ingest.js already settled that (`indexedIds` is a Set there, pinned by
+  // test/ingest-count.test.mjs) because the number it returns is charged against the monthly doc
+  // quota. Nothing is charged here, so the rule only ever reached one side of the sync loop: this
+  // endpoint counted entries, and `["refunds","refunds"]` answered `deleted_docs: 2` for the single
+  // document it removed. That count is the whole receipt a delete gives, and the two endpoints a
+  // customer syncs with disagreed about what one document is inside one request.
+  //
+  // The repeat also went out on the wire — MAX_CHUNKS_PER_DOC ids re-sent per repeated id, in the
+  // same call that had already deleted them.
+  const seen = new Set()
   const vectorIds = []
-  let docs = 0
   for (const raw of ids) {
     const id = String(raw ?? "").slice(0, 200)
-    if (!id) continue
-    docs++
+    if (!id || seen.has(id)) continue
+    seen.add(id)
     for (let ci = 0; ci < MAX_CHUNKS_PER_DOC; ci++) {
       vectorIds.push(vecId(project.id, id, ci))
     }
@@ -52,5 +63,5 @@ export async function onRequestPost(context) {
     return j({ error: "delete failed" }, 502)
   }
 
-  return j({ ok: true, deleted_docs: docs })
+  return j({ ok: true, deleted_docs: seen.size })
 }

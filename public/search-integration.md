@@ -113,7 +113,10 @@ Body:    { "ids": ["refunds", "old-article"] }
 → { "ok": true, "deleted_docs": 2 }
 ```
 
-Up to 100 ids per request. Deleting an id that doesn't exist is a harmless no-op.
+Up to 100 ids per request, counted as sent — a repeated id spends two of them. Repeating an
+`id` within one request still removes one document and is reported once in `deleted_docs`,
+the way ingest counts a repeated `id` as one document. Deleting an id that doesn't exist is a
+harmless no-op.
 
 ## 4. Keep the index in sync
 
