@@ -499,6 +499,18 @@ const PREVIEWS = {
     const badge = `<span style="position:absolute;right:3px;top:3px;padding:0 3px;border-radius:4px;background:var(--surface);border:1px solid var(--line);font-size:8px;line-height:1.6;color:var(--muted)">200%</span>`
     return `<div style="position:relative;width:100%;height:58px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${glass}${badge}</div>`
   })(),
+  "camera-capture": (() => {
+    // width:100%, not a pixel width, for the reason spelled out on image-zoom above: `.preview` is
+    // a 104px border-box carrying 10px of padding and a 1px border, so 82px is all there is.
+    const scene = `<svg viewBox="0 0 82 58" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%"><rect width="82" height="58" fill="color-mix(in srgb,var(--accent) 14%,var(--surface))"/><circle cx="41" cy="23" r="9.5" fill="var(--muted)" opacity=".5"/><path d="M19 58a22 22 0 0 1 44 0Z" fill="var(--muted)" opacity=".5"/></svg>`
+    // Viewfinder brackets and a shutter. This is what separates the card from the other image
+    // components at a glance: image-crop's is a circle cut out of a scrim and image-zoom's is a
+    // magnifier held over a picture, and both of those are things you do to a photograph that
+    // already exists. Brackets and a shutter are the moment before one does.
+    const frame = `<svg viewBox="0 0 82 58" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="position:absolute;inset:0;width:100%;height:100%"><path d="M6 16V8h8M68 8h8v8M76 42v8h-8M14 50H6v-8"/></svg>`
+    const shutter = `<span style="position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);box-shadow:0 0 0 1.5px var(--surface)"></span>`
+    return `<div style="position:relative;width:100%;height:58px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${frame}${shutter}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
