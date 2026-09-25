@@ -62,7 +62,21 @@ async function handle(context) {
       const b = await request.json()
       if (typeof b?.q === "string") q = b.q
       if (typeof b?.key === "string") key = b.key
-      if (b?.limit) topK = clampLimit(b.limit, topK)
+      // Gated on the field's type, the way `q` and `key` above are, and not on its truthiness:
+      // `{ "limit": 0 }` is a limit that was sent, and the one value where those two differ. As a
+      // truthiness test it was dropped unread, so the same 0 that `?limit=0` clamps to 1 came back
+      // as 8 over POST — and when the URL also carried `?limit=3`, the body's 0 lost to it, against
+      // the documented rule that a field present in the body wins. Within POST it was stranger
+      // still: `-5` clamped to 1 and `0` did not, though the guide calls both out of range and
+      // promises clamping over rejection for either.
+      //
+      // Accepting exactly the two types JSON can spell a limit in keeps clampLimit the only thing
+      // that decides what a limit means — it already maps null, "" and non-numeric input back to
+      // the fallback — while a boolean or an object, which no documented client sends, is ignored
+      // rather than coerced through Number() into a silent 1.
+      if (typeof b?.limit === "number" || typeof b?.limit === "string") {
+        topK = clampLimit(b.limit, topK)
+      }
     } catch {
       /* ignore */
     }

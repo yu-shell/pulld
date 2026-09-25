@@ -13,6 +13,10 @@
 //     51..60, and `?limit=2.5` sent 7.5, each answered with a 502 from a limit the endpoint itself
 //     documents as valid. The assertions below sweep the whole advertised range rather than
 //     spot-checking, because the broken part was the top fifth of it.
+//   - `limit` over POST answering the same as `limit` over the query string, and winning over it
+//     when both are sent. Read behind a truthiness test, the body's `0` was dropped unread: the
+//     value the URL clamps to 1 came back as the default 8, and lost to the URL when both were
+//     present. Swept as a table, because within POST `-5` was clamped and `0` was not.
 //   - the quota (429) and burst rate-limit (429) gates.
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -67,10 +71,14 @@ function get(q, params = {}) {
   return { method: "GET", url: u.toString(), headers: { get: () => null } }
 }
 
-function post(body) {
+// `params` puts the same fields in the URL as well, which is the only way to exercise the
+// documented precedence: a POST may carry both, and the body is supposed to win.
+function post(body, params = {}) {
+  const u = new URL("https://pulld.pages.dev/api/search/query")
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v))
   return {
     method: "POST",
-    url: "https://pulld.pages.dev/api/search/query",
+    url: u.toString(),
     headers: { get: () => null },
     json: async () => body,
   }
@@ -178,6 +186,68 @@ test("query: a fractional limit caps the result list at a whole number of docume
 
   const { results } = await res.json()
   assert.deepEqual(results.map((r) => r.id), ["a", "b"])
+})
+
+// `limit` over POST used to be read behind a truthiness test, which made 0 the one value the two
+// methods answered differently: `?limit=0` clamps to 1, `{ "limit": 0 }` was dropped unread and
+// came back as the default 8. The guide promises clamping over rejection for anything outside
+// [1,20] and says a field present in the body wins over the query string, so both halves below are
+// the documented contract rather than a preference. Swept as a table because the asymmetry lived
+// inside POST too — `-5` was clamped and `0` was not, though the range excludes both.
+test("query: POST clamps the same limits the query string does, 0 included", async () => {
+  // [body limit, clamped limit, topK asked of Vectorize]
+  const cases = [
+    [0, 1, 3], // the regression: pre-fix this fell through to the default 8 → topK 24
+    ["0", 1, 3],
+    [-5, 1, 3],
+    [25, 20, 50], // over-fetch capped at VEC_TOPK_MAX
+    [2.5, 2, 6],
+    ["abc", 8, 24], // non-numeric: falls back, never NaN
+    ["", 8, 24], // present but empty → the fallback, as over the query string
+  ]
+  for (const [limit, clamped, wantTopK] of cases) {
+    const { env, queries } = fakeEnv()
+    const res = await onRequestPost({ request: post({ q: "hi", key: QUERY_KEY, limit }), env })
+
+    assert.equal(res.status, 200, `body limit=${JSON.stringify(limit)} should not error`)
+    assert.equal(
+      queries[0].topK,
+      wantTopK,
+      `body limit=${JSON.stringify(limit)} → clamped ${clamped} → topK ${wantTopK}`
+    )
+  }
+})
+
+// Same value in both places, so only precedence can explain the answer.
+test("query: a limit in the POST body wins over one in the query string", async () => {
+  const { env, queries } = fakeEnv()
+  const res = await onRequestPost({
+    request: post({ q: "hi", key: QUERY_KEY, limit: 0 }, { limit: 3 }),
+    env,
+  })
+
+  assert.equal(res.status, 200)
+  assert.equal(queries[0].topK, 3) // body's 0 → clamped 1 → topK 3; pre-fix the URL's 3 won → 9
+})
+
+// The URL is still the fallback for a body that says nothing about `limit` — the fix widened which
+// values count as "said", not whether an absent field overrides.
+test("query: a body with no limit leaves the query string's limit in place", async () => {
+  for (const body of [{ q: "hi", key: QUERY_KEY }, { q: "hi", key: QUERY_KEY, limit: null }]) {
+    const { env, queries } = fakeEnv()
+    await onRequestPost({ request: post(body, { limit: 4 }), env })
+    assert.equal(queries[0].topK, 12) // limit 4, untouched by the body
+  }
+})
+
+// A boolean or an object is not a limit in any documented client, and Number() would quietly turn
+// `false` into 0 and then into a one-result search. Ignored, so the URL or the default decides.
+test("query: a non-numeric, non-string limit in the body is ignored rather than coerced", async () => {
+  for (const limit of [false, true, {}, []]) {
+    const { env, queries } = fakeEnv()
+    await onRequestPost({ request: post({ q: "hi", key: QUERY_KEY, limit }), env })
+    assert.equal(queries[0].topK, 24, `body limit=${JSON.stringify(limit)} → default 8`)
+  }
 })
 
 test("query: results are deduped by docId (first-seen wins) and capped at the requested limit", async () => {
