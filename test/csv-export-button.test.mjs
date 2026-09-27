@@ -384,6 +384,40 @@ test("no rows and no declared columns downloads nothing, and says so", async (t)
   view.instance.unmount()
 })
 
+test("rows with no columns to write download nothing, rather than a file of blank lines", async (t) => {
+  const browser = stubBrowser()
+  t.after(() => browser.restore())
+
+  // Rows that are not objects resolve to no columns at all, and the writer then has no header to
+  // write and no cell to read: every line comes out empty. The earlier guard only asked whether the
+  // rows were empty, so this went out as a download of nothing but line endings, announced as a
+  // success — the broken-button file that guard exists to prevent, one step further along.
+  for (const rows of [["a", "b"], [1, 2, 3], [{}], []]) {
+    const view = mount({ rows })
+    await view.button.props.onClick(clickEvent())
+    view.instance.rerender()
+
+    assert.deepEqual(browser.log.blobs, [], `${JSON.stringify(rows)} was written to a file`)
+    assert.equal(view.live(), "Nothing to export")
+    view.instance.unmount()
+  }
+})
+
+test("an empty column list is no columns, not every column", async (t) => {
+  const browser = stubBrowser()
+  t.after(() => browser.restore())
+
+  // Declaring columns is what turns an empty result into a header-only file, but an empty list
+  // declares nothing, so it cannot mean "write the headers" — there are none to write.
+  const view = mount({ rows: [{ id: 1 }], columns: [] })
+  await view.button.props.onClick(clickEvent())
+  view.instance.rerender()
+
+  assert.deepEqual(browser.log.blobs, [])
+  assert.equal(view.live(), "Nothing to export")
+  view.instance.unmount()
+})
+
 test("no rows but declared columns writes the header-only file", async (t) => {
   const browser = stubBrowser()
   t.after(() => browser.restore())

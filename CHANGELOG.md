@@ -3,6 +3,19 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-09-27 — quality sweep
+
+- fix(csv-export-button): an export with no columns to write no longer downloads a
+  file of blank lines. The guard against a content-free download only asked whether
+  the rows were empty, but the file is just as empty when the rows are there and the
+  columns are not — rows that are not objects, rows carrying no keys of their own, or
+  a `columns` list that came through empty. Every line then came out with no header
+  and no cell, and the button announced "Downloaded 2 rows" over a blob of nothing but
+  line endings. The columns are now resolved once, before the check, so the guard asks
+  about the file that would actually be written and answers "Nothing to export"
+  instead. Declared columns with no rows still write the header-only file, which is a
+  real answer to "there were no results".
+
 ## 2026-09-20 — quality sweep
 
 - fix(country-select): a query made only of punctuation now filters instead of

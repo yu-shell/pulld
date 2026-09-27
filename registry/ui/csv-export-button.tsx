@@ -334,13 +334,19 @@ export function CsvExportButton<Row>({
     try {
       const resolvedRows = typeof rows === "function" ? await rows() : rows
       if (!alive.current) return
-      if (resolvedRows.length === 0 && !columns) {
+      // Resolved once, checked, and then handed to the writer, so the guard is asking about the
+      // file that would actually be written. Having no columns means no header and no cells
+      // whatever the row count — rows that are not objects, rows carrying no keys of their own,
+      // an empty column list — and that file is the same content-free download as the no-rows
+      // case, so it gets the same answer instead of a blob of empty lines reported as a success.
+      const resolved = resolveColumns(resolvedRows, columns)
+      if (resolved.length === 0) {
         setStatus("idle")
         setMessage("Nothing to export")
         return
       }
       const name = withCsvExtension(filename)
-      downloadCsvFile(name, toCsv(resolvedRows, { ...options, columns }), { bom })
+      downloadCsvFile(name, toCsv(resolvedRows, { ...options, columns: resolved }), { bom })
       setStatus("idle")
       setMessage(
         `Downloaded ${resolvedRows.length} row${resolvedRows.length === 1 ? "" : "s"} as ${name}`
