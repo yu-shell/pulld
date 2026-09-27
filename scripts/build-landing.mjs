@@ -342,6 +342,17 @@ const PREVIEWS = {
         `<span style="display:flex;align-items:center;gap:5px;width:100%;opacity:${r.o}"><span style="width:13px;height:13px;border-radius:4px;background:var(--line)"></span><span style="height:4px;width:${r.w}px;border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
     )
     .join("")}<span class="pv-btn" style="height:19px;padding:0 8px;border-radius:6px;font-size:9.5px;margin-top:3px">Load more</span></div>`,
+  // Rows shoved down to open a gap at the top with a refresh arrow sitting in it: the list has been
+  // pulled and is about to reload. The gap being at the TOP is the whole of what separates this card
+  // from infinite-scroll's, which fades rows out into a button at the bottom. width:100%, not a pixel
+  // width — `.preview` is a 104px border-box with 10px of padding and a 1px border, so 82px is all
+  // there is. 22px arrow band + 3 rows of 12 + 2 gaps of 6 = 70px, inside the 84px it leaves.
+  "pull-to-refresh": (() => {
+    const row = (w, o) =>
+      `<span style="display:flex;align-items:center;gap:5px;width:100%;opacity:${o}"><span style="flex:none;width:12px;height:12px;border-radius:4px;background:var(--line)"></span><span style="height:4px;width:${w};border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
+    const arrow = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`
+    return `<div style="position:relative;width:100%;height:80px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--surface)"><span style="display:flex;align-items:center;justify-content:center;height:22px">${arrow}</span><span style="display:flex;flex-direction:column;gap:6px;padding:0 6px">${row("74%", "1")}${row("58%", ".75")}${row("66%", ".5")}</span></div>`
+  })(),
   // The window: rows inside the frame are drawn, the ones outside it only take up space.
   // 9 + 4 + 47 + 4 + 9 = 73px tall, inside the 84px the preview box leaves.
   "virtual-list": (() => {
