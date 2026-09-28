@@ -15,6 +15,10 @@ import {
 
 const MAX_CHUNKS_PER_REQUEST = 400
 const PRUNE_BATCH = 1000 // vector ids per deleteByIds call (mirrors delete.js)
+// How many truncated ids the response names. The count beside them carries the real total, and a
+// request may hold 100 documents with ids of 200 characters each — naming them all would put 20 KB
+// of diagnostics in a success response. Ten is enough to find the content that needs splitting.
+const MAX_REPORTED_IDS = 10
 const j = (data, status = 200) => json(data, status, { cors: false })
 
 export async function onRequestPost(context) {
@@ -50,6 +54,23 @@ export async function onRequestPost(context) {
   // search stays empty. Distinct ids: the same id twice in one request is the one document it
   // overwrites into.
   const indexedIds = new Set()
+  // Documents whose text ran past MAX_CHUNKS_PER_DOC, so only the first chunks of them were
+  // indexed. Distinct ids, the way `indexedIds` is — an id sent twice in one request is one
+  // document, and one report.
+  //
+  // The cap itself is deliberate and unchanged; what was missing is that crossing it said nothing.
+  // A 40,000-character article chunks to 54 and keeps 20, which is the first 15,150 characters:
+  // the response was `ok: true, indexed_docs: 1, skipped_docs: 0, indexed_chunks: 20`, and 62% of
+  // the document was dropped without a number anywhere naming it. Search then answers for the
+  // opening of that article and has never seen the rest, which reads as a ranking problem rather
+  // than as content that was never indexed.
+  //
+  // Its sibling limit is loud about exactly this: cross MAX_CHUNKS_PER_REQUEST and the request is
+  // refused with `too_many_chunks` and a message naming both caps — which, until now, was the only
+  // place a caller could learn the per-document one exists at all. The asymmetry was the bug: the
+  // per-request cap costs the caller a retry, the per-document cap costs them content they believe
+  // is searchable.
+  const truncatedIds = new Set()
   let skipped = 0
   for (const d of docs) {
     const id = String(d?.id ?? "").slice(0, 200)
@@ -57,7 +78,9 @@ export async function onRequestPost(context) {
       skipped++
       continue
     }
-    const parts = chunk(`${d.title ?? ""}\n${d.content ?? ""}`).slice(0, MAX_CHUNKS_PER_DOC)
+    const whole = chunk(`${d.title ?? ""}\n${d.content ?? ""}`)
+    const parts = whole.slice(0, MAX_CHUNKS_PER_DOC)
+    if (whole.length > parts.length) truncatedIds.add(id)
     // A doc can shrink on re-index. Upserting only overwrites chunks 0..N-1; any higher-index
     // chunks from a previous, longer version would survive and keep matching queries —
     // contradicting the documented "re-sending the same id overwrites that document". Mark the
@@ -181,6 +204,10 @@ export async function onRequestPost(context) {
     ok: true,
     indexed_docs: indexedIds.size,
     skipped_docs: skipped,
+    // Always present, `skipped_docs`-style, rather than appearing only when non-zero: a field a
+    // caller has to check for the existence of before reading is one they will read as 0.
+    truncated_docs: truncatedIds.size,
+    truncated_ids: [...truncatedIds].slice(0, MAX_REPORTED_IDS),
     indexed_chunks: vectors.length,
     docs_this_month: docsThisMonth,
   })

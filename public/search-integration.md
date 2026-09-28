@@ -68,12 +68,22 @@ POST https://pulld.pages.dev/api/search/ingest
 Headers: x-pulld-admin-key: <admin_key>
          content-type: application/json
 Body:    { "documents": [ { "id", "title", "url", "content" } ] }
-→ { "ok": true, "indexed_docs": N, "skipped_docs": S, "indexed_chunks": M, "docs_this_month": K }
+→ { "ok": true, "indexed_docs": N, "skipped_docs": S, "truncated_docs": T,
+     "truncated_ids": [...], "indexed_chunks": M, "docs_this_month": K }
 ```
 
 Rules:
 
 - Up to **100 documents per request** (each doc is chunked: ≤20 chunks/doc, ≤400 chunks/request).
+  A request over the per-request total is refused whole with
+  `413 { "error": "too_many_chunks" }` — split it into more requests.
+- **A document longer than 20 chunks (~15,000 characters of text) is indexed only up to that
+  point, and the rest is not searchable.** The request still succeeds, and the documents it
+  happened to are reported in `truncated_docs` (how many) and `truncated_ids` (which ones, up to
+  10 of them). This is the one limit that costs you content rather than a retry, so treat
+  a non-zero `truncated_docs` as a signal to split that document into several — one per section,
+  each with its own `id` and a `url` pointing at that section, which also makes the result the
+  command palette navigates to land where the answer is.
 - `id` is your stable key. **Re-sending the same `id` overwrites** that document — that is how you update it.
 - `url` is where a result points (the command palette navigates there on select).
 - `content` is the text searched over; `title` becomes the result label.
