@@ -546,6 +546,32 @@ const PREVIEWS = {
     const shutter = `<span style="position:absolute;left:50%;bottom:5px;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);box-shadow:0 0 0 1.5px var(--surface)"></span>`
     return `<div style="position:relative;width:100%;height:58px;border-radius:6px;overflow:hidden;border:1px solid var(--line)">${scene}${frame}${shutter}</div>`
   })(),
+  "sticky-table-header": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to say "the heading stayed while the rows moved", which is not what a picture of
+    // a table says on its own — sort-header's thumbnail is also a table with a header and rows, and
+    // the two must not read as the same component. Three things separate them: the header here is
+    // raised (its own surface, a drop shadow, an accent rule under it — the line that travels with
+    // the cell, which is the component's hardest detail), the top body row is cut off *behind* that
+    // header rather than starting below it, and a scrollbar thumb sits away from the top to say the
+    // table has already been scrolled. sort-header's card carries arrows instead and no scrollbar.
+    const rule = `<span style="position:absolute;left:0;right:0;bottom:0;height:1.5px;background:var(--accent)"></span>`
+    const head = `<span style="position:relative;z-index:1;display:flex;align-items:center;gap:3px;padding:0 6px;height:15px;background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 2px 3px -1px rgba(0,0,0,.25)"><span>Name</span><span style="margin-left:auto">Status</span>${rule}</span>`
+    const row = (name, status, clipped) =>
+      `<span style="display:flex;align-items:center;gap:3px;padding:0 6px;height:13px;color:var(--muted);${
+        clipped ? "margin-top:-5px;" : ""
+      }"><span>${name}</span><span style="margin-left:auto">${status}</span></span>`
+    // The thumb is short and parked below the top: a full-height or top-anchored thumb would say the
+    // table fits, and a table that fits has no use for any of this.
+    const scrollbar = `<span style="position:absolute;right:2px;top:17px;bottom:2px;width:2px;border-radius:1px;background:var(--line)"><span style="position:absolute;left:0;right:0;top:34%;height:38%;border-radius:1px;background:var(--muted)"></span></span>`
+    return `<div style="position:relative;width:100%;border:1px solid var(--line);border-radius:7px;overflow:hidden;font-size:9px;line-height:1;background:var(--bg)">${head}${row(
+      "Ada",
+      "Paid",
+      true
+    )}${row("Bo", "Due")}${row("Cy", "Paid")}${row("Dee", "Due")}${scrollbar}</div>`
+  })(),
 }
 const preview = (name) =>
   `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
