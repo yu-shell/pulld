@@ -155,6 +155,20 @@ const PREVIEWS = {
   "geolocation-button": `<div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:104px"><div style="position:relative;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h3"/><path d="M19 12h3"/><path d="M12 2v3"/><path d="M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg></div><span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--muted);font-size:8px;white-space:nowrap">Use my location</span></div>`,
   "network-status": `<div class="pv-net"><span class="i"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M16 11.1a10 10 0 0 1 3 1.8"/><path d="M2 8.8a16 16 0 0 1 4.7-2.8"/><path d="M11 5a16 16 0 0 1 11 3.8"/><path d="M12 20h.01"/></svg></span><span>Offline</span><span class="r">Retry</span></div>`,
   "file-dropzone": `<div class="pv-empty">${ICON.upload}<span>Drop files</span></div>`,
+  // The rename is the component, so the thumbnail shows it happening: a screenshot comes in called
+  // `image.png`, like every other screenshot, and leaves under a name it can sit in a list with. The
+  // keys above it say how it arrived, which is what tells this apart from file-dropzone at 82px.
+  // Its own key caps rather than `.pv-kbd`, which is 24px tall and would not leave room for the
+  // picture beside it. width:100%, not a pixel width — `.preview` is a 104px border-box carrying
+  // 10px of padding and a 1px border, so 82px is all the content actually gets.
+  "paste-area": `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box"><div style="display:flex;align-items:center;justify-content:center;gap:4px;border:1px dashed var(--accent);border-radius:6px;padding:6px 4px;background:var(--surface);box-sizing:border-box"><span style="position:relative;display:inline-block;width:21px;height:16px;border-radius:2.5px;background:var(--bg);border:1px solid var(--line);overflow:hidden;flex:none"><span style="position:absolute;left:2px;bottom:-1px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--accent);opacity:.6"></span><span style="position:absolute;right:3px;top:2.5px;width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.5"></span></span>${["⌘", "V"]
+    .map(
+      (key) =>
+        `<span style="display:inline-flex;align-items:center;height:15px;padding:0 4px;border-radius:3.5px;border:1px solid var(--line);border-bottom-width:2px;background:var(--bg);font:8.5px ui-monospace,monospace;color:var(--muted);flex:none">${key}</span>`
+    )
+    .join(
+      ""
+    )}</div><div style="display:flex;flex-direction:column;align-items:center;gap:1.5px"><span style="font:8px ui-monospace,monospace;color:var(--muted);text-decoration:line-through">image.png</span><span style="font:8px ui-monospace,monospace;color:var(--ink)">pasted-…-1.png</span></div></div>`,
   // Waveform either side of the microphone, then the state in words. The bars are what make it a
   // dictation control at thumbnail size rather than one more round icon button, and the label is
   // the component's own subject: it says "Listening" only while that is true.
