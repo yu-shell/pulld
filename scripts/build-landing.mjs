@@ -367,6 +367,28 @@ const PREVIEWS = {
     const arrow = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>`
     return `<div style="position:relative;width:100%;height:80px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--surface)"><span style="display:flex;align-items:center;justify-content:center;height:22px">${arrow}</span><span style="display:flex;flex-direction:column;gap:6px;padding:0 6px">${row("74%", "1")}${row("58%", ".75")}${row("66%", ".5")}</span></div>`
   })(),
+  // The middle row slid across with its actions showing behind it — the offset row beside two
+  // untouched ones is the whole component, so a single row would have read as any other list item.
+  // The panel is 30px of the 82px the preview box leaves, and the row is moved by exactly that, so
+  // both action tiles are fully out rather than one being half eaten by the row's own edge.
+  // 3 rows of 20px + 2 gaps of 5 = 70px, inside the 82px available.
+  "swipe-actions": (() => {
+    const body = (w) =>
+      `<span style="position:absolute;inset:0;display:flex;align-items:center;gap:4px;padding:0 5px;border:1px solid var(--line);border-radius:4px;background:var(--surface);box-sizing:border-box"><span style="flex:none;width:8px;height:8px;border-radius:50%;background:var(--line)"></span><span style="height:3px;width:${w};border-radius:2px;background:var(--muted);opacity:.55"></span></span>`
+    const still = `<span style="position:relative;display:block;height:20px">${body("54%")}</span>`
+    const tile = (bg, glyph) =>
+      `<span style="width:15px;display:flex;align-items:center;justify-content:center;background:${bg};font-size:8px;line-height:1;color:#fff">${glyph}</span>`
+    // Moved with a transform, like the component, so the row's left edge is clipped by the frame
+    // rather than the row being drawn narrower — a shortened row would say "this row is smaller",
+    // not "this row has slid".
+    const swiped = `<span style="position:relative;display:block;height:20px;border-radius:4px;overflow:hidden;background:var(--bg)"><span style="position:absolute;top:0;bottom:0;right:0;display:flex">${tile(
+      "var(--muted)",
+      "\u2913"
+    )}${tile("#dc2626", "\u00d7")}</span><span style="position:absolute;inset:0;transform:translateX(-30px)">${body(
+      "62%"
+    )}</span></span>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box">${still}${swiped}${still}</div>`
+  })(),
   // The window: rows inside the frame are drawn, the ones outside it only take up space.
   // 9 + 4 + 47 + 4 + 9 = 73px tall, inside the 84px the preview box leaves.
   "virtual-list": (() => {
