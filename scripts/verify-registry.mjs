@@ -6,6 +6,7 @@
 //  - declares, in registryDependencies, every component of ours that its source imports
 //  - declares, in dependencies, every npm package its source imports
 //  - has a title/description of sufficient length for discoverability
+//  - has a real preview on the generated landing page, rather than the generic fallback box
 // and, if a build output exists in public/r, that it corresponds to the items. The source tree is
 // checked in the same both-ways spirit: a .tsx under registry/ that no item claims is flagged too.
 //
@@ -15,6 +16,7 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { cardId, PREVIEW_OPEN, PREVIEW_PLACEHOLDER } from "./_landing-markup.mjs"
 
 // The build outputs in public/r that are not components. `shadcn build` writes the catalogue
 // index under CATALOGUE_INDEX alongside the per-item files (inject-base.mjs skips it for the same
@@ -109,10 +111,17 @@ export const VALID_TYPES = new Set([
 // component sources actually present under registry/, or null when they were not enumerated),
 // `readSource(path)` (the text of one item file, or null when sources are not being read) and,
 // when a build exists, `builtNames` (the list of names under public/r, or null when no build output
-// is present).
+// is present) and `landingHtml` (the generated public/index.html, or null when it has not been
+// built).
 export function verifyRegistry(
   reg,
-  { fileExists = () => true, builtNames = null, sourceFiles = null, readSource = null } = {}
+  {
+    fileExists = () => true,
+    builtNames = null,
+    sourceFiles = null,
+    readSource = null,
+    landingHtml = null,
+  } = {}
 ) {
   const messages = []
   let warn = 0
@@ -323,6 +332,62 @@ export function verifyRegistry(
     push("INFO", "public/r not generated → run `npx shadcn build`")
   }
 
+  // The landing page, checked the way public/r is: against what was generated, both ways.
+  //
+  // Every component gets a card on public/index.html and every card a small hand-built preview
+  // (scripts/build-landing.mjs's PREVIEWS map). A component with no entry there still renders —
+  // it falls back to a generic box — so the page looks finished, the build succeeds, and the
+  // catalogue quietly gains another component wearing the same thumbnail as every other one that
+  // was forgotten. Nothing fails, nothing is missing, nothing says so. That is the whole reason
+  // the rule "a new component brings a preview" has been carried as prose in the daily routine's
+  // notes, written there as mandatory and as a recurrence guard — a rule stated that way is only
+  // as good as whoever last read it, and this one is checkable.
+  //
+  // Read off the built HTML rather than off the PREVIEWS map, because the map is not the question
+  // being asked. An entry keyed under a name the registry no longer ships satisfies the map and
+  // still leaves the page showing the box; the page is the artifact that goes out, so the page is
+  // what is asked.
+  //
+  // WARN rather than ALERT, on the rule the rest of this file follows: nothing a consumer installs
+  // is affected — installs arrive through the CLI, and this page is not on that path — so the cost
+  // is a thumbnail on a page, not a build that fails in somebody else's project. WARN=0 is the
+  // normal state here, so one line is enough to be seen on the run that produced it.
+  if (landingHtml) {
+    for (const name of itemNames) {
+      const mark = `id="${cardId(name)}">`
+      const at = landingHtml.indexOf(mark)
+      if (at === -1) {
+        warning(
+          `${name}: no card on the landing page — public/index.html predates this item, so the ` +
+            `catalogue page does not list it at all → npm run registry:build`
+        )
+        continue
+      }
+      // The preview box is the first thing inside a card, so it is read from immediately after the
+      // id rather than searched for anywhere after it: a forward search would run into the NEXT
+      // card's box and judge this component on that one's contents. Bounded, because the two
+      // markers are 41 characters between them and the page is half a megabyte.
+      const head = landingHtml.slice(at + mark.length, at + mark.length + 128).replace(/^\s+/, "")
+      if (!head.startsWith(PREVIEW_OPEN)) {
+        warning(
+          `${name}: landing-page card does not open with a preview box — public/index.html no ` +
+            `longer has the shape this check reads, so the preview rule is going unverified → ` +
+            `reconcile scripts/_landing-markup.mjs with scripts/build-landing.mjs`
+        )
+        continue
+      }
+      if (head.slice(PREVIEW_OPEN.length).startsWith(PREVIEW_PLACEHOLDER)) {
+        warning(
+          `${name}: landing-page card shows the generic placeholder box — no PREVIEWS entry in ` +
+            `scripts/build-landing.mjs, so the catalogue gives it the same thumbnail as every ` +
+            `other component missing one → add a small "${name}" mock-up to PREVIEWS`
+        )
+      }
+    }
+  } else {
+    push("INFO", "public/index.html not generated → run `npm run registry:build`")
+  }
+
   push("RESULT", `ALERT=${alert} WARN=${warn}`)
   return { messages, alert, warn }
 }
@@ -368,11 +433,18 @@ function main() {
     }
   }
 
+  // The generated catalogue page, when `npm run registry:build` has produced one. It is
+  // gitignored like public/r, so a fresh checkout that has not built yet gets the INFO line
+  // rather than 101 warnings about a page that was never written.
+  const landingPath = join(ROOT, "public", "index.html")
+  const landingHtml = existsSync(landingPath) ? readFileSync(landingPath, "utf8") : null
+
   const { messages, alert } = verifyRegistry(reg, {
     fileExists: (p) => existsSync(join(ROOT, p)),
     builtNames,
     sourceFiles,
     readSource,
+    landingHtml,
   })
   for (const m of messages) console.log(`${m.level}\t${m.msg}`)
   process.exit(alert ? 1 : 0)
