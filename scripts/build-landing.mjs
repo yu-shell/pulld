@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { cardId, PREVIEW_OPEN, PREVIEW_PLACEHOLDER } from "./_landing-markup.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const BASE = (process.env.SITE_BASE || "https://pulld.pages.dev").replace(/\/$/, "")
@@ -609,8 +610,11 @@ const PREVIEWS = {
     )}${row("Bo", "Due")}${row("Cy", "Paid")}${row("Dee", "Due")}${scrollbar}</div>`
   })(),
 }
+// A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
+// what makes the omission invisible, so the two strings it is built from are shared with
+// scripts/verify-registry.mjs, which reads them back off the generated page and warns.
 const preview = (name) =>
-  `<div class="preview">${PREVIEWS[name] || `<span class="pv-ph">${ICON.box}</span>`}</div>`
+  `${PREVIEW_OPEN}${PREVIEWS[name] || `${PREVIEW_PLACEHOLDER}${ICON.box}</span>`}</div>`
 
 const cards = items
   .map((it) => {
@@ -619,7 +623,7 @@ const cards = items
       Array.isArray(it.registryDependencies) && it.registryDependencies.length
         ? `<span class="dep">composes ${it.registryDependencies.map(esc).join(", ")}</span>`
         : ""
-    return `      <article class="card" id="c-${it.name}">
+    return `      <article class="card" id="${cardId(it.name)}">
         ${preview(it.name)}
         <div class="card-body">
           <div class="card-head">

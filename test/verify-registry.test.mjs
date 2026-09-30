@@ -6,6 +6,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { verifyRegistry, CATALOGUE_INDEX, OFFICIAL_INDEX } from "../scripts/verify-registry.mjs"
+import { cardId, PREVIEW_OPEN, PREVIEW_PLACEHOLDER } from "../scripts/_landing-markup.mjs"
 
 // A minimal item that passes every check (valid type, one existing file, title, long-enough desc).
 const okItem = (over = {}) => ({
@@ -495,4 +496,97 @@ test("build output: both indexes missing are reported separately, and neither pa
   assert.ok(hasMsg(r, `${OFFICIAL_INDEX}: catalogue index`))
   assert.equal(r.warn, 2)
   assert.ok(hasMsg(r, "build output: 1 of 1 items built"))
+})
+
+// --- the landing page: a component whose preview was never drawn -------------------------------
+//
+// The one correspondence in this pipeline that had no check at all. scripts/build-landing.mjs
+// gives every component a card and every card a hand-built preview; a component missing from its
+// PREVIEWS map still gets a card, with a generic box in it, so the page builds, looks finished,
+// and says nothing. The rule that a new component brings a preview was prose in the routine's
+// notes — the tests below are what replaces it.
+//
+// The fixtures are assembled from the same constants the check reads and build-landing.mjs
+// writes, so a test cannot pass against markup the generator no longer emits.
+const landingCard = (name, inner) =>
+  `      <article class="card" id="${cardId(name)}">\n        ${PREVIEW_OPEN}${inner}</div>\n` +
+  `        <div class="card-body"><h3>${name}</h3></div>\n      </article>\n`
+const drawn = (name) => landingCard(name, `<span class="pv-kbd">⌘</span>`)
+const placeholder = (name) => landingCard(name, `${PREVIEW_PLACEHOLDER}<svg /></span>`)
+
+test("landing page: a component with a real preview warns about nothing", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, landingHtml: drawn("copy-button") }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("landing page: the generic placeholder box is reported, and does not fail the gate", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, landingHtml: placeholder("copy-button") }
+  )
+  assert.equal(r.alert, 0, "a missing thumbnail must not block a deploy")
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "copy-button: landing-page card shows the generic placeholder box"))
+  // The message has to name where the fix goes; the whole point is that the box itself does not.
+  assert.ok(hasMsg(r, "add a small \"copy-button\" mock-up to PREVIEWS"))
+})
+
+test("landing page: only the component missing its preview is named", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, landingHtml: drawn("copy-button") + placeholder("toast") }
+  )
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "toast: landing-page card shows the generic placeholder box"))
+  assert.ok(!hasMsg(r, "copy-button: landing-page card"))
+})
+
+// Each card is read from its own id forward. Searching for the next preview box anywhere after it
+// would find the FOLLOWING card's, and judge a component on a neighbour's thumbnail — passing the
+// one that is actually missing whenever a drawn card happens to come after it.
+test("landing page: a card is judged on its own preview, not the next card's", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, landingHtml: placeholder("copy-button") + drawn("toast") }
+  )
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "copy-button: landing-page card shows the generic placeholder box"))
+})
+
+test("landing page: an item with no card at all points at the rebuild, not at PREVIEWS", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, landingHtml: drawn("copy-button") }
+  )
+  assert.equal(r.alert, 0)
+  assert.ok(hasMsg(r, "toast: no card on the landing page"))
+  assert.ok(hasMsg(r, "npm run registry:build"))
+  assert.ok(!hasMsg(r, "toast: landing-page card shows"))
+})
+
+// The check reads markup it does not own. If build-landing.mjs stops emitting that shape, the
+// honest answer is "this is no longer being verified" — not a silent pass, which is exactly the
+// failure the check was added to end.
+test("landing page: markup the check no longer recognises is reported, not passed", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    {
+      fileExists: () => true,
+      landingHtml: `      <article class="card" id="${cardId("copy-button")}">\n` +
+        `        <figure class="thumb"><span class="pv-kbd">K</span></figure>\n      </article>\n`,
+    }
+  )
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "copy-button: landing-page card does not open with a preview box"))
+  assert.ok(hasMsg(r, "scripts/_landing-markup.mjs"))
+})
+
+test("landing page: an unbuilt page is an INFO, the way public/r is", () => {
+  const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true })
+  assert.equal(r.warn, 0)
+  assert.ok(hasMsg(r, "INFO\tpublic/index.html not generated"))
 })
