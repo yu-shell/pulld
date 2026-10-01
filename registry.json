@@ -1400,6 +1400,21 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "shortcut-recorder",
+      "type": "registry:ui",
+      "title": "Shortcut Recorder",
+      "description": "The settings field that records a keyboard shortcut: the user presses the combination they want and it is captured as a value you can store. Use it on a keyboard shortcuts settings screen, a key-binding or keymap editor, a command palette's \"change shortcut\" row, an accessibility panel, an admin or dev tool where power users rebind keys, or anywhere a command's keys are configurable per user. Common asks it answers: \"record a keyboard shortcut React\", \"hotkey input component\", \"keybinding recorder\", \"let users set their own shortcut\", \"capture key combination input\", \"shortcut picker like VS Code / Linear / Notion\", \"keyboard shortcut settings UI\", \"press-any-key input field\", \"rebind hotkey component\", \"shortcut conflict with Cmd+W\", \"how to store a shortcut so it works on Mac and Windows\", \"shadcn keyboard shortcut input\". shadcn/ui ships nothing that receives a key press as a setting — its kbd only draws a cap — so every shortcut settings screen hand-rolls this, and the hand-rolled version is wrong in the same four ways each time. The identity is `KeyboardEvent.code`, the physical key, never the character: record `Shift+/` by its character and the setting says \"?\" while the matching press reports \"/\", so it never fires again. Alt+n on a Mac has the same problem. Modifiers are stored as roles, not keys — `mod` is the platform accelerator, so a combo recorded on a Mac as ⌘K is read back on Windows as Ctrl+K rather than as a Command key nobody has. `matchesShortcut(event, shortcut)` ships with it, so the setting you stored can be matched at run time by the same rules that recorded it, and `shortcutTokens` emits the exact token vocabulary the keyboard-shortcuts component's `keys` accepts, so a recording goes straight into your help sheet and into kbd caps. A modifier held alone is not a combination (commit on it and no shortcut containing Shift can ever be recorded), auto-repeat is ignored so leaning on a key does not record it, and a press inside an IME composition is ignored. Recording listens on `document` in the capture phase, because your own hotkey library is listening too and a bubble-phase handler would let ⌘K open the command palette while the user was trying to record ⌘K. What capture cannot do is reach above the page, and the component says so rather than pretending: ⌘W still closes the tab and ⌘Tab still switches application whatever is preventDefault'ed, so a short reserved list (DEFAULT_RESERVED, extensible by spreading it) refuses to save those combos and names whether the browser or the operating system takes them — the user never ends up with a setting that closes their tab every time they use it. Escape cancels and Tab leaves with focus moving normally, both announced in the control's accessible name, so the field is not a keyboard trap; a window blur ends recording because the keyup for the press that moved focus never arrives, and keeping that state would record ⌘K from a bare K. The caps are aria-hidden and the control is named in words (\"Keyboard shortcut: Command Shift K\") because a screen reader meeting ⌘ announces \"place of interest sign\" or nothing at all; saves and refusals land in a role=status live region rather than only in colour. Controlled or uncontrolled, every label overridable, optional requireModifier, zero npm dependencies, shadcn tokens throughout for light and dark. Composes kbd for the caps. Distinct from kbd (draws a key cap), keyboard-shortcuts (the ? help sheet that lists shortcuts) and command-palette (⌘K launcher): this is the only one that takes a key press from the user and gives you back a value to save.",
+      "registryDependencies": [
+        "kbd"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/shortcut-recorder.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }
