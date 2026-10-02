@@ -192,6 +192,20 @@ const PREVIEWS = {
     .join(
       ""
     )}</span></div><span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--muted);font-size:8px;white-space:nowrap">Listening…</span></div>`,
+  // The lit segments and the clock, which is what makes this a recorder at thumbnail size rather
+  // than one more microphone button — speech-input is the waveform-and-"Listening" one directly
+  // above. The meter is the component's own subject: a muted microphone is invisible everywhere
+  // except here. Laid out at width:100% rather than 104px, because .preview is a 104px border-box
+  // whose 10px padding and 1px border leave 82px of content and an absolute width loses 11px off
+  // the right to overflow:hidden.
+  "audio-recorder": `<div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:100%;box-sizing:border-box"><div style="display:flex;align-items:center;gap:5px"><span class="pv-rec"></span><span style="font:11px ui-monospace,monospace;color:var(--ink);font-variant-numeric:tabular-nums">0:07</span></div><div style="display:flex;align-items:center;gap:4px;width:100%;box-sizing:border-box"><span style="flex:none;color:var(--accent);display:inline-flex"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 11v1a7 7 0 0 1-14 0v-1"/><path d="M12 19v3"/></svg></span><span style="display:flex;align-items:center;gap:2px;flex:1;min-width:0">${[
+    1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+  ]
+    .map(
+      (on) =>
+        `<span style="flex:1;height:9px;border-radius:1px;background:${on ? "var(--accent)" : "var(--line)"}"></span>`
+    )
+    .join("")}</span></div></div>`,
   // A real, scannable version 2 code for the site itself, not a drawing of one — including the
   // white ground, because that is the component's own point: the quiet zone has to be light or
   // nothing will read it, and the card behind this is not.
@@ -793,6 +807,7 @@ const html = `<!doctype html>
     border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12.5px;font-weight:500}
   .pv-primary{background:var(--accent);color:#fff;border-color:transparent}
   .pv-danger{color:#dc2626;border-color:#dc2626}
+  .pv-rec{width:7px;height:7px;border-radius:50%;background:#dc2626;flex:none}
   .pv-warn{color:#d97706}
   .pv-kbd{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;
     border:1px solid var(--line);border-bottom-width:2px;background:var(--surface);font:12px ui-monospace,monospace;color:var(--muted)}
@@ -855,7 +870,7 @@ const html = `<!doctype html>
   .pv-json em{font-style:normal;opacity:.65}
   .pv-json-s{color:#16a34a}
   .pv-json-n{color:#2563eb}
-  @media (prefers-color-scheme:dark){ .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-net .i{color:#f87171} .pv-leave .h{color:#fbbf24} .pv-leave .go{background:#f87171;color:#1c1917} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
+  @media (prefers-color-scheme:dark){ .pv-rec{background:#f87171} .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-net .i{color:#f87171} .pv-leave .h{color:#fbbf24} .pv-leave .go{background:#f87171;color:#1c1917} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-leave{width:104px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
     padding:7px 8px 6px;display:flex;flex-direction:column;gap:4px}
