@@ -19,6 +19,8 @@
 //   A word that is zero everywhere is evidence official has nothing of the kind; a word that is not
 //   is a prompt to look at where it occurs before claiming the hole.
 
+import { pathToFileURL } from "node:url"
+
 const CATALOGUE = "https://ui.shadcn.com/r/index.json"
 const STYLES = ["new-york-v4", "new-york"]
 
@@ -52,7 +54,14 @@ export function countWords(sources, words) {
   return words.map((word) => ({ word, count: sources.split(word).length - 1 }))
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Only run the CLI when invoked directly, not when imported by the unit tests. Through
+// pathToFileURL, never argv[1] pasted after `file://`, for the reason build-index.mjs spells
+// out: `import.meta.url` is a percent-encoded URL, so one space in the checkout path makes the
+// two strings differ and this block never runs. Nothing announces that — the script exits 0
+// having printed nothing, which for a measurement tool is the worst possible failure: the
+// figure this file exists to make comparable simply does not appear, and the run looks fine.
+// test/cli-main-guard.test.mjs enforces the form across every script in scripts/.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { total, got, missing, sources } = await fetchOfficialSources()
   console.log(`official shadcn/ui — catalogue ${total}, fetched ${got}, 404: ${missing.join(", ") || "none"}`)
   console.log(`files[].content concatenated = ${sources.length} bytes (v4 preferred, new-york fallback)`)
