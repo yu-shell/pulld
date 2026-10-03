@@ -626,6 +626,40 @@ const PREVIEWS = {
       true
     )}${row("Bo", "Due")}${row("Cy", "Paid")}${row("Dee", "Due")}${scrollbar}</div>`
   })(),
+  "nested-checkbox": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to show the third state and show that it is a *state*, not a dash somebody drew:
+    // hence the dash on the parent, one child ticked and one not underneath it (which is the only
+    // thing that makes a dash mean anything), and the attribute itself spelled out below. Without
+    // that caption this reads as any checkbox list; tree-view's thumbnail is the other hierarchy
+    // card here and it carries folder icons and chevrons instead, with no boxes at all.
+    const box = (inner, filled) =>
+      `<span style="box-sizing:border-box;width:11px;height:11px;flex:none;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;${
+        filled
+          ? "background:var(--accent);color:var(--bg)"
+          : "border:1px solid var(--line);background:var(--bg)"
+      }">${inner}</span>`
+    const tick = `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`
+    const dash = `<span style="width:6px;height:2px;border-radius:1px;background:var(--bg)"></span>`
+    const row = (inner, filled, label, strong) =>
+      `<span style="display:flex;align-items:center;gap:5px">${box(inner, filled)}<span style="font-size:8px;line-height:1;color:var(--${
+        strong ? "ink" : "muted"
+      });font-weight:${strong ? 650 : 400}">${label}</span></span>`
+    const children = `<span style="display:flex;flex-direction:column;gap:4px;margin-left:5px;padding-left:8px;border-left:1px solid var(--line)">${row(
+      tick,
+      true,
+      "Read",
+      false
+    )}${row("", false, "Write", false)}</span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${row(
+      dash,
+      true,
+      "Repositories",
+      true
+    )}${children}<span style="font:7px ui-monospace,monospace;color:var(--muted)">aria-checked=mixed</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
