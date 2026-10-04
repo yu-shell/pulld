@@ -3,6 +3,29 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-10-04 — quality sweep
+
+- fix(qr-code): `otpauthUri` wrote a space in the `issuer` parameter as `+`, so an
+  issuer with a space in it disagreed with itself. The label prefix is percent-encoded
+  (`ACME%20Co`) while the query came from `URLSearchParams`, which serialises the way a
+  form posts and writes `ACME+Co` — and an `otpauth://` URI is a URI, where `+` is a
+  literal plus and only `%20` is a space. The Key URI Format requires the issuer label
+  prefix and the issuer parameter to be *equal*, so an authenticator reading the query
+  per RFC 3986 saw a second, different issuer: the code still enrolled, and the account
+  landed under a heading with a plus sign in it, or the app refused the mismatched pair
+  outright. Neither symptom points back at the encoder. The query is now percent-encoded
+  directly. Only `issuer` and `secret` can carry anything needing it; the frozen
+  decoder-verified grid for this payload is now pinned as a literal string, so a future
+  change to a payload builder can no longer force a re-freeze of a grid nothing has read.
+- a11y(mention-input): the "No matches" and "Loading…" row inside the suggestion menu
+  was a bare `div` among the options. A `listbox` may own only `option` and `group`, so
+  the row was a child assistive technology is free to skip — on the one render whose
+  only news is that there is nothing to pick, and so the one render with no option to
+  fall back on. It is now `role="presentation"`, which is what the other five listbox
+  components in the catalog already do with their empty row. The sentence reached the
+  reader through the live region before and still does; what changes is that the tree it
+  sits in is valid.
+
 ## 2026-09-27 — quality sweep
 
 - fix(csv-export-button): an export with no columns to write no longer downloads a
