@@ -780,7 +780,12 @@ export const MentionInput = React.forwardRef<HTMLTextAreaElement, MentionInputPr
             )}
           >
             {mention.items.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+              // Not an option, so keep it out of the listbox's owned children: a `listbox` may own
+              // only `option` and `group`, and a bare div among them makes the row a child a
+              // screen reader is free to skip — on the one render where the only thing to say is
+              // that there is nothing. The sentence reaches the reader through the live region
+              // below either way; this keeps the tree it is sitting in valid.
+              <div role="presentation" className="px-2 py-1.5 text-sm text-muted-foreground">
                 {loading ? mention.labels.loading : mention.labels.empty}
               </div>
             ) : (

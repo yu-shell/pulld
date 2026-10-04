@@ -388,6 +388,27 @@ test("no matches closes the menu unless the caller wants the empty row", () => {
   assert.equal(optionsOf(shown).length, 0)
 })
 
+test("the row that is not an option says so, so the listbox owns only options", () => {
+  // A `listbox` may own `option` and `group` and nothing else. The empty and loading rows are
+  // neither, and left unmarked they are a child a screen reader may skip on the one render whose
+  // only news is that there is nothing to pick — which is also the render with no option to fall
+  // back on. Asserted for both rows, since they are the same element on two different props.
+  for (const props of [{ showEmpty: true }, { loading: true }]) {
+    const view = render(MentionInput, { items: PEOPLE, ...props })
+    fieldOf(view).props.onInput(inputEvent("@nobody"))
+    view.rerender()
+    const panel = listboxOf(view)
+    assert.ok(panel, `menu should be open for ${JSON.stringify(props)}`)
+    const children = [].concat(panel.props.children ?? []).flat().filter(Boolean)
+    for (const child of children) {
+      assert.ok(
+        child.props?.role === "option" || child.props?.role === "presentation",
+        `a listbox child must be an option or marked presentation, got role=${child.props?.role}`
+      )
+    }
+  }
+})
+
 test("the menu sits under the field until the caret has been measured", () => {
   // No layout here, which is also the server's answer — the menu still has to render somewhere.
   const view = render(MentionInput, { items: PEOPLE })
