@@ -75,7 +75,13 @@ const VERIFIED = [
   ["utf-8", "スラッシュの日本語ペイロード検証", {}, "83e6f8679ef7cff486d0b159d48bd037"],
   ["astral plane", "pulld ✅ qr-code 🎯", {}, "a78cec8910408d719877229733aa2c18"],
   ["wifi payload", wifiPayload({ ssid: "Cafe Guest", password: "hunter2;drop:table" }), { errorCorrection: "Q" }, "a55ca89f13d2cf55b7f7b6a5a4428f9e"],
-  ["otpauth uri", otpauthUri({ issuer: "Acme Corp", account: "ada@example.com", secret: "JBSWY3DPEHPK3PXP" }), {}, "cd61736e01407e5b4c7b0b07ec558002"],
+  // Written out rather than built by `otpauthUri`, because these rows freeze grids an independent
+  // decoder read and the builders are not frozen with them. Calling one here ties the digest to the
+  // payload format as well as to the encoder, so correcting the format — as the `+`-for-space fix in
+  // the issuer parameter did — fails this row for a reason that has nothing to do with the thing it
+  // guards, and the only way back is to re-freeze a grid nothing has decoded. This is the exact
+  // string that went through Vision on 2026-09-12; `otpauthUri` has its own test below.
+  ["otpauth uri", "otpauth://totp/Acme%20Corp:ada%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=Acme+Corp", {}, "cd61736e01407e5b4c7b0b07ec558002"],
 ]
 
 for (const [name, value, options, expected] of VERIFIED) {
@@ -250,7 +256,16 @@ test("otpauthUri puts the issuer in both places and escapes the label halves sep
   // The colon is the separator and must survive; everything either side of it must not.
   assert.ok(uri.startsWith("otpauth://totp/Acme%20Corp:ada%2B2fa%40example.com?"), uri)
   assert.ok(uri.includes("secret=JBSWY3DPEHPK3PXP"))
-  assert.ok(uri.includes("issuer=Acme+Corp"), "apps that read only the parameter need it too")
+  assert.ok(uri.includes("issuer=Acme%20Corp"), "apps that read only the parameter need it too")
+  // The format requires the two to be *equal*, which is the assertion that catches the encoder
+  // writing the label as a URI and the query as a form post: `ACME%20Co` against `ACME+Co` passes
+  // a "does it contain the issuer" check and is still two different issuers to a reader.
+  const parsed = new URL(uri)
+  assert.equal(
+    decodeURIComponent(parsed.pathname.replace(/^\/+/, "").split(":")[0]),
+    parsed.searchParams.get("issuer"),
+    "issuer label prefix and issuer parameter must decode to the same string"
+  )
   assert.equal(otpauthUri({ account: "ada@example.com", secret: "S" }), "otpauth://totp/ada%40example.com?secret=S")
   const hotp = otpauthUri({ account: "a", secret: "S", type: "hotp", counter: 0, period: 30 })
   assert.ok(hotp.includes("counter=0"))

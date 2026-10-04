@@ -724,13 +724,20 @@ export function otpauthUri({
   const label = issuer
     ? `${encodeURIComponent(issuer)}:${encodeURIComponent(account)}`
     : encodeURIComponent(account)
-  const params = new URLSearchParams({ secret })
-  if (issuer) params.set("issuer", issuer)
-  if (algorithm) params.set("algorithm", algorithm)
-  if (digits !== undefined) params.set("digits", String(digits))
-  if (type === "totp" && period !== undefined) params.set("period", String(period))
-  if (type === "hotp" && counter !== undefined) params.set("counter", String(counter))
-  return `otpauth://${type}/${label}?${params.toString()}`
+  // Percent-encoded by hand rather than through URLSearchParams, which serialises a query the way
+  // a form posts one and writes a space as `+`. An `otpauth://` URI is a URI, where `+` is a
+  // literal plus and only `%20` is a space — and the format requires the issuer parameter and the
+  // issuer label prefix to be *equal*, so `issuer: "ACME Co"` came out as `ACME%20Co` in the label
+  // and `ACME+Co` here: two different issuers to anything decoding per RFC 3986. The code still
+  // enrols, which is what makes it worth a comment — the account lands under a heading with a plus
+  // sign in it, or the app refuses the pair outright, and neither points back at the encoder.
+  const params = [`secret=${encodeURIComponent(secret)}`]
+  if (issuer) params.push(`issuer=${encodeURIComponent(issuer)}`)
+  if (algorithm) params.push(`algorithm=${algorithm}`)
+  if (digits !== undefined) params.push(`digits=${digits}`)
+  if (type === "totp" && period !== undefined) params.push(`period=${period}`)
+  if (type === "hotp" && counter !== undefined) params.push(`counter=${counter}`)
+  return `otpauth://${type}/${label}?${params.join("&")}`
 }
 
 // --- the component -----------------------------------------------------------------------------------
