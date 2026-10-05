@@ -7,6 +7,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { verifyRegistry, CATALOGUE_INDEX, OFFICIAL_INDEX } from "../scripts/verify-registry.mjs"
 import { cardId, PREVIEW_OPEN, PREVIEW_PLACEHOLDER } from "../scripts/_landing-markup.mjs"
+import { buildLlms } from "../scripts/build-llms.mjs"
 
 // A minimal item that passes every check (valid type, one existing file, title, long-enough desc).
 const okItem = (over = {}) => ({
@@ -589,4 +590,84 @@ test("landing page: an unbuilt page is an INFO, the way public/r is", () => {
   const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true })
   assert.equal(r.warn, 0)
   assert.ok(hasMsg(r, "INFO\tpublic/index.html not generated"))
+})
+
+// --- public/llms.txt: the index the agents read -------------------------------------------------
+//
+// The last generated artifact with no correspondence check. Measured before these tests existed:
+// deleting one entry from the real public/llms.txt and changing nothing else left `npm run verify`
+// printing ALERT=0 WARN=0 and exiting 0 — a component absent from the index an AI agent reads the
+// catalogue from, with every signal green.
+//
+// The fixtures are produced by the real builder rather than hand-written markdown, for the reason
+// the landing fixtures are assembled from the constants build-landing.mjs writes: a check that
+// reads an artifact it does not own has to be tested against what the generator actually emits,
+// or it goes on passing after the format moves.
+const LLMS_BASE = "https://pulld.pages.dev"
+const llmsFor = (...names) =>
+  buildLlms({ items: names.map((name) => okItem({ name })) }, { base: LLMS_BASE })
+
+test("llms.txt: an index listing every item warns about nothing", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, llmsTxt: llmsFor("copy-button", "toast") }
+  )
+  assert.equal(r.alert, 0)
+  assert.equal(r.warn, 0)
+})
+
+test("llms.txt: an item the index predates is named", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, llmsTxt: llmsFor("copy-button") }
+  )
+  assert.equal(r.alert, 0, "discovery is not an install failure — it must not block a deploy")
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "toast: not listed in public/llms.txt"))
+  assert.ok(!hasMsg(r, "copy-button: not listed"))
+})
+
+test("llms.txt: an entry no item ships is reported as stale, the way public/r is", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem()] },
+    { fileExists: () => true, llmsTxt: llmsFor("copy-button", "renamed-away") }
+  )
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "renamed-away: stale entry in public/llms.txt"))
+  assert.ok(hasMsg(r, "/r/renamed-away.json"))
+})
+
+// Pro blocks are listed in the same file, in the same markdown shape, one section down — and they
+// come from pro/registry.json, which this verifier never reads. Counting them would report every
+// Pro block as an entry registry.json does not ship, on every single run.
+test("llms.txt: a Pro block is not mistaken for a stale entry", () => {
+  const withPro = buildLlms(
+    { items: [okItem()] },
+    {
+      base: LLMS_BASE,
+      pro: [okItem({ name: "dashboard-overview", title: "Dashboard Overview" })],
+    }
+  )
+  assert.ok(withPro.includes("/r/pro/dashboard-overview.json"), "fixture lost its Pro entry")
+  const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true, llmsTxt: withPro })
+  assert.equal(r.warn, 0)
+})
+
+// A format this check cannot read makes every component look individually missing. The thing to go
+// and look at is the generator, so it is said once, about the generator.
+test("llms.txt: an unreadable format is reported once, not once per component", () => {
+  const r = verifyRegistry(
+    { name: "pulld", items: [okItem(), okItem({ name: "toast" })] },
+    { fileExists: () => true, llmsTxt: "# pulld\n\n## Components\n\ncopy-button, toast\n" }
+  )
+  assert.equal(r.warn, 1)
+  assert.ok(hasMsg(r, "public/llms.txt lists no components in the shape this check reads"))
+  assert.ok(hasMsg(r, "scripts/build-llms.mjs"))
+  assert.ok(!hasMsg(r, "not listed in public/llms.txt"))
+})
+
+test("llms.txt: an ungenerated index is an INFO, the way public/r is", () => {
+  const r = verifyRegistry({ name: "pulld", items: [okItem()] }, { fileExists: () => true })
+  assert.equal(r.warn, 0)
+  assert.ok(hasMsg(r, "INFO\tpublic/llms.txt not generated"))
 })

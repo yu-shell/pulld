@@ -7,6 +7,7 @@
 //  - declares, in dependencies, every npm package its source imports
 //  - has a title/description of sufficient length for discoverability
 //  - has a real preview on the generated landing page, rather than the generic fallback box
+//  - is listed in the generated public/llms.txt, the index AI agents read the catalogue from
 // and, if a build output exists in public/r, that it corresponds to the items. The source tree is
 // checked in the same both-ways spirit: a .tsx under registry/ that no item claims is flagged too.
 //
@@ -94,6 +95,22 @@ const packageOf = (dep) => {
   return at > 0 ? s.slice(0, at) : s
 }
 
+// The component names public/llms.txt lists. Read off the generated file rather than off
+// build-llms.mjs's builder, for the same reason the landing-page check reads the built HTML: the
+// file is the artifact that gets deployed, and a generator that never ran leaves yesterday's file
+// in place looking exactly as correct as a current one.
+//
+// An entry is `- [<name>](<base>/r/<name>.json): <summary>`. Pro blocks are written the same way a
+// section further down, under `/r/pro/<name>.json`, and are deliberately not matched: they come
+// from pro/registry.json, which this verifier never sees, so counting them would report every Pro
+// block as an entry no item in registry.json ships.
+const llmsNames = (text) => {
+  const names = new Set()
+  const entry = /^- \[[^\]\n]+\]\([^)\s]*\/r\/([a-z0-9-]+)\.json\)/gm
+  for (const [, name] of String(text ?? "").matchAll(entry)) names.add(name)
+  return names
+}
+
 export const VALID_TYPES = new Set([
   "registry:ui",
   "registry:block",
@@ -111,8 +128,8 @@ export const VALID_TYPES = new Set([
 // component sources actually present under registry/, or null when they were not enumerated),
 // `readSource(path)` (the text of one item file, or null when sources are not being read) and,
 // when a build exists, `builtNames` (the list of names under public/r, or null when no build output
-// is present) and `landingHtml` (the generated public/index.html, or null when it has not been
-// built).
+// is present), `landingHtml` (the generated public/index.html, or null when it has not been built)
+// and `llmsTxt` (the generated public/llms.txt, or null for the same reason).
 export function verifyRegistry(
   reg,
   {
@@ -121,6 +138,7 @@ export function verifyRegistry(
     sourceFiles = null,
     readSource = null,
     landingHtml = null,
+    llmsTxt = null,
   } = {}
 ) {
   const messages = []
@@ -388,6 +406,58 @@ export function verifyRegistry(
     push("INFO", "public/index.html not generated → run `npm run registry:build`")
   }
 
+  // public/llms.txt, checked the way public/r and the landing page are: against what was
+  // generated, both ways.
+  //
+  // It was the last generated file under public/ with no correspondence check, and the one whose
+  // readers are least able to complain about it. llms.txt is the index an AI agent loads to find
+  // out what this registry has — the README points at it, and agents arriving through it are the
+  // audience the descriptions in registry.json are written for. A component missing from it is
+  // not installed less often; it is never considered.
+  //
+  // Nothing else notices. Measured on the real tree: with one entry deleted from llms.txt and
+  // nothing else touched, `npm run verify` printed ALERT=0 WARN=0 and exited 0. The file is
+  // gitignored, so like public/r it is long-lived local state that `npm run deploy` uploads
+  // wholesale — a stale copy is not reset by a fresh build of anything else. And the step that
+  // writes it is one `import.meta.url` guard away from not running at all, which prints nothing
+  // and leaves the previous file; test/cli-main-guard.test.mjs exists because exactly that
+  // shipped once.
+  //
+  // WARN rather than ALERT, on the rule the rest of this file follows: nothing a consumer
+  // installs breaks — /r/<name>.json still serves the component to anyone who asks for it by
+  // name — so the cost is discovery, not a build that fails in somebody else's project.
+  if (llmsTxt !== null) {
+    const listed = llmsNames(llmsTxt)
+    if (itemNames.size && listed.size === 0) {
+      // Reported once, naming the root cause, rather than as one "not listed" line per item: a
+      // format this check cannot read makes every component look individually missing, and the
+      // one thing to go and look at is the generator, not 105 components.
+      warning(
+        `public/llms.txt lists no components in the shape this check reads — it was either ` +
+          `generated before the catalogue had items or build-llms.mjs no longer writes entries ` +
+          `as \`- [name](…/r/name.json)\`, and the index is going unverified either way → ` +
+          `reconcile with scripts/build-llms.mjs`
+      )
+    } else {
+      for (const name of itemNames) {
+        if (listed.has(name)) continue
+        warning(
+          `${name}: not listed in public/llms.txt — the AI-readable index predates this item, so ` +
+            `an agent reading it never learns the component exists → npm run registry:build`
+        )
+      }
+      for (const name of listed) {
+        if (itemNames.has(name)) continue
+        warning(
+          `${name}: stale entry in public/llms.txt — no item in registry.json ships it, and the ` +
+            `index still sends agents to /r/${name}.json → npm run registry:build`
+        )
+      }
+    }
+  } else {
+    push("INFO", "public/llms.txt not generated → run `npm run registry:build`")
+  }
+
   push("RESULT", `ALERT=${alert} WARN=${warn}`)
   return { messages, alert, warn }
 }
@@ -439,12 +509,18 @@ function main() {
   const landingPath = join(ROOT, "public", "index.html")
   const landingHtml = existsSync(landingPath) ? readFileSync(landingPath, "utf8") : null
 
+  // The generated AI-readable index, on the same terms as the page above: gitignored, so an
+  // un-built checkout gets the INFO line instead of one warning per component.
+  const llmsPath = join(ROOT, "public", "llms.txt")
+  const llmsTxt = existsSync(llmsPath) ? readFileSync(llmsPath, "utf8") : null
+
   const { messages, alert } = verifyRegistry(reg, {
     fileExists: (p) => existsSync(join(ROOT, p)),
     builtNames,
     sourceFiles,
     readSource,
     landingHtml,
+    llmsTxt,
   })
   for (const m of messages) console.log(`${m.level}\t${m.msg}`)
   process.exit(alert ? 1 : 0)
