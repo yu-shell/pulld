@@ -660,6 +660,50 @@ const PREVIEWS = {
       true
     )}${children}<span style="font:7px ui-monospace,monospace;color:var(--muted)">aria-checked=mixed</span></div>`
   })(),
+  "drag-select": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right. The
+    // grid is 80px across (three 22px tiles, two 4px gaps, and the 6px of empty space the drag
+    // starts from) for that reason.
+    //
+    // The geometry is doing one job: showing that a rectangle is being *drawn across* tiles rather
+    // than that some tiles are lit up. So it begins in the empty margin outside the grid — which is
+    // the component's actual rule, a drag may only start where no item is — and its far corner
+    // stops partway into a tile instead of lining up with an edge. An earlier version inset the box
+    // just inside a 2×2 block and read as four double-bordered boxes at 4× zoom. The count
+    // underneath is derived from the same numbers as the highlighting, so the card cannot claim a
+    // number the picture does not show, and it is what separates this card from bulk-action-bar's,
+    // where the same figure appears as a badge after the fact.
+    const COLS = 3
+    const TILE = { w: 22, h: 17, gap: 4 }
+    const PAD = 6
+    const marquee = { left: 0, top: 0, width: 44, height: 32 }
+    const covered = (col, row) => {
+      const x = PAD + col * (TILE.w + TILE.gap)
+      const y = PAD + row * (TILE.h + TILE.gap)
+      return (
+        x < marquee.left + marquee.width &&
+        marquee.left < x + TILE.w &&
+        y < marquee.top + marquee.height &&
+        marquee.top < y + TILE.h
+      )
+    }
+    const cells = [0, 1].flatMap((row) => [...Array(COLS).keys()].map((col) => covered(col, row)))
+    const tiles = cells
+      .map(
+        (on) =>
+          `<span style="box-sizing:border-box;height:${TILE.h}px;border-radius:4px;border:1px solid ${
+            on ? "var(--accent)" : "var(--line)"
+          };background:var(--surface)"></span>`
+      )
+      .join("")
+    // Painted after the grid, because a rubber band is drawn over what it is selecting — put it
+    // first and the tiles\u2019 opaque background hides the translucent fill entirely.
+    const box = `<span style="position:absolute;box-sizing:border-box;left:${marquee.left}px;top:${marquee.top}px;width:${marquee.width}px;height:${marquee.height}px;border:1px solid var(--accent);border-radius:3px"><span style="display:block;width:100%;height:100%;background:var(--accent);opacity:.16"></span></span>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:100%"><span style="position:relative;display:block;padding:${PAD}px 0 0 ${PAD}px"><span style="display:grid;grid-template-columns:repeat(${COLS},${TILE.w}px);gap:${TILE.gap}px">${tiles}</span>${box}</span><span style="font:7px ui-monospace,monospace;color:var(--muted)">${
+      cells.filter(Boolean).length
+    } selected</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
