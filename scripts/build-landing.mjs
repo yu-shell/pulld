@@ -283,6 +283,11 @@ const PREVIEWS = {
         }<span style="font-size:9px;color:var(--ink)">${r.label}</span></span>`
     )
     .join("")}</div>`,
+  // The editing counterpart of json-viewer's card, and it has to read as the opposite at a
+  // glance: a field rather than a tree. The border carries the invalid state, the trailing
+  // comma is the error every hand-edited document has, and the caret is what says this one
+  // can be typed in.
+  "json-input": `<div class="pv-jsonin"><div class="pv-jsonin-f"><span><b>{</b></span><span style="padding-left:6px"><i>"a"</i><b>:</b> <em>1</em><u>,</u></span><span><b>}</b><span class="pv-jsonin-car"></span></span></div><span class="pv-jsonin-e">line 3, col 1</span></div>`,
   // Leaf rows are padded by the indent plus the width of the arrow they do not have, so
   // the keys line up under the container that holds them.
   "json-viewer": `<div class="pv-json">${[
@@ -948,7 +953,19 @@ const html = `<!doctype html>
   .pv-json em{font-style:normal;opacity:.65}
   .pv-json-s{color:#16a34a}
   .pv-json-n{color:#2563eb}
-  @media (prefers-color-scheme:dark){ .pv-rec{background:#f87171} .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-net .i{color:#f87171} .pv-leave .h{color:#fbbf24} .pv-leave .go{background:#f87171;color:#1c1917} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} }
+  .pv-jsonin{width:100%;display:flex;flex-direction:column;gap:3px;
+    font:9px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .pv-jsonin-f{display:flex;flex-direction:column;gap:1px;border:1px solid #dc2626;
+    border-radius:5px;padding:3px 4px;background:var(--surface)}
+  .pv-jsonin-f>span{display:flex;align-items:center;white-space:nowrap;color:var(--muted)}
+  .pv-jsonin b{font-weight:400;color:var(--ink)}
+  .pv-jsonin i{font-style:normal;color:#16a34a}
+  .pv-jsonin em{font-style:normal;color:#2563eb}
+  .pv-jsonin u{text-decoration:none;color:#dc2626;border-radius:1px;
+    background:color-mix(in srgb,#dc2626 22%,transparent)}
+  .pv-jsonin-car{width:1px;height:8px;margin-left:1px;background:var(--accent)}
+  .pv-jsonin-e{color:#dc2626;font-size:8px;line-height:1.2}
+  @media (prefers-color-scheme:dark){ .pv-rec{background:#f87171} .pv-danger{color:#f87171;border-color:#f87171} .pv-warn{color:#fbbf24} .pv-up{color:#4ade80} .pv-tok{color:#4ade80} .pv-net .i{color:#f87171} .pv-leave .h{color:#fbbf24} .pv-leave .go{background:#f87171;color:#1c1917} .pv-dif-del i{color:#f87171} .pv-dif-ins i{color:#4ade80} .pv-log-g{color:#4ade80} .pv-log-r{color:#f87171} .pv-json-s{color:#4ade80} .pv-json-n{color:#60a5fa} .pv-jsonin i{color:#4ade80} .pv-jsonin em{color:#60a5fa} .pv-jsonin u{color:#f87171;background:color-mix(in srgb,#f87171 26%,transparent)} .pv-jsonin-f{border-color:#f87171} .pv-jsonin-e{color:#f87171} }
   .pv-numbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-size:13px}
   .pv-leave{width:104px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
     padding:7px 8px 6px;display:flex;flex-direction:column;gap:4px}
