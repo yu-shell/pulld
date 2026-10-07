@@ -828,8 +828,12 @@ if (existsSync(proRegPath)) {
       </article>`
       })
       .join("\n")
+    // `id="pro"` is the anchor functions/_pro-gate.js's 402 body links to — the one call to action
+    // somebody who just hit the Pro paywall is given. Without it the link lands at the top of a
+    // 692 KB catalogue page rather than on the offer. The two sides are held together by
+    // test/pro-license-link.test.mjs; the comment there explains why they cannot share a constant.
     proSection = `
-    <h2>Pro blocks</h2>
+    <h2 id="pro">Pro blocks</h2>
     <p class="lede" style="font-size:15px;margin-bottom:16px">Composed, opinionated blocks built from the free atoms — a license unlocks install. One-time, ${esc(PRO_PRICE)}.</p>
     <div class="grid">
 ${proCards}
