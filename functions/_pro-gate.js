@@ -80,13 +80,39 @@ export async function handleProGet(context, blocks) {
     }
   }
 
+  // The "Get a license at …" link below is the only call to action this paywall ever makes, and it
+  // reaches the most qualified reader the project has: report.mjs counts exactly these requests as
+  // "an install that hit the paywall — the top of the buy funnel".
+  //
+  // It was the literal `https://pulld.pages.dev/pro`, a path this project does not serve. Measured
+  // against production: /pro answers 200 with 692 KB of the landing page, because Pages substitutes
+  // index.html for an unknown asset — the same substitution the free registry route has a whole
+  // branch to stop handing out. So the link resolved only by accident of that fallback, dropped the
+  // reader at the top of the catalogue instead of on the offer, and was one 404.html away from
+  // being dead with nothing to show it.
+  //
+  // Deliberately the landing page's Pro section (`id="pro"`, scripts/build-landing.mjs) and NOT
+  // /go/pro, the tracked checkout redirect the buy button itself uses. _traffic.js counts a /go/*
+  // click as a person only when it arrives carrying the landing page as its referrer, on the stated
+  // ground that "the buy buttons exist on exactly one page and are published nowhere else" — and
+  // names itself as what would have to learn about it first if the links were ever syndicated.
+  // Putting one in an API response is that syndication: the buyer would arrive with no referrer and
+  // be reported as `direct`, which the report prints as "a script wearing a browser user-agent".
+  // Sending them to the page keeps the buy button the only way in, so their click still counts.
+  //
+  // Built from the request URL rather than hardcoded, the way the sibling route writes the registry
+  // URL into its own 404 body, so a preview deploy names itself instead of production. The fragment
+  // and that `id` have to agree and cannot share a constant the way scripts/_landing-markup.mjs
+  // holds the markers it does — this module is bundled into the deployed Function, so it must not
+  // import a build script. test/pro-license-link.test.mjs holds the two sides together instead.
   if (!valid) {
     logFetch(context, env, name, false)
     return new Response(
       JSON.stringify({
         error: "payment_required",
         message:
-          "This is a pulld Pro block. Get a license at https://pulld.pages.dev/pro and install with ?key=YOUR_KEY (or set X-Pulld-Key).",
+          `This is a pulld Pro block. Get a license at ${new URL("/#pro", url).href} and install ` +
+          `with ?key=YOUR_KEY (or set X-Pulld-Key).`,
       }),
       { status: 402, headers: { "content-type": "application/json" } }
     )
