@@ -631,6 +631,35 @@ const PREVIEWS = {
       true
     )}${row("Bo", "Due")}${row("Cy", "Paid")}${row("Dee", "Due")}${scrollbar}</div>`
   })(),
+  "column-resizer": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // Three table cards now sit on this page and none of them may read as another: sort-header's
+    // carries arrows in the headings, sticky-table-header's has a raised header with a scrollbar
+    // parked below the top, and this one has to say "a column boundary is being dragged". So the
+    // boundary itself is the subject — an accent line running the *whole* height of the table rather
+    // than stopping at the header, a grip sitting on it at the top, and the measurement that the
+    // drag is producing underneath. Nothing else here draws a vertical line through the rows.
+    const grip = `<span style="position:absolute;left:50%;top:-1px;transform:translateX(-50%);display:flex;gap:1.5px;align-items:center;justify-content:center;width:9px;height:13px;border-radius:3px;background:var(--accent)">${[
+      0, 1,
+    ]
+      .map(() => `<span style="width:1px;height:6px;border-radius:1px;background:var(--bg)"></span>`)
+      .join("")}</span>`
+    // Full height and above the rows: the line is the column's edge being moved, not a divider that
+    // happens to be in the header.
+    const guide = `<span style="position:absolute;left:52%;top:0;bottom:0;width:1.5px;background:var(--accent);z-index:1">${grip}</span>`
+    const head = `<span style="display:flex;align-items:center;height:15px;background:var(--surface);color:var(--ink);font-weight:600;border-bottom:1px solid var(--line)"><span style="flex:52;padding:0 5px;overflow:hidden;white-space:nowrap">Name</span><span style="flex:48;padding:0 5px;overflow:hidden;white-space:nowrap">Status</span></span>`
+    const row = (name, status) =>
+      `<span style="display:flex;align-items:center;height:13px;color:var(--muted)"><span style="flex:52;padding:0 5px;overflow:hidden;white-space:nowrap">${name}</span><span style="flex:48;padding:0 5px;overflow:hidden;white-space:nowrap">${status}</span></span>`
+    const table = `<span style="position:relative;display:block;width:100%;border:1px solid var(--line);border-radius:6px;overflow:hidden;font-size:9px;line-height:1;background:var(--bg)">${head}${row(
+      "Ada",
+      "Paid"
+    )}${row("Bo", "Due")}${guide}</span>`
+    // The number is what a resize produces, and it is the one thing a sort or a pin never shows.
+    const caption = `<span style="display:flex;align-items:center;gap:3px;font-size:8px;color:var(--muted)"><span style="color:var(--accent)">\u2194</span><span style="font-family:ui-monospace,monospace;color:var(--ink)">180px</span></span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${table}${caption}</div>`
+  })(),
   "nested-checkbox": (() => {
     // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
     // 1px border, so 82px is all the content gets and anything wider is clipped on the right.

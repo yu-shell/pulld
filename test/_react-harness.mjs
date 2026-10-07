@@ -165,6 +165,14 @@ const fakeReact = {
   useLayoutEffect: (fn) => effects.push(fn),
   useId: () => "harness-id",
   useCallback: (fn) => fn,
+  // The context's default value, because this harness has no provider tree: `walk` invokes a child
+  // component directly rather than rendering it under its ancestors, so there is no Provider
+  // between them to read. That is the same value a component rendered outside any provider sees, so
+  // a component which falls back to a prop when the context is empty can be tested by passing that
+  // prop — and one which requires the provider will say so here, which is its own behaviour and
+  // worth seeing. Substituted at all because the real `useContext` reaches for the dispatcher and
+  // throws outside a render, which stops the component being rendered for any reason at all.
+  useContext: (context) => context?._currentValue ?? null,
   forwardRef: (fn) => fn,
   // Nothing here has a real DOM node to expose, and the harness cannot see focus move anyway, so
   // the imperative handle is accepted and dropped rather than left to the real dispatcher (which
