@@ -12,6 +12,7 @@
 // D1 access — the retry a cold `npx` cache needs, and the cause `e.message` throws away — was
 // first worked out here and now lives in scripts/_d1.mjs, shared with the three other scripts on
 // the same shell-out.
+import { readFileSync } from "node:fs"
 import { pathToFileURL } from "node:url"
 import { classify, classifyClick, isInstall } from "../functions/_traffic.js"
 import { d1 } from "./_d1.mjs"
@@ -91,6 +92,22 @@ export function proFunnel(rows) {
 // as long as the log makes it.
 export const nameWidth = (header, names) =>
   names.reduce((w, n) => Math.max(w, String(n ?? "").length), String(header).length) + 2
+
+/**
+ * The names the registry ships right now, for marking misses that have since been answered.
+ *
+ * Read here rather than taken from the build output under `public/`, which is gitignored, can be
+ * stale, and may not exist at all on a machine that has only ever run the report. An unreadable
+ * registry gives an empty set, which degrades to the old behaviour — every miss shown as missing —
+ * rather than failing a report whose other three sections are fine.
+ */
+export function currentItemNames(path = new URL("../registry.json", import.meta.url)) {
+  try {
+    return new Set(JSON.parse(readFileSync(path, "utf8")).items.map((i) => i.name))
+  } catch {
+    return new Set()
+  }
+}
 
 function reportFetches() {
   const { components, pro } = partitionFetchRows(
@@ -224,6 +241,20 @@ function reportMisses() {
     return
   }
 
+  // Which of these names the registry has since shipped.
+  //
+  // A miss row is a historical fact and is never revisited, so a name stays in this table forever
+  // after it was answered. The daily routine picks the next component partly from this list, and
+  // the line at the bottom is the one it reads — so a name that was a gap, was noticed, and was
+  // filled goes on recommending itself as an unmet need. Measured on 2026-10-08: `product-tour`
+  // was still being presented as a name that does not exist, eleven days after it shipped, along
+  // with fifteen other spellings of the same request from the same session that prompted it.
+  //
+  // They are marked rather than dropped, because "asked for, and we answered" is the one piece of
+  // evidence in this report that the loop works at all. Only the recommendation at the bottom is
+  // filtered.
+  const shipped = currentItemNames()
+
   const byItem = new Map()
   for (const r of rows) {
     const item = String(r.item)
@@ -237,22 +268,27 @@ function reportMisses() {
   const ranked = [...byItem.entries()].sort(
     (a, b) => b[1].install + b[1].human - (a[1].install + a[1].human) || b[1].index - a[1].index
   )
-  const notable = ranked.filter((r) => r[1].install || r[1].human)
+  const notable = ranked.filter((r) => (r[1].install || r[1].human) && !shipped.has(r[0]))
+  const answered = ranked.filter((r) => (r[1].install || r[1].human) && shipped.has(r[0]))
   // Width from the rows that are printed, not from every row ranked: the 25 shown are all that
   // has to line up, and a single 200-character name further down the list would otherwise indent
   // the whole table past the terminal.
   const shown = ranked.slice(0, 25)
-  const w = nameWidth("name", shown.map(([item]) => item))
+  const label = (item) => (shipped.has(item) ? `${item} ✓` : item)
+  const w = nameWidth("name", shown.map(([item]) => label(item)))
   console.log(`  ${"name".padEnd(w)}install\thuman\tindex\tcrawler`)
   for (const [item, c] of shown) {
-    console.log(`  ${item.padEnd(w)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
+    console.log(`  ${label(item).padEnd(w)}${c.install}\t${c.human}\t${c.index}\t${c.crawler}`)
   }
   if (ranked.length > 25) console.log(`  … and ${ranked.length - 25} more names`)
   console.log(
     notable.length
-      ? `  ^ asked for by an install client or a browser: ${notable.map((r) => r[0]).join(", ")}`
-      : "  (no miss came from an install client or a browser — all automated)"
+      ? `  ^ still missing, asked for by an install client or a browser: ${notable.map((r) => r[0]).join(", ")}`
+      : "  (no unanswered miss came from an install client or a browser — all automated or already shipped)"
   )
+  if (answered.length) {
+    console.log(`  ✓ asked for and since shipped: ${answered.map((r) => r[0]).join(", ")}`)
+  }
 }
 
 function reportClicks() {
