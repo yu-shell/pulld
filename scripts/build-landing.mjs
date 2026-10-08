@@ -206,6 +206,30 @@ const PREVIEWS = {
         `<span style="flex:1;height:9px;border-radius:1px;background:${on ? "var(--accent)" : "var(--line)"}"></span>`
     )
     .join("")}</span></div></div>`,
+  // The three layers that make a scrubber a scrubber rather than a progress bar, which is the whole
+  // distinction the thumbnail has to carry beside scroll-progress and ratio-bar: a played fill, a
+  // *buffered* fill running ahead of it, and a grabbable thumb at the boundary. The two clock
+  // readings underneath are what say this is a timeline and not a percentage.
+  //
+  // width:100%, not a pixel width — `.preview` is a 104px border-box carrying 10px of padding and a
+  // 1px border, so 82px is all the content gets and a 104px child loses 11px to overflow:hidden.
+  "media-scrubber": (() => {
+    const fill = (width, background, extra = "") =>
+      `<span style="position:absolute;left:0;top:0;bottom:0;width:${width};border-radius:99px;background:${background};${extra}"></span>`
+    const track = `<span style="position:relative;display:block;width:100%;height:6px;border-radius:99px;overflow:hidden;background:var(--line)">${fill(
+      "74%",
+      "color-mix(in srgb,var(--accent) 28%,transparent)"
+    )}${fill("41%", "var(--accent)")}</span>`
+    // Sits on the boundary between played and buffered, which is where the thumb of a scrubber
+    // mid-drag actually is. Outside the track's overflow:hidden so the ring is not clipped.
+    const thumb = `<span style="position:absolute;left:41%;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:99px;background:var(--accent);border:2px solid var(--bg);box-sizing:border-box"></span>`
+    const time = (text, align) =>
+      `<span style="font:10px ui-monospace,monospace;color:var(--muted);text-align:${align}">${text}</span>`
+    return `<div style="display:flex;flex-direction:column;width:100%;box-sizing:border-box"><span style="position:relative;display:block;width:100%">${track}${thumb}</span><span style="display:flex;justify-content:space-between;margin-top:9px">${time(
+      "1:12",
+      "left"
+    )}${time("3:04", "right")}</span></div>`
+  })(),
   // A real, scannable version 2 code for the site itself, not a drawing of one — including the
   // white ground, because that is the component's own point: the quiet zone has to be light or
   // nothing will read it, and the card behind this is not.
