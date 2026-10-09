@@ -52,7 +52,18 @@ if (!SITE_BASE) {
 // below — the dispatch is about shapes, not about which files happen to arrive.
 const itemsOf = (doc) => (Array.isArray(doc) ? doc : Array.isArray(doc?.items) ? doc.items : [doc])
 
-let files = 0
+// Files in which a registryDependency was actually rewritten — not files this script wrote.
+//
+// The two stopped being the same number the moment the docs line below was added: that sets
+// `changed` on every component, so `files` became "files rewritten for any reason" while the
+// sentence it is printed in still says those files received a dependency injection. Measured on
+// the real tree: 22 dependencies moved, in 12 files, reported as "22 in 110 files" — the 110 being
+// every output there is. A number that is always the file count cannot distinguish a healthy run
+// from one where the injection stopped happening in most of them, which is the only question this
+// line exists to answer.
+//
+// Same disease as the docs counter below, and the same cure: count the thing the sentence names.
+let depFiles = 0
 // The one line this registry gets to say to the person who just installed something. shadcn's
 // `docs` field is printed by the CLI after an install, which makes it the only surface that
 // reaches the people who actually use pulld: they arrive through `npx shadcn add <url>` and never
@@ -83,6 +94,7 @@ for (const f of readdirSync(rDir).filter((f) => f.endsWith(".json") && f !== IND
   const p = join(rDir, f)
   const doc = JSON.parse(readFileSync(p, "utf8"))
   let changed = false
+  let movedHere = 0
   for (const item of itemsOf(doc)) {
     // Never overwrite a component that says something of its own — a component needing an env var
     // or a peer install has more to say here than the catalogue does.
@@ -97,14 +109,15 @@ for (const f of readdirSync(rDir).filter((f) => f.endsWith(".json") && f !== IND
     if (!moved) continue
     item.registryDependencies = expanded
     deps += moved
+    movedHere += moved
     changed = true
   }
   if (changed) {
     writeFileSync(p, JSON.stringify(doc, null, 2) + "\n")
-    files++
+    if (movedHere) depFiles++
   }
 }
 console.log(
-  `OK\tinjected SITE_BASE into registryDependencies: ${deps} in ${files} files (${SITE_BASE})`
+  `OK\tinjected SITE_BASE into registryDependencies: ${deps} in ${depFiles} files (${SITE_BASE})`
 )
 console.log(`OK\tinjected the install-time docs line into ${injected.size} components`)
