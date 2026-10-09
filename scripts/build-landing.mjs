@@ -684,6 +684,46 @@ const PREVIEWS = {
     const caption = `<span style="display:flex;align-items:center;gap:3px;font-size:8px;color:var(--muted)"><span style="color:var(--accent)">\u2194</span><span style="font-family:ui-monospace,monospace;color:var(--ink)">180px</span></span>`
     return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${table}${caption}</div>`
   })(),
+  "table-row-expander": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // Four table cards now sit on this page and none of them may read as another. The three that
+    // came before all act on the header: sort-header carries arrows in the headings,
+    // sticky-table-header has a raised header with a scrollbar parked below the top, and
+    // column-resizer draws a vertical accent line through the rows with a grip on it. This one is
+    // the only one whose subject is horizontal — a panel inserted *between* two rows, running the
+    // full width of the table, which is the colSpan the component exists to get right. So the card
+    // shows one open row and one closed one: the chevron turned down above the panel and still
+    // pointing right below it, which is the whole state machine in two glyphs, and the panel itself
+    // shaded and inset with two short detail lines so it reads as content that was not there a
+    // moment ago rather than as another row.
+    const chevron = (open) =>
+      `<svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="${
+        open ? "var(--accent)" : "var(--muted)"
+      }" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none${
+        open ? ";transform:rotate(90deg)" : ""
+      }" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>`
+    const row = (name, total, open) =>
+      `<span style="display:flex;align-items:center;gap:4px;padding:0 5px;height:13px;${
+        open ? "background:var(--surface);color:var(--ink)" : "color:var(--muted)"
+      }">${chevron(open)}<span>${name}</span><span style="margin-left:auto;font-variant-numeric:tabular-nums">${total}</span></span>`
+    // Inset on the left and shaded: the panel belongs to the row above it, and it spans everything.
+    const panel = `<span style="display:block;padding:4px 5px 5px 15px;background:color-mix(in srgb,var(--accent) 10%,transparent);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">${[
+      "100%",
+      "64%",
+    ]
+      .map(
+        (w) =>
+          `<span style="display:block;height:2px;border-radius:2px;background:var(--muted);opacity:.55;width:${w};margin-top:2px"></span>`
+      )
+      .join("")}</span>`
+    return `<span style="display:block;width:100%;border:1px solid var(--line);border-radius:6px;overflow:hidden;font-size:9px;line-height:1;background:var(--bg)">${row(
+      "#1001",
+      "$42",
+      true
+    )}${panel}${row("#1002", "$7")}</span>`
+  })(),
   "nested-checkbox": (() => {
     // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
     // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
