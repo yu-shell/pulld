@@ -3,6 +3,43 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-10-11 — quality sweep
+
+- fix(masked-input): a disabled field submitted its value anyway. What a form actually
+  posts is the pair of hidden inputs, not the field on screen, and those were never told
+  about `disabled` — so the browser's rule that a disabled control is left out of the form
+  data applied to the visible input and to nothing that carried a value. A greyed-out
+  postal code field, deliberately not being collected, still arrived at the handler. `form`
+  was missing for the same reason and fails the other way round: a field associated by id
+  with a form elsewhere in the document left its hidden pair behind with whichever ancestor
+  they happened to sit in, so the value was submitted by the wrong form or by none. Both
+  are now mirrored onto the hidden inputs.
+- a11y(geolocation-button): the one browser where this can never work was the only one that
+  said nothing about it. `fail("unsupported")` is reachable only from inside `request()`,
+  and the click returns early once the control is not actionable — which is the state an
+  unsupported browser is in from the moment the support check settles. The wording and the
+  cause both already existed and nothing could reach either: what shipped was a dimmed
+  button still offering "Use my location" above an empty message region. The reason is now
+  shown there, overridable through `messages.unsupported` like every other cause, and
+  `data-cause` reports it.
+- a11y(geolocation-button): a caller's own `aria-describedby` silently replaced the failure
+  message instead of being merged with it, because `{...props}` is spread after the
+  component's attributes and had the last word on that one. Passing a hint is the ordinary
+  thing to do for a control inside a form, and doing it dropped the single description that
+  says why location is unavailable. The two are now joined, and that attribute — alone
+  among them — is set after the spread, since it is the one whose value has to be additive.
+- fix(print-button): the description put the five print identifiers at "exactly zero times
+  across the whole 255KB" of official shadcn/ui source. `scripts/official-coverage.mjs`
+  measures 223,287 bytes today, reproduced twice, by the fixed procedure that script exists
+  to pin down. A figure presented as exact and wrong by 14% is worse than none, and it is
+  load-bearing for the claim beside it. The zero-hit claim itself was re-run and holds. The
+  denominator now says it is today's and carries the item count with it, so the next reading
+  is comparable instead of being one more undated number.
+- fix(masked-input): the same figure, quoted as 245KB, sat in one sentence beside the
+  62-of-63 item count that today's run reports — a current measurement next to a stale one.
+  Now 223KB, said to be today's, beside the count it was actually measured with. The
+  zero-hit claim holds. Both of these are registry.json only; neither implementation moved.
+
 ## 2026-10-04 — quality sweep
 
 - fix(qr-code): `otpauthUri` wrote a space in the `issuer` parameter as `+`, so an
