@@ -593,8 +593,28 @@ export const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
           </span>
         ) : null}
 
-        {name ? <input type="hidden" name={name} value={raw} /> : null}
-        {formattedName ? <input type="hidden" name={formattedName} value={display} /> : null}
+        {/*
+          `disabled` and `form` are mirrored onto these, because what submits is the hidden pair and
+          not the field above them. A disabled control is omitted from the form data by the browser;
+          a hidden input that was never told it is disabled is not, so a greyed-out field whose
+          value is deliberately not being collected submits it anyway — and the handler receives a
+          postal code the person could not have edited. `form` fails the other way round: the field
+          can be associated with a form elsewhere in the document by id, and hidden inputs left
+          without it stay with the ancestor they happen to sit in, so the value is submitted by the
+          wrong form or by none.
+        */}
+        {name ? (
+          <input type="hidden" name={name} value={raw} disabled={disabled} form={props.form} />
+        ) : null}
+        {formattedName ? (
+          <input
+            type="hidden"
+            name={formattedName}
+            value={display}
+            disabled={disabled}
+            form={props.form}
+          />
+        ) : null}
       </>
     )
   }

@@ -346,6 +346,37 @@ test("no hidden input is rendered without a name to give it", () => {
   assert.equal(byTag(walk(ui.tree()), "input").length, 1)
 })
 
+// What submits is the hidden pair, not the field the person can see, so every attribute that
+// decides *whether* and *where* a value is submitted has to be on them too. `disabled` is the one
+// that bites: the browser leaves a disabled control out of the form data, but a hidden input that
+// was never told it is disabled is not disabled, so a greyed-out field submits the value anyway and
+// the handler receives a postal code nobody could have edited.
+test("a disabled field submits nothing, the way a disabled field does not", () => {
+  const ui = show({ name: "postal_code", formattedName: "postal_code_display", disabled: true })
+  ui.change("123-4567")
+  assert.equal(ui.field().props.disabled, true)
+  assert.equal(ui.hidden("postal_code").props.disabled, true)
+  assert.equal(ui.hidden("postal_code_display").props.disabled, true)
+})
+
+test("an enabled field's hidden inputs are not disabled by accident", () => {
+  const ui = show({ name: "postal_code", formattedName: "postal_code_display" })
+  ui.change("123-4567")
+  assert.equal(ui.hidden("postal_code").props.disabled, false)
+  assert.equal(ui.hidden("postal_code_display").props.disabled, false)
+})
+
+// A field associated with a form elsewhere in the document by id takes the hidden pair with it.
+// Left behind, they stay with whichever ancestor they happen to sit in — submitted by the wrong
+// form, or by no form at all.
+test("the hidden inputs follow the field to the form it is associated with", () => {
+  const ui = show({ name: "postal_code", formattedName: "postal_code_display", form: "checkout" })
+  ui.change("123-4567")
+  assert.equal(ui.field().props.form, "checkout")
+  assert.equal(ui.hidden("postal_code").props.form, "checkout")
+  assert.equal(ui.hidden("postal_code_display").props.form, "checkout")
+})
+
 // --- controlled mode --------------------------------------------------------
 
 test("a controlled field keeps the keystroke a parent has not re-rendered for yet", () => {
