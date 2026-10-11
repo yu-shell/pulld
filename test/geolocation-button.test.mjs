@@ -396,6 +396,67 @@ test("the refusal never uses `disabled`, which would remove the explanation from
   result.unmount()
 })
 
+// The browser with no Geolocation at all was the one that said nothing about it. `fail("unsupported")`
+// is only reachable from inside `request()`, and the click refuses to call `request()` once the
+// control is not actionable — which is exactly the state an unsupported browser is in from the
+// moment the support check settles. So the wording existed, the cause existed, and neither could
+// ever be reached: what shipped was a dimmed button still offering "Use my location" above an empty
+// message region.
+test("a browser with no Geolocation says so, instead of dimming and going quiet", async () => {
+  const env = browser({ geolocation: false })
+  const result = await mount()
+
+  const button = buttonOf(result)
+  assert.equal(button.props.disabled, undefined, "still reachable, still readable")
+  assert.equal(button.props["aria-disabled"], true)
+  assert.equal(button.props["data-cause"], "unsupported")
+
+  const message = messageOf(result)
+  assert.equal(message.props.children, "This browser can't share your location.")
+  assert.doesNotMatch(message.props.className, /sr-only/, "the reason should be on screen as well")
+  assert.equal(
+    button.props["aria-describedby"],
+    message.props.id,
+    "the button does not point at the reason it is refusing"
+  )
+  assert.equal(env.calls.length, 0, "nothing should have been asked of an API that is not there")
+  result.unmount()
+})
+
+test("the unsupported wording is overridable like every other cause", async () => {
+  browser({ geolocation: false })
+  const result = await mount({ messages: { unsupported: "Location needs the mobile app." } })
+
+  assert.equal(messageOf(result).props.children, "Location needs the mobile app.")
+  result.unmount()
+})
+
+// `{...props}` is spread onto the button after this component's own attributes, so a caller's
+// `aria-describedby` wins outright. Written over rather than merged, the one description that says
+// why location is unavailable is dropped — and passing a hint is the ordinary thing to do for a
+// control sitting in a form.
+test("a caller's own description is kept alongside the reason, not replaced by it", async () => {
+  const env = browser({ permission: "prompt" })
+  const result = await mount({ "aria-describedby": "store-finder-hint" })
+  click(result)
+  env.fail(TIMED_OUT)
+  await flush()
+  result.rerender()
+
+  const ids = buttonOf(result).props["aria-describedby"].split(" ")
+  assert.ok(ids.includes("store-finder-hint"), "the caller's description was dropped")
+  assert.ok(ids.includes(messageOf(result).props.id), "the reason was dropped")
+  result.unmount()
+})
+
+test("a caller's description survives on its own when there is no reason to add", async () => {
+  browser()
+  const result = await mount({ "aria-describedby": "store-finder-hint" })
+
+  assert.equal(buttonOf(result).props["aria-describedby"], "store-finder-hint")
+  result.unmount()
+})
+
 test("the hook is usable on its own", async () => {
   const env = browser({ permission: "granted" })
   let seen = null

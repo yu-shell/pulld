@@ -549,7 +549,27 @@ export function GeolocationButton({
     request()
   }
 
-  const message = failure ? (messages?.[failure.cause] ?? failure.message) : ""
+  /**
+   * The cause to show, which is not always one that came back from a request.
+   *
+   * `unsupported` never does. The hook only reaches `fail("unsupported", …)` from inside
+   * `request()`, and `request()` is called from the click — which returns early the moment
+   * `actionable` is false, as it is on exactly the browsers that have no Geolocation at all. So the
+   * one browser where this can never work was also the only one that said nothing about it: a
+   * dimmed button still reading "Use my location", an empty message region, and no `data-cause`.
+   * The wording for it was already written and simply had nothing that could reach it.
+   */
+  const cause: GeolocationFailureCause | undefined =
+    failure?.cause ?? (isSupported ? undefined : "unsupported")
+  // `failure.message` is `DEFAULT_MESSAGES[failure.cause]`, so reading the table directly is the
+  // same string for a real failure and also covers the case that never produces a failure object.
+  const message = cause ? (messages?.[cause] ?? DEFAULT_MESSAGES[cause]) : ""
+
+  // The caller's own description first, the reason last: the reason is the newer and more urgent of
+  // the two, and reading it last keeps it from being buried under a static hint.
+  const describedBy = [props["aria-describedby"], message ? messageId : null]
+    .filter(Boolean)
+    .join(" ")
 
   const visibleLabel =
     phase === "prompting"
@@ -576,17 +596,21 @@ export function GeolocationButton({
         aria-disabled={actionable ? undefined : true}
         aria-busy={busy || undefined}
         aria-label={iconOnly ? visibleLabel : undefined}
-        // Points at the message so the reason is part of the button's description wherever one
-        // exists, rather than only being announced once as it appears.
-        aria-describedby={message ? messageId : undefined}
         data-phase={phase}
-        data-cause={failure?.cause}
+        data-cause={cause}
         className={cn(
           "inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-transparent text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:pointer-events-none aria-disabled:opacity-50",
           iconOnly ? "w-9" : "px-4",
           className
         )}
         {...props}
+        // After the spread, and the only attribute here that is: this one has to be the merge of
+        // the caller's value and ours, so letting `{...props}` have the last word on it is the one
+        // ordering that loses information. A field inside a form passing its own hint — the
+        // ordinary thing to do — would otherwise silently drop the single description that says why
+        // location is unavailable. Every other attribute above is a default the caller may replace
+        // outright, which is what the spread coming last is for.
+        aria-describedby={describedBy || undefined}
       >
         <Icon className={cn("h-4 w-4", busy && "animate-spin")} aria-hidden="true" />
         {iconOnly ? null : visibleLabel}
