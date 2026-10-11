@@ -806,6 +806,34 @@ const PREVIEWS = {
       cells.filter(Boolean).length
     } selected</span></div>`
   })(),
+  "split-button": (() => {
+    // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The whole job of this card is the thing that distinguishes the component from the four other
+    // button cards (share-button, loading-button, confirm-button, print-button, all single pills):
+    // the divider *inside* one filled shape. So the two halves share a background and a radius and
+    // are separated by one hairline in the foreground colour at low alpha — which is the same
+    // decision the component makes, and the one official's button-group cannot make for it, since
+    // its seam rule removes a border that a filled button never had.
+    //
+    // The panel below hangs off the inline-end edge rather than spanning the width, because that is
+    // what `align="end"` looks like and it is the second half of the silhouette: a wide pill with a
+    // narrow tab, and a smaller card tucked under the tab's side. The first row is tinted to read
+    // as the item holding focus — a menu opened from the keyboard lands on its first item.
+    const CHEVRON = `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`
+    const half = "display:flex;align-items:center;justify-content:center;height:21px;background:var(--accent);color:#fff"
+    const unit = `<span style="display:flex;width:100%"><span style="${half};flex:1;min-width:0;border-radius:5px 0 0 5px;font-size:9px;font-weight:600;letter-spacing:.01em">Save</span><span style="${half};flex:none;width:15px;border-radius:0 5px 5px 0;border-left:1px solid rgba(255,255,255,.5)">${CHEVRON}</span></span>`
+    const row = (text, on) =>
+      `<span style="display:block;font-size:7px;line-height:1.1;padding:2px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${
+        on ? "background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--ink)" : "color:var(--muted)"
+      }">${text}</span>`
+    const panel = `<span style="box-sizing:border-box;align-self:flex-end;width:74%;display:flex;flex-direction:column;gap:1px;padding:2px;border:1px solid var(--line);border-radius:5px;background:var(--surface)">${row(
+      "Save as draft",
+      true
+    )}${row("Save and close", false)}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">${unit}${panel}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
