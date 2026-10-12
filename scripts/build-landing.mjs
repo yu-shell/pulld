@@ -834,6 +834,28 @@ const PREVIEWS = {
     )}${row("Save and close", false)}</span>`
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">${unit}${panel}</div>`
   })(),
+  "repeatable-fields": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to say "a row of several fields, repeated" rather than "a list of values", which
+    // is what separates it from tag-input's chips and upload-list's rows: hence two fields per row,
+    // a remove control beside them, two rows to show the repetition, and the add line underneath —
+    // the one control that makes this a set that grows rather than a static fieldset.
+    const TRASH = `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m6 6 1 14h10l1-14"/></svg>`
+    const PLUS = `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`
+    const field = (text, grow) =>
+      `<span style="box-sizing:border-box;flex:${grow} 1 0;min-width:0;height:11px;display:flex;align-items:center;padding:0 3px;border:1px solid var(--line);border-radius:3px;background:var(--bg);font:6.5px ui-monospace,monospace;line-height:1;color:var(--ink);white-space:nowrap;overflow:hidden">${text}</span>`
+    const row = (key, value) =>
+      `<span style="display:flex;align-items:center;gap:3px">${field(key, 2)}${field(
+        value,
+        3
+      )}<span style="flex:none;display:inline-flex;color:var(--muted)">${TRASH}</span></span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${row(
+      "API_KEY",
+      "sk-live…"
+    )}${row("REGION", "ap-north…")}<span style="display:flex;align-items:center;gap:3px;color:var(--accent);font-size:7px;font-weight:650;line-height:1">${PLUS}Add another</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
