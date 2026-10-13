@@ -856,6 +856,41 @@ const PREVIEWS = {
       "sk-live…"
     )}${row("REGION", "ap-north…")}<span style="display:flex;align-items:center;gap:3px;color:var(--accent);font-size:7px;font-weight:650;line-height:1">${PLUS}Add another</span></div>`
   })(),
+  "transfer-list": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The whole job of this card is to be unmistakably *two lists*, which is what separates the
+    // component from the three other "choose several" cards here: multi-select and tag-input are
+    // bordered inputs with chips in them, and nested-checkbox is a column of boxes with a dash.
+    // Nothing else in the registry is a pair of panes with controls between them, so the silhouette
+    // alone does the identifying — and the arrows have to sit *between* the panes rather than under
+    // them, because "move between these two" is the entire idea.
+    //
+    // Rows are bars rather than words: at 32px a column, 8px text is a smear, and two tinted bars
+    // in the left pane against one in the right reads as a selection on one side of a transfer
+    // where any text would read as a skeleton loader. The caption carries the part a picture cannot
+    // show — that the arrow is a named control and not an arrow — since that is the thing this
+    // component is actually for.
+    const row = (picked) =>
+      `<span style="display:block;height:5px;border-radius:2px;background:${
+        picked ? "color-mix(in srgb,var(--accent) 45%,transparent)" : "var(--line)"
+      }"></span>`
+    const pane = (rows) =>
+      `<span style="box-sizing:border-box;flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;height:42px;padding:5px;border:1px solid var(--line);border-radius:4px;background:var(--surface)">${rows}</span>`
+    const chevron = (direction, live) =>
+      `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--${
+        live ? "accent" : "muted"
+      })" stroke-width="${live ? 3 : 2}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${
+        direction === "right" ? '<path d="m9 18 6-6-6-6"/>' : '<path d="m15 18-6-6 6-6"/>'
+      }</svg>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:100%"><div style="display:flex;align-items:center;gap:3px;width:100%">${pane(
+      row(true) + row(false) + row(true)
+    )}<span style="flex:none;display:flex;flex-direction:column;gap:1px">${chevron(
+      "right",
+      true
+    )}${chevron("left", false)}</span>${pane(row(false))}</div><span style="font:7px ui-monospace,monospace;color:var(--muted)">Move 2 selected</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
