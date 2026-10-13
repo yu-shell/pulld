@@ -3,6 +3,20 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-10-13
+
+- fix(segmented-control): the official-source claim in the description named packages official no
+  longer ships. It said tabs and toggle-group each pull in `@radix-ui/react-tabs` and
+  `@radix-ui/react-toggle-group`; measured today, both list the unified `radix-ui` package instead,
+  and the figure beside the claim was missing entirely. Re-measured across the whole registry (63
+  catalogue entries, 62 fetchable, 223,287 bytes of `files[].content`): tabs is 3,772 bytes,
+  toggle-group 2,309, button-group 2,203 and depends only on `cn`. The stronger fact was not in the
+  description at all — `radiogroup`, `role="radio"`, `aria-checked` and `roving` are every one of
+  them a zero hit, because Radix owns that markup inside official's own radio-group (1,450 bytes),
+  so the ARIA radio pattern this component implements by hand has nothing in the registry to copy
+  from. Japanese search terms, which every recently written description carries and this one had
+  none of, were added at the same time. No code changed; this is the item's metadata only.
+
 ## 2026-10-11 — quality sweep
 
 - fix(masked-input): a disabled field submitted its value anyway. What a form actually
