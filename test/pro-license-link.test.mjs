@@ -21,13 +21,9 @@
 // generated page, and either side moving alone fails this file.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
-import { readFileSync, existsSync } from "node:fs"
-import { join, dirname } from "node:path"
-import { fileURLToPath } from "node:url"
 import { handleProGet } from "../functions/_pro-gate.js"
+import { hasProRegistry, landingHtml } from "./_landing-page.mjs"
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const BLOCKS = { "dashboard-overview": { name: "dashboard-overview" } }
 
 // No key and no D1 binding: the gate fails closed to 402, which is the response under test. With
@@ -89,25 +85,21 @@ test("the link names the deploy that served the 402", async () => {
 })
 
 // The other half: the anchor the link relies on has to exist on the page that is actually shipped.
-// Built here rather than read off public/index.html as it stands, for the reason
-// test/landing-cards.test.mjs gives — a stale artifact looks exactly as correct as a current one.
+// Generated rather than read off public/index.html as it stands — a stale artifact looks exactly as
+// correct as a current one — through test/_landing-page.mjs, which builds it into a temp root
+// instead of over the tree's own copy, as this file and test/landing-cards.test.mjs were both
+// doing at once.
 //
 // Skipped without pro/registry.json, like the pro assertions in test/landing-cards.test.mjs: the
 // Pro section only renders when that file is present, and a checkout without it has no Pro blocks
 // for the gate to refuse either.
 test("the landing page carries the anchor the 402 links to", async (t) => {
-  if (!existsSync(join(ROOT, "pro", "registry.json"))) {
+  if (!hasProRegistry()) {
     return t.skip("no pro registry on this machine")
   }
   const fragment = (await licenseLink()).hash.slice(1)
-  execFileSync("node", [join(ROOT, "scripts", "build-landing.mjs")], {
-    cwd: ROOT,
-    encoding: "utf8",
-    timeout: 60000,
-  })
-  const html = readFileSync(join(ROOT, "public", "index.html"), "utf8")
   assert.match(
-    html,
+    landingHtml(),
     new RegExp(`id="${fragment}"`),
     `the 402 links to #${fragment} but the generated page has no element with that id — ` +
       `the link lands at the top of the catalogue instead of on the offer`

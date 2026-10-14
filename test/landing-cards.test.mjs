@@ -12,22 +12,18 @@
 // Both are easy to undo by accident while restyling.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
-import { readFileSync, existsSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { hasProRegistry, landingHtml } from "./_landing-page.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
-const OUT = join(ROOT, "public", "index.html")
 
-// Build the page the same way `npm run registry:build` does, so the test reads real output rather
-// than a stale artifact. The generator writes to public/index.html, which is a build product.
-execFileSync("node", [join(ROOT, "scripts", "build-landing.mjs")], {
-  cwd: ROOT,
-  encoding: "utf8",
-  timeout: 60000,
-})
-const html = readFileSync(OUT, "utf8")
+// Built the same way `npm run registry:build` does, so the test reads real output rather than a
+// stale artifact — but into a temp root instead of over the tree's own public/index.html, which
+// this file and test/pro-license-link.test.mjs were both generating at once. See
+// test/_landing-page.mjs.
+const html = landingHtml()
 const registry = JSON.parse(readFileSync(join(ROOT, "registry.json"), "utf8"))
 
 const esc = (s) =>
@@ -101,7 +97,7 @@ test("the clamp is a fixed two lines, so every row lands on the same height", ()
 })
 
 test("the pro card gets the same treatment when the private registry is present", (t) => {
-  if (!existsSync(join(ROOT, "pro", "registry.json"))) return t.skip("no pro registry on this machine")
+  if (!hasProRegistry()) return t.skip("no pro registry on this machine")
   const pro = html.match(/<article class="card pro">[\s\S]*?<\/article>/g) ?? []
   assert.ok(pro.length > 0)
   for (const card of pro) {
