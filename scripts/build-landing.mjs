@@ -891,6 +891,44 @@ const PREVIEWS = {
       true
     )}${chevron("left", false)}</span>${pane(row(false))}</div><span style="font:7px ui-monospace,monospace;color:var(--muted)">Move 2 selected</span></div>`
   })(),
+  "toolbar-overflow": (() => {
+    // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to be told apart from split-button's, which is also "a control with a panel
+    // hanging under its end". Three things do that, and all three are what the component actually
+    // looks like: the controls are separate ghost pills rather than one filled shape split by a
+    // hairline; they sit inside a bordered surface, because a toolbar is a container and a split
+    // button is not; and the thing at the end carries three dots rather than a chevron, which is the
+    // fastest difference to read at this size. The dots are also the only filled element, so the
+    // subject of the card is the overflow trigger and not the controls.
+    //
+    // `margin-inline-start:auto` on the trigger is the silhouette: two controls at the start, a gap
+    // where the rest used to be, and the trigger pinned at the end. The panel is narrower than
+    // split-button's and tucked under that end, with its first row tinted — a menu opened from the
+    // keyboard lands on its first item.
+    // 2px rather than 1.5: three dots have to carry the same weight at 104px as split-button's
+    // chevron does, and the chevron is a 7px path at stroke-width 3.2 — far more ink than three
+    // 1.5px points. Ten pixels of dots inside a 15px block is the same proportion the chevron has.
+    const dots = `<span style="display:flex;gap:2px;align-items:center">${[0, 1, 2]
+      .map(() => `<span style="width:2px;height:2px;border-radius:999px;background:#fff"></span>`)
+      .join("")}</span>`
+    const pill = (text) =>
+      `<span style="display:inline-flex;align-items:center;justify-content:center;flex:none;height:13px;padding:0 4px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-size:7.5px;font-weight:600">${text}</span>`
+    const trigger = `<span style="display:inline-flex;align-items:center;justify-content:center;flex:none;height:13px;width:15px;margin-inline-start:auto;border-radius:4px;background:var(--accent)">${dots}</span>`
+    const bar = `<span style="box-sizing:border-box;display:flex;align-items:center;gap:2px;width:100%;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden">${pill(
+      "B"
+    )}${pill("I")}${trigger}</span>`
+    const row = (text, on) =>
+      `<span style="display:block;font-size:7px;line-height:1.1;padding:2px 3px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${
+        on ? "background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--ink)" : "color:var(--muted)"
+      }">${text}</span>`
+    const panel = `<span style="box-sizing:border-box;align-self:flex-end;width:62%;display:flex;flex-direction:column;gap:1px;padding:2px;border:1px solid var(--line);border-radius:5px;background:var(--surface)">${row(
+      "Link",
+      true
+    )}${row("Quote", false)}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">${bar}${panel}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
