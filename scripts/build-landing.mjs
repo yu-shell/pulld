@@ -929,6 +929,45 @@ const PREVIEWS = {
     )}${row("Quote", false)}</span>`
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">${bar}${panel}</div>`
   })(),
+  "overflow-tooltip": (() => {
+    // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The subject of the card is the relationship between two strings: one cut off, one whole. So
+    // the bubble carries the full text and the cell underneath carries the same text ending in an
+    // ellipsis, and the ellipsis is the only accent-coloured thing on the card — it is the pixel
+    // that decides whether the bubble exists at all.
+    //
+    // It has to be told apart from middle-truncate's card, which is also "text with an ellipsis in
+    // it". Two things do that: the cut is at the END rather than in the middle, and there is a
+    // second element above it, because this component is about revealing the rest rather than about
+    // choosing where to cut. The second row of cells, plain and uncut, says the other half of the
+    // rule — the cells that fit get nothing.
+    // 16px bubble + 4 gap + 15px cell + 4 gap + 2 rows of 9 + 3 gap = 60px, inside the 84px the
+    // preview box leaves.
+    const mono = (text, color, size = 7.5) =>
+      `<span style="font:${size}px ui-monospace,monospace;color:${color};white-space:nowrap">${text}</span>`
+    const bubble = `<span style="box-sizing:border-box;align-self:flex-start;max-width:100%;padding:3px 5px;border:1px solid var(--line);border-radius:4px;background:var(--surface);box-shadow:0 2px 5px rgba(0,0,0,.14)">${mono(
+      "report-2026.xlsx",
+      "var(--ink)",
+      7
+    )}</span>`
+    // The clipped cell: a real ellipsis rather than an overflow, so the card renders the same way
+    // whatever font the page falls back to.
+    const cell = `<span style="box-sizing:border-box;display:flex;align-items:center;width:100%;height:15px;padding:0 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg)">${mono(
+      "report-20",
+      "var(--ink)"
+    )}${mono("…", "var(--accent)", 9)}</span>`
+    const fits = (text) =>
+      `<span style="box-sizing:border-box;display:flex;align-items:center;width:100%;height:9px;padding:0 4px;border-radius:3px">${mono(
+        text,
+        "var(--muted)",
+        6.5
+      )}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%">${bubble}${cell}<span style="display:flex;flex-direction:column;gap:3px;width:100%;margin-top:1px">${fits(
+      "notes.md"
+    )}${fits("index.ts")}</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
