@@ -968,6 +968,43 @@ const PREVIEWS = {
       "notes.md"
     )}${fits("index.ts")}</span></div>`
   })(),
+  "breadcrumb-overflow": (() => {
+    // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets. Measured in the real box: 82 x 42.94, and
+    // `scrollWidth - clientWidth` is 0 on both axes in light and dark.
+    //
+    // The card has to be told apart from toolbar-overflow's, which is also "a control with a panel
+    // under it". Three things do that, and all three are what the component actually is: the
+    // separators are chevrons rather than a row of pills in a bordered bar, because this is a path
+    // and not a toolbar; the control sits in the MIDDLE with a crumb surviving on either side,
+    // which is the whole difference in which end gives way; and the panel is offset to sit under
+    // that control rather than pinned to an edge — the arithmetic the component does to place it.
+    //
+    // The ellipsis is the only filled element, so the subject of the card is what folded. The last
+    // crumb is the darkest text: it is the page you are on, and keeping it is half the point.
+    const chev = `<svg width="4" height="7" viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;color:var(--muted)"><path d="m1 1 4 4-4 4"/></svg>`
+    const dots = `<span style="display:flex;gap:1.5px;align-items:center">${[0, 1, 2]
+      .map(() => `<span style="width:2px;height:2px;border-radius:999px;background:#fff"></span>`)
+      .join("")}</span>`
+    const more = `<span style="display:inline-flex;align-items:center;justify-content:center;flex:none;height:11px;width:14px;border-radius:3px;background:var(--accent)">${dots}</span>`
+    const crumb = (text, color, weight) =>
+      `<span style="flex:none;font-size:7px;font-weight:${weight};color:${color};white-space:nowrap">${text}</span>`
+    const trail = `<span style="display:flex;align-items:center;gap:2.5px;width:100%;overflow:hidden">${crumb(
+      "Home",
+      "var(--muted)",
+      500
+    )}${chev}${more}${chev}${crumb("Invoice", "var(--ink)", 650)}</span>`
+    const row = (text, on) =>
+      `<span style="display:block;font-size:6.5px;line-height:1.15;padding:1.5px 3px;border-radius:2.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${
+        on ? "background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--ink)" : "color:var(--muted)"
+      }">${text}</span>`
+    // 26px is where the control sits after the root and its chevron, so the panel hangs under it.
+    const panel = `<span style="box-sizing:border-box;margin-inline-start:26px;width:52px;display:flex;flex-direction:column;gap:1px;padding:2px;border:1px solid var(--line);border-radius:4px;background:var(--surface)">${row(
+      "Workspaces",
+      true
+    )}${row("Acme Corp", false)}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%">${trail}${panel}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
