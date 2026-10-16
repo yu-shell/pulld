@@ -6,7 +6,16 @@
 // json()/cors() response shaping the endpoints depend on.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { chunk, monthKey, json, cors, MAX_CHUNKS_PER_DOC, vecId } from "../functions/api/search/_lib.js"
+import {
+  chunk,
+  monthKey,
+  json,
+  cors,
+  MAX_CHUNKS_PER_DOC,
+  vecId,
+  rateLimited,
+  RL_LIMIT,
+} from "../functions/api/search/_lib.js"
 
 test("chunk: empty / whitespace-only / nullish input yields no chunks", () => {
   assert.deepEqual(chunk(""), [])
@@ -148,4 +157,81 @@ test("cors: preflight response advertises the methods and custom headers the end
   const allowHeaders = res.headers.get("access-control-allow-headers") || ""
   assert.ok(allowHeaders.includes("x-pulld-admin-key"))
   assert.ok(allowHeaders.includes("x-pulld-key"))
+})
+
+// --- rateLimited: the fixed-window burst counter ---
+//
+// It was the one helper in _lib.js with no coverage, and the only one whose failure mode is
+// silence: a limiter that never fires and a quiet hour print the same thing (nothing), so there is
+// no signal to notice. It now also carries a per-call limit, because /api/search/account needs a
+// much tighter ceiling than search-as-you-type does — which makes "whose number did it use?" a
+// question worth pinning.
+
+// Fake D1 standing in for the `rate_limits` upsert. `n` counts calls per (key, bucket) exactly as
+// `ON CONFLICT … DO UPDATE SET n = n + 1 RETURNING n` does, so driving it N times is the same as N
+// requests inside one window. The prune DELETE lands here too and is a no-op.
+function fakeLimiterDB() {
+  const counts = new Map()
+  const prepare = (sql) => ({
+    bind: (...args) => ({
+      async first() {
+        if (!/INSERT INTO rate_limits/.test(sql)) return null
+        const [key, bucket] = args
+        const k = `${key}\u0000${bucket}`
+        const n = (counts.get(k) ?? 0) + 1
+        counts.set(k, n)
+        return { n }
+      },
+      async run() {},
+    }),
+  })
+  return { counts, db: { prepare } }
+}
+
+const drive = async (env, key, limit, times) => {
+  const verdicts = []
+  for (let i = 0; i < times; i++) verdicts.push(await rateLimited(env, key, limit))
+  return verdicts
+}
+
+test("rateLimited: the first `limit` requests pass and the one after it is rejected", async () => {
+  const { db } = fakeLimiterDB()
+  const verdicts = await drive({ DB: db }, "acct:1.2.3.4", 3, 4)
+  assert.deepEqual(verdicts, [false, false, false, true])
+})
+
+test("rateLimited: each key gets its own window, so one caller cannot spend another's", async () => {
+  const { db } = fakeLimiterDB()
+  const env = { DB: db }
+  assert.deepEqual(await drive(env, "acct:1.1.1.1", 1, 2), [false, true])
+  // A different key starts fresh even though the first one is already over.
+  assert.equal(await rateLimited(env, "acct:2.2.2.2", 1), false)
+  // …and the namespaced account key does not share a bucket with a query key for the same IP.
+  assert.equal(await rateLimited(env, "prj_abc:1.1.1.1", 1), false)
+})
+
+test("rateLimited: it defaults to RL_LIMIT when the caller names no limit", async () => {
+  const { counts, db } = fakeLimiterDB()
+  const env = { DB: db }
+  await drive(env, "k", undefined, RL_LIMIT)
+  assert.equal([...counts.values()][0], RL_LIMIT)
+  assert.equal(await rateLimited(env, "k"), true) // the RL_LIMIT+1-th
+})
+
+// `n > NaN` is false for every n, so a bad constant would not loosen the limit — it would remove
+// it, and a limiter that never fires looks exactly like a quiet hour.
+test("rateLimited: a non-numeric or non-positive limit falls back instead of disabling itself", async () => {
+  for (const bad of [NaN, 0, -5, "many", null]) {
+    const { db } = fakeLimiterDB()
+    const env = { DB: db }
+    await drive(env, "k", bad, RL_LIMIT)
+    assert.equal(await rateLimited(env, "k", bad), true, `limit=${String(bad)} never rejected`)
+  }
+})
+
+// Fail-open on every way of not knowing: a limiter hiccup must not take the endpoint down.
+test("rateLimited: no DB binding and a throwing DB both pass the caller through", async () => {
+  assert.equal(await rateLimited({}, "k", 1), false)
+  const throwing = { DB: { prepare: () => { throw new Error("D1 down") } } }
+  assert.equal(await rateLimited(throwing, "k", 1), false)
 })

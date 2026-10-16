@@ -103,16 +103,31 @@ export function monthKey() {
   return new Date().toISOString().slice(0, 7) // YYYY-MM
 }
 
-const RL_WINDOW = 60 // seconds per fixed window
-const RL_LIMIT = 120 // requests per window per key
+export const RL_WINDOW = 60 // seconds per fixed window
+export const RL_LIMIT = 120 // requests per window per key, when a caller names no tighter one
 
 // Short-window burst limit, defense-in-depth on top of the monthly quota: a flood from one client
 // can't drain a customer's quota or spike cost in minutes. Fixed window counter in D1 (strongly
 // consistent — KV's read-after-write is too loose for a limiter; Pages doesn't support the native
 // rate-limit binding). Fail-open on any error so a limiter hiccup never takes search down. Returns
 // true when the caller should be rejected (429).
-export async function rateLimited(env, key) {
+//
+// `limit` is per call rather than one constant for the whole service, because the two endpoints
+// that need bounding are not bounding the same thing. 120/window is sized for search-as-you-type,
+// where the limiter exists to stop a runaway client spending a customer's query quota — a budget
+// question, and one the caller has already authenticated for. /api/search/account is reached with
+// no credential at all and answers with a secret `admin_key`, so there the limiter is the only
+// ceiling on guessing at license keys and on how much work an anonymous caller can make this
+// Worker do (one outbound Polar call plus a D1 read per listed key). A search-sized allowance is
+// the wrong ceiling for that, and hardcoding one here would have made the account endpoint pay
+// for the shape of a different endpoint's traffic.
+//
+// A non-positive or non-numeric limit falls back to RL_LIMIT rather than through the comparison:
+// `n > NaN` is false for every n, so a typo in a caller's constant would not loosen the limit, it
+// would silently remove it — and a limiter that never fires looks exactly like a quiet hour.
+export async function rateLimited(env, key, limit = RL_LIMIT) {
   if (!env.DB) return false
+  const cap = Number.isFinite(limit) && limit > 0 ? limit : RL_LIMIT
   try {
     const bucket = Math.floor(Date.now() / 1000 / RL_WINDOW)
     const row = await env.DB.prepare(
@@ -125,7 +140,7 @@ export async function rateLimited(env, key) {
     if (Math.random() < 0.02) {
       env.DB.prepare("DELETE FROM rate_limits WHERE bucket < ?").bind(bucket).run().catch(() => {})
     }
-    return (row?.n ?? 0) > RL_LIMIT
+    return (row?.n ?? 0) > cap
   } catch {
     return false
   }

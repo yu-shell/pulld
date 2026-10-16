@@ -11,6 +11,11 @@ After subscribing, your keys appear at <https://pulld.pages.dev/account> — Pol
 redirect opens it automatically. You can also paste your Polar license key there anytime, or fetch
 them with `GET https://pulld.pages.dev/api/search/account?license=<POLAR_LICENSE_KEY>`.
 
+That endpoint answers with your secret `admin_key`, so it is rate-limited to **20 lookups / 60s per
+IP** — ample for the page, which fetches once per load, but not something to put in a loop. Over it
+you get `429 { "error": "rate_limited" }` with a `retry-after` header; read your keys once and keep
+them in your own secret store rather than fetching them per deploy.
+
 You get two keys:
 
 - `query_key` (starts `pk_`) — **public**, read-only, safe in client code. Used to **search**.
