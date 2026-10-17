@@ -66,6 +66,14 @@ const RECORDED = [
   "blur",
   "select",
   "scrollIntoView",
+  // Scrolling a box you are holding, by its own coordinates, rather than asking the browser to
+  // bring a descendant into view. The distinction is the entire behaviour of a tab strip:
+  // `scrollIntoView` walks up and scrolls every scrollable ancestor including the document, so
+  // selecting a tab near the bottom of a long page jumps the page, while `scrollTo` on the strip
+  // moves the strip and nothing else. Recorded so "it scrolled itself to 240 and never called
+  // scrollIntoView" is assertable rather than a matter of reading the source.
+  "scrollTo",
+  "scrollBy",
   "setSelectionRange",
   // Registering a listener on your own node is an imperative call like the rest, and for some
   // components it is the behaviour worth pinning rather than an implementation detail. A wheel or

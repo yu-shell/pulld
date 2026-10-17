@@ -1005,6 +1005,47 @@ const PREVIEWS = {
     )}${row("Acme Corp", false)}</span>`
     return `<div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%">${trail}${panel}</div>`
   })(),
+  "tab-scroller": (() => {
+    // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to be told apart from three neighbours, and the component's own silhouette does
+    // it. Against `segmented-control`, which is also a row of choices: these tabs are not pills in
+    // a filled track — they sit on a baseline and the selected one is marked by an underline, which
+    // is what a tab is. Against `toolbar-overflow`, which also ends in a control: the control is a
+    // chevron rather than three dots, and nothing is folded into a panel, so there is no second row.
+    // Against `scroll-shadow`, which also says "there is more this way": the edge is a hard button
+    // rather than a soft fade, and there is a selected item at all — a fade has nothing to keep in
+    // view.
+    //
+    // The underline is the only accent on the card, so the subject is the selection rather than the
+    // arrow: this component exists to keep that underlined tab on screen. The third tab is cut by
+    // the row's own `overflow:hidden` and the arrow is painted over the cut on an opaque background,
+    // which is exactly how it is laid out in the component — overlaid rather than beside the strip,
+    // so appearing cannot change the width that decided it was needed.
+    const chev = `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>`
+    const tab = (text, on) =>
+      `<span style="position:relative;flex:none;padding:0 1px 3px;font-size:7.5px;line-height:1.1;white-space:nowrap;color:${
+        on ? "var(--ink)" : "var(--muted)"
+      };font-weight:${on ? 700 : 500}">${text}${
+        on
+          ? `<span style="position:absolute;inset-inline:0;bottom:0;height:1.5px;border-radius:999px;background:var(--accent)"></span>`
+          : ""
+      }</span>`
+    const arrow = `<span style="position:absolute;top:0;bottom:0;right:0;display:flex;align-items:center;justify-content:center;width:12px;background:var(--bg);color:var(--ink)">${chev}</span>`
+    // The labels are chosen by arithmetic rather than by eye, because getting this backwards is the
+    // one way this card can lie: a thumbnail whose underlined tab vanishes under the arrow says the
+    // opposite of what the component does. Measured at this font in the real 82px box — "Logs"
+    // 20.23 plain, "Usage" 26.83 bold, a 5px gap — the selected tab ends at 52.06 and the chevron
+    // starts at 70, so it clears by ~18px, which is the gutter the component keeps. "Members" is
+    // 37.22 and starts at 57.06, so it runs under the arrow and is cut by the row at 82: the tab
+    // that is sacrificed is the unselected one, which is the whole claim.
+    const strip = `<span style="position:relative;display:block;width:100%;border-bottom:1px solid var(--line)"><span style="display:flex;align-items:flex-end;gap:5px;width:100%;overflow:hidden">${tab(
+      "Logs",
+      false
+    )}${tab("Usage", true)}${tab("Members", false)}</span>${arrow}</span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${strip}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
