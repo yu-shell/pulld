@@ -902,9 +902,17 @@ export function useCameraCapture(options: UseCameraCaptureOptions = {}): UseCame
   // The camera and the object URL both belong to the browser, not to this component, so navigating
   // away inside a single-page app is exactly the moment they would be leaked: the tracks keep the
   // camera light on with no control left that could turn it off, and the blob stays in memory.
+  //
+  // The pending key goes with the session bump, exactly as it does in `stop`: bumping the id
+  // disowns whatever is in flight, so the key it registered no longer names a request this
+  // component is waiting on. Leaving it set matters because an instance can be torn down and run
+  // again without its refs being recreated — StrictMode does it to every component in development,
+  // and React does it for an offscreen remount — and the duplicate-request guard would then read
+  // the stale key as a request still in flight and refuse every later start of that same camera.
   React.useEffect(
     () => () => {
       sessionRef.current += 1
+      pendingKeyRef.current = null
       stopStream()
       releasePhoto()
     },

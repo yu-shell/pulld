@@ -3,6 +3,18 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-10-18 — quality sweep
+
+- fix(camera-capture): the camera never opened in development. A component's effects can be torn
+  down and run again on the *same* instance — StrictMode does it to everything in a new app, and
+  React does it for an offscreen remount — and every ref survives that. The teardown bumped the
+  session counter, which is what disowns a `getUserMedia` still in flight, but it left behind the
+  key naming that request; the guard that stops a duplicate request for the same camera then read
+  the stale key as a request still in flight and refused every later start. So `autoStart` opened
+  nothing, and pressing the button afterwards did nothing either, because it is the same camera and
+  therefore the same key — the state every developer meets first. The key is now released together
+  with the session, exactly as `stop()` already did.
+
 ## 2026-10-13
 
 - fix(segmented-control): the official-source claim in the description named packages official no

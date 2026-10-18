@@ -227,6 +227,24 @@ test("autoStart opens the camera on mount", () => {
   result.unmount()
 })
 
+test("the camera can still be opened after the effects are torn down and run again", () => {
+  const env = browser()
+  const result = render(CameraCapture, { autoStart: true })
+  assert.equal(env.requests.length, 1)
+  // StrictMode in development — and React's own offscreen remounts — tear an instance's effects
+  // down and run them again on the *same* instance, so every ref survives. The teardown bumps the
+  // session, which disowns the request from the first pass, and the key that request registered has
+  // to be released along with it: it names a request this component is still waiting on, and once
+  // nothing is waiting on it the duplicate-request guard reads it as one still in flight and
+  // refuses every later start. The camera then never opens at all — not on mount, and not when the
+  // button is pressed, because it is the same camera and therefore the same key — which is the
+  // state every developer meets first, since StrictMode is on by default in a new app.
+  result.unmount()
+  result.rerender()
+  assert.equal(env.requests.length, 2, "the camera never reopened after the effects were re-run")
+  result.unmount()
+})
+
 test("facing is asked for as an ideal, never an exact, and audio is explicitly refused", () => {
   const env = browser()
   const result = render(CameraCapture, { facingMode: "environment" })
