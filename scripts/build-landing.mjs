@@ -356,6 +356,22 @@ const PREVIEWS = {
   "recovery-codes": `<div style="display:flex;flex-direction:column;gap:5px;width:104px"><div class="pv-rc"><span>7f2a-91c4</span><span>b3e8-45da</span><span class="u">c1d9-77ab</span><span>e604-2b3f</span></div><div style="display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:var(--muted)">3 of 4 unused</span><span style="margin-left:auto;color:var(--muted);display:inline-flex"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></span></div></div>`,
   "idle-timeout": `<div class="pv-idle"><div class="h"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>Still there?</b></div><span class="t">1:59</span><div class="f"><span class="out">Sign out</span><span class="stay">Stay</span></div></div>`,
   "unsaved-changes-guard": `<div class="pv-leave"><div class="h"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><b>Leave without saving?</b></div><span class="b">Your changes will be lost.</span><div class="f"><span class="keep">Keep</span><span class="go">Discard</span></div></div>`,
+  // The notice sitting on top of the field it refills, which is the whole shape of this component
+  // and what separates it from unsaved-changes-guard's dialog above: that one interrupts a
+  // departure, this one is already waiting when you come back. Shown with the two answers stacked
+  // under the message, because that is how the real notice wraps at this width.
+  //
+  // width:100%, not a pixel width — `.preview` is a 104px border-box carrying 10px of padding and a
+  // 1px border, so 82px is all the content actually gets, and a 104px child loses its right edge to
+  // `overflow:hidden`. Measured at 0 overflow after the build.
+  "draft-restore": `<div style="display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box"><div style="display:flex;flex-direction:column;gap:3px;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:4px 5px"><span style="display:flex;align-items:center;gap:3px"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span style="font-size:7.5px;line-height:1;color:var(--ink);white-space:nowrap">Unsent draft</span></span><span style="display:flex;align-items:center;gap:5px"><span style="font-size:7.5px;line-height:1;color:var(--accent);text-decoration:underline;text-underline-offset:1px;white-space:nowrap">Restore</span><span style="font-size:7.5px;line-height:1;color:var(--muted);white-space:nowrap">Discard</span></span></div><div style="display:flex;flex-direction:column;gap:3px;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:5px">${[
+    100, 86, 58,
+  ]
+    .map(
+      (w) =>
+        `<span style="height:3px;width:${w}%;border-radius:2px;background:color-mix(in srgb,var(--muted) 30%,transparent)"></span>`
+    )
+    .join("")}</div></div>`,
   // A table with a negative number in it and the control that puts it in a file — the two halves
   // this component joins, and the negative is the cell a naive writer turns into text. Header plus
   // 3 rows of 12px + 6 gap + 19px button = 73px, inside the 84px the preview box leaves.
