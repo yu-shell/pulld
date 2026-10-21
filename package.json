@@ -12,7 +12,7 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "check": "npm run test && npm run typecheck && npm run registry:build && npm run verify",
     "build:pro": "npx --yes shadcn@latest build pro/registry.json -o pro/dist && node scripts/build-pro.mjs",
-    "deploy": "SITE_BASE=https://pulld.pages.dev npm run registry:build && SITE_BASE=https://pulld.pages.dev npm run build:pro && npx --yes wrangler@latest pages deploy",
+    "deploy": "SITE_BASE=https://pulld.pages.dev npm run registry:build && SITE_BASE=https://pulld.pages.dev npm run build:pro && npm run verify && npx --yes wrangler@latest pages deploy",
     "db:schema": "npx --yes wrangler@latest d1 execute pulld --remote --file db/schema.sql",
     "report": "node scripts/report.mjs",
     "usage-alert": "node scripts/usage-alert.mjs",
