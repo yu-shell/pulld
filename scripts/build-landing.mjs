@@ -98,6 +98,13 @@ const PREVIEWS = {
   kbd: `<span class="pv-kbd">⌘</span><span class="pv-kbd">K</span>`,
   "empty-state": `<div class="pv-empty">${ICON.inbox}<span>No results</span></div>`,
   "stat-card": `<div class="pv-card"><div class="pv-muted">Revenue</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:2px"><span class="pv-big">$12.4k</span><span class="pv-up">↑12%</span></div></div>`,
+  // The dashed box is the component: it is the width of the final value, held open from the first
+  // frame, with the number that has been counted to so far sitting inside it and room still to the
+  // right. Drawn the way the component draws it — an invisible "12,480" doing the sizing — rather
+  // than with a hand-picked pixel width, so the picture cannot drift from the behaviour. Not an
+  // odometer strip: this one reformats the number, it does not roll digits, and the thumbnail
+  // should not promise otherwise.
+  "animated-number": `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box"><span style="font-size:7.5px;line-height:1;color:var(--muted)">Active users</span><span style="position:relative;display:inline-block;align-self:flex-start;border:1px dashed var(--line);border-radius:4px;padding:2px 3px"><span style="visibility:hidden;font-size:14px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums">12,480</span><span style="position:absolute;left:3px;top:2px;font-size:14px;font-weight:600;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums">9,314</span></span><span style="display:flex;align-items:center;gap:3px;font-size:7.5px;line-height:1;color:var(--muted)"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg><span style="font-variant-numeric:tabular-nums">12,480</span></span></div>`,
   "theme-toggle": `<button class="pv-iconbtn">${ICON.sun}</button>`,
   "avatar-stack": `<div class="pv-avs"><span class="pv-av">A</span><span class="pv-av" style="background:#e0567f">M</span><span class="pv-av" style="background:#2bb673">K</span><span class="pv-av pv-more">+3</span></div>`,
   "password-input": `<div class="pv-input"><span class="pv-dots">••••••</span><span style="margin-left:auto;color:var(--muted);display:inline-flex">${ICON.eye}</span></div>`,
