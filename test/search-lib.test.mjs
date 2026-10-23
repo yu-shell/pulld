@@ -14,8 +14,11 @@ import {
   MAX_CHUNKS_PER_DOC,
   vecId,
   rateLimited,
+  retryAfterSeconds,
   RL_LIMIT,
+  RL_WINDOW,
 } from "../functions/api/search/_lib.js"
+import { WINDOW_START } from "./_clock.mjs"
 
 test("chunk: empty / whitespace-only / nullish input yields no chunks", () => {
   assert.deepEqual(chunk(""), [])
@@ -148,6 +151,40 @@ test("json: cors:false exposes nothing even when the caller adds a header", () =
   const res = json({ error: "rate_limited" }, 429, { cors: false, "retry-after": "10" })
   assert.equal(res.headers.get("retry-after"), "10")
   assert.equal(res.headers.get("access-control-expose-headers"), null)
+})
+
+// --- retryAfterSeconds: the number a refused caller is told to wait ---
+//
+// The property that matters is not the arithmetic, it is that the answer outlives the refusal:
+// waiting it out has to land the caller in a LATER window than the one it was refused in. The
+// flat `10` query.js used to send failed that at 50 of the 60 second-positions in a window.
+const bucketOf = (ms) => Math.floor(ms / 1000 / RL_WINDOW)
+
+test("retryAfterSeconds: waiting it out always clears the window the caller was refused in", () => {
+  for (let offsetMs = 0; offsetMs < RL_WINDOW * 1000; offsetMs += 137) {
+    const now = WINDOW_START + offsetMs
+    const after = retryAfterSeconds(now)
+    assert.ok(
+      bucketOf(now + after * 1000) > bucketOf(now),
+      `retry-after=${after}s at +${offsetMs}ms lands back in the same window — the retry is refused too`
+    )
+  }
+})
+
+test("retryAfterSeconds: it is a whole number of seconds within the window, never 0", () => {
+  for (let offsetMs = 0; offsetMs < RL_WINDOW * 1000; offsetMs += 137) {
+    const after = retryAfterSeconds(WINDOW_START + offsetMs)
+    assert.ok(Number.isInteger(after), `retry-after must be whole seconds, got ${after}`)
+    // 0 reads as "retry immediately" to a client that honours the header.
+    assert.ok(after >= 1 && after <= RL_WINDOW, `retry-after out of range: ${after}`)
+  }
+})
+
+test("retryAfterSeconds: it reports the window left, not a constant", () => {
+  assert.equal(retryAfterSeconds(WINDOW_START), RL_WINDOW)
+  assert.equal(retryAfterSeconds(WINDOW_START + 17_000), RL_WINDOW - 17)
+  // A partial second rounds up rather than down: 0.5s left is one second of waiting, not none.
+  assert.equal(retryAfterSeconds(WINDOW_START + 59_500), 1)
 })
 
 test("cors: preflight response advertises the methods and custom headers the endpoints use", () => {

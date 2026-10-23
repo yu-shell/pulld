@@ -15,6 +15,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { onRequestGet, ACCOUNT_RL_LIMIT } from "../functions/api/search/account.js"
 import { RL_LIMIT, RL_WINDOW } from "../functions/api/search/_lib.js"
+import { atClock, WINDOW_START } from "./_clock.mjs"
 
 const ROW = {
   id: "prj_test",
@@ -208,8 +209,31 @@ test("account: a flood from one IP is refused once it passes the endpoint's own 
   assert.match(body.message, /slow down/i)
   // The page shows `message || error`, so the 429 has to carry a sentence, not just a code.
   assert.ok(body.message.length > 20)
-  // retry-after is the window the counter actually resets on, not a guess.
-  assert.equal(res.headers.get("retry-after"), String(RL_WINDOW))
+  // The 429 has to carry a backoff at all; what the number must be is pinned on a frozen clock
+  // in the test below, where the window's remaining seconds are knowable.
+  assert.ok(res.headers.get("retry-after"), "the 429 carries no retry-after")
+})
+
+// The clock is frozen (test/_clock.mjs) so the expected number is exact. Sampling a live clock
+// here would let the old answer — the whole RL_WINDOW, sent whatever the window had left — pass at
+// the one position in sixty where it happens to be right, and would race the window boundary.
+test("account: the 429 names the seconds its window still has to run, not the whole window", async () => {
+  // Swept across the window: the header that shipped was a constant, and a constant agrees with
+  // the truth at one position in sixty. Each pass gets its own DB so the flood starts from zero.
+  for (const elapsed of [0, 17, 59]) {
+    const env = { DB: fakeDB(new Set(["lic-active"])) }
+    const request = req({ license: "lic-active" }, { ip: "9.9.9.9" })
+    const res = await atClock(WINDOW_START + elapsed * 1000, async () => {
+      await spend(env, request, ACCOUNT_RL_LIMIT)
+      return onRequestGet({ request, env })
+    })
+    assert.equal(res.status, 429)
+    assert.equal(
+      res.headers.get("retry-after"),
+      String(RL_WINDOW - elapsed),
+      `${elapsed}s into the window, the caller is told to wait longer than the refusal lasts`
+    )
+  }
 })
 
 test("account: the limit is far below the query endpoint's, since a secret is what is behind it", () => {

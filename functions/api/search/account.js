@@ -6,7 +6,7 @@
 // Either way we look the project up by license key and return admin_key (indexing) + query_key
 // (search). Server-to-server (returns a secret key), so no CORS, and burst-limited per IP before
 // any of that work runs (ACCOUNT_RL_LIMIT below).
-import { json, rateLimited, RL_WINDOW } from "./_lib.js"
+import { json, rateLimited, retryAfterSeconds } from "./_lib.js"
 
 // `extra` carries response headers through to json() — `retry-after` on the 429 below is the only
 // one so far. No CORS here (this endpoint answers with a secret key), so nothing has to be named
@@ -88,7 +88,7 @@ export async function onRequestGet(context) {
     return j(
       { error: "rate_limited", message: "Too many key lookups; slow down and try again shortly." },
       429,
-      { "retry-after": String(RL_WINDOW) }
+      { "retry-after": String(retryAfterSeconds()) }
     )
   }
 

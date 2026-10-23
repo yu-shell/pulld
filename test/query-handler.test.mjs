@@ -27,6 +27,8 @@ import {
   overFetch,
   VEC_TOPK_MAX,
 } from "../functions/api/search/query.js"
+import { RL_LIMIT, RL_WINDOW } from "../functions/api/search/_lib.js"
+import { atClock, WINDOW_START } from "./_clock.mjs"
 
 const PROJECT = "prj_test"
 const QUERY_KEY = "pk_test"
@@ -300,6 +302,39 @@ test("query: exceeding the burst rate limit returns 429 before any embedding wor
   assert.equal(res.status, 429)
   assert.equal(await res.json().then((b) => b.error), "rate_limited")
   assert.equal(queries.length, 0) // rejected before the Vectorize query
+})
+
+// The limiter is a fixed window, so the refusal lifts at that window's end and nowhere else, and
+// the clock is frozen (test/_clock.mjs) because the assertion is the exact number: read off a live
+// clock, the flat `10` this replaced would still pass whenever the window had ~10s left.
+test("query: the 429 names the seconds its window still has to run, not a flat guess", async () => {
+  const { env } = fakeEnv({ rlN: RL_LIMIT + 1 })
+
+  // Swept across the window rather than spot-checked: the header that shipped was a constant, and
+  // a constant agrees with the truth at one position in sixty.
+  for (const elapsed of [0, 10, 17, 50, 59]) {
+    const res = await atClock(WINDOW_START + elapsed * 1000, () =>
+      onRequestGet({ request: get("hi"), env })
+    )
+    assert.equal(res.status, 429)
+    assert.equal(
+      res.headers.get("retry-after"),
+      String(RL_WINDOW - elapsed),
+      `${elapsed}s into the window, the caller is told to come back too early`
+    )
+  }
+})
+
+// The other half: the header is on the response, and a cross-origin palette — the documented
+// reader of this number — is allowed to read it. json() derives the expose list from the headers
+// it is handed, so this holds only while the 429 goes through that door.
+test("query: the retry-after on a 429 is readable by a browser client", async () => {
+  const { env } = fakeEnv({ rlN: RL_LIMIT + 1 })
+  const res = await onRequestGet({ request: get("hi"), env })
+  const exposed = (res.headers.get("access-control-expose-headers") || "")
+    .split(",")
+    .map((h) => h.trim().toLowerCase())
+  assert.ok(exposed.includes("retry-after"), `a browser reads null: ${exposed.join(",")}`)
 })
 
 test("query: an unknown key is unauthorized", async () => {

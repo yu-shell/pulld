@@ -27,7 +27,7 @@ export function json(data, status = 200, opts = {}) {
     // content-length, content-type, expires, last-modified, pragma) unless the response names the
     // others here — everything else is on the wire and invisible to `res.headers.get(...)`.
     //
-    // The one that mattered: the burst limiter answers 429 with `retry-after: 10`, and
+    // The one that mattered: the burst limiter answers 429 with `retry-after`, and
     // public/search-integration.md documents that header as part of a contract it describes in the
     // same breath as "Public and CORS-enabled … from the browser". So the header telling the
     // documented audience how long to back off was the one header they could not read; every
@@ -144,6 +144,29 @@ export async function rateLimited(env, key, limit = RL_LIMIT) {
   } catch {
     return false
   }
+}
+
+// How long a refused caller must actually wait, in seconds: the time left in the fixed window
+// `rateLimited` counts in. The counter is keyed on `Math.floor(now / RL_WINDOW)` and the refusal
+// lifts at that bucket's end and nowhere else, so the number is derivable — and both 429s put a
+// different guess in the header instead.
+//
+// query.js sent a flat `10`. Measured against the bucket it is refused in, that lands the retry
+// back inside the same window at 50 of the 60 second-positions in it: a client that obeys the
+// header is refused again 83% of the time, up to five times over, each retry another D1 write on
+// the counter. It does not extend the block — a fixed window rolls on the clock, not on the last
+// request — but it is paid for on both sides, and it is the one number a browser client can read.
+// json() exposes this header cross-origin precisely so the documented audience can stop guessing
+// a backoff; what they could read was a guess. account.js sent the whole `RL_WINDOW`, which is
+// never early but over-waits by up to a window.
+//
+// Floored at 1, never 0: `retry-after: 0` reads as "retry immediately" to a client that honours
+// it, which is the one answer a limiter must not give. Read off the clock when the response is
+// built rather than carried out of `rateLimited`, so a window that rolls between the two is
+// over-reported by at most one window — the harmless direction, and the rare one.
+export const retryAfterSeconds = (now = Date.now()) => {
+  const sec = now / 1000
+  return Math.max(1, Math.ceil((Math.floor(sec / RL_WINDOW) + 1) * RL_WINDOW - sec))
 }
 
 const COUNTERS = new Set(["queries", "docs"])
