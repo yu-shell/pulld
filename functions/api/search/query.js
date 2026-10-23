@@ -1,6 +1,14 @@
 // GET/POST /api/search/query?key=&q= — semantic search for a project (public query_key).
 // This is what the command-palette `source` calls. Returns items shaped for the palette.
-import { json, cors, embed, projectByKey, bumpUsage, rateLimited } from "./_lib.js"
+import {
+  json,
+  cors,
+  embed,
+  projectByKey,
+  bumpUsage,
+  rateLimited,
+  retryAfterSeconds,
+} from "./_lib.js"
 
 // Clamp a requested result count to [1,20]. Falls back to `dflt` for missing, empty, or
 // non-numeric input — Number("abc") is NaN, which Math.min/max would propagate into topK and
@@ -92,7 +100,7 @@ async function handle(context) {
     return json(
       { error: "rate_limited", message: "Too many requests; slow down." },
       429,
-      { "retry-after": "10" }
+      { "retry-after": String(retryAfterSeconds()) }
     )
   }
 

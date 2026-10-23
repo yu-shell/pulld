@@ -13,8 +13,9 @@ them with `GET https://pulld.pages.dev/api/search/account?license=<POLAR_LICENSE
 
 That endpoint answers with your secret `admin_key`, so it is rate-limited to **20 lookups / 60s per
 IP** — ample for the page, which fetches once per load, but not something to put in a loop. Over it
-you get `429 { "error": "rate_limited" }` with a `retry-after` header; read your keys once and keep
-them in your own secret store rather than fetching them per deploy.
+you get `429 { "error": "rate_limited" }` with a `retry-after` header carrying the seconds left in
+the current window; read your keys once and keep them in your own secret store rather than fetching
+them per deploy.
 
 You get two keys:
 
@@ -61,7 +62,9 @@ Rules:
   `429 { "error": "rate_limited" }` with a `retry-after` header when the burst limit is hit; and
   `429 { "error": "quota_exceeded" }` once the month's queries are spent (see Notes & limits).
 
-Rate-limited to 120 requests / 60s per `query_key` + IP.
+Rate-limited to 120 requests / 60s per `query_key` + IP. The window is a fixed one, so the
+`retry-after` on a 429 is the number of seconds left in it: wait that out and the next request is
+served, retry sooner and it is refused again (and the early retry still counts against the window).
 
 ## 3. Index your content (ingest)
 
