@@ -66,6 +66,12 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // Two moments of the same box, drawn at the same height on purpose: that equality IS the
+  // component, so the thumbnail has to show both halves or it shows nothing. The left one is the
+  // space held open before the bytes arrive (dashed, because it is a reservation) and the right one
+  // is the picture sitting in it. A single loaded picture would have been indistinguishable from a
+  // plain <img>, and a lone skeleton would have promised a loading spinner.
+  "lazy-image": `<div style="display:flex;flex-direction:column;gap:6px;width:100%;box-sizing:border-box"><div style="display:flex;align-items:center;gap:4px;width:100%;box-sizing:border-box"><span style="flex:1;aspect-ratio:4/3;border:1px dashed var(--line);border-radius:4px;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);opacity:.7"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-4-5 4"/></svg></span><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="M13 6l6 6-6 6"/></svg><span style="flex:1;aspect-ratio:4/3;border:1px solid var(--accent);border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));display:inline-flex;align-items:flex-end;justify-content:center;overflow:hidden;position:relative"><span style="position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)"></span><svg width="100%" height="62%" viewBox="0 0 40 16" preserveAspectRatio="none" aria-hidden="true"><path d="M0 16 L13 5 L21 11 L29 3 L40 16 Z" fill="var(--accent)"/></svg></span></div><span style="font-size:7px;line-height:1;color:var(--muted);white-space:nowrap">same height · no shift</span></div>`,
   "copy-button": `<button class="pv-iconbtn">${ICON.copy}</button>`,
   "share-button": `<button class="pv-btn">${ICON.share} Share</button>`,
   "fullscreen-button": `<div style="position:relative;width:104px;height:78px;border-radius:6px;background:var(--surface);border:1px solid var(--accent);overflow:hidden;display:flex;align-items:flex-end;gap:3px;padding:7px 7px 8px">${[
