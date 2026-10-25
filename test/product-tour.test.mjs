@@ -458,6 +458,31 @@ test("focus moves to the card on every step", () => {
   // each step is a browser's to demonstrate.
 })
 
+// A tour is a dialog that takes focus at every step and then removes the element holding it. With
+// nothing to hand focus back to, the browser falls back to `document.body` — the keyboard user who
+// was part way down a settings page is returned to the top of it, which is the loss the dialog
+// pattern exists to prevent, and which command-palette and keyboard-shortcuts both already avoid.
+//
+// Observed through unmount because that is the cleanup the harness runs (see _react-harness.mjs):
+// it is the same cleanup an `open: false` triggers in a browser, and the restore lives in it.
+test("closing the tour gives focus back to whatever had it", () => {
+  // Rendered rather than mounted, because `mount` resets the page — including `activeElement` —
+  // and what is being set up here is the state of the page *before* the tour opens.
+  reset()
+  const opener = element()
+  globalThis.document.activeElement = opener
+  const instance = render(ProductTour, { steps: STEPS, defaultOpen: true })
+
+  assert.equal(opener.calls.length, 0, "the tour focused the page while opening")
+  instance.unmount()
+
+  assert.equal(
+    opener.calls.filter((call) => call.name === "focus").length,
+    1,
+    "the tour ended without returning focus, so the keyboard user is left on document.body"
+  )
+})
+
 test("the card's own tab order is Back, Next, Skip", () => {
   const instance = mount({ defaultStepId: "search" }, { "#search": element() })
   const labels = overlay(instance).buttons.map(

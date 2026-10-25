@@ -587,6 +587,32 @@ export const ProductTour = React.forwardRef<HTMLDivElement, ProductTourProps>(fu
   }, [open, index, step?.target])
 
   /**
+   * Gives focus back to whatever had it when the tour opened.
+   *
+   * The card takes focus on every step and is gone from the document the moment the tour ends, so
+   * without this the browser falls back to `document.body`: a person who was working the page with
+   * a keyboard — and who may not have asked for the tour at all — is returned to the top of it with
+   * their place lost. The same pattern as command-palette and keyboard-shortcuts, which is where a
+   * reader will look for it.
+   *
+   * Separate from the per-step effect below, and keyed only on `open`, because that one re-runs at
+   * every step: restoring from its cleanup would snatch focus back to the page between steps.
+   */
+  const restoreFocusTo = React.useRef<HTMLElement | null>(null)
+  React.useEffect(() => {
+    if (!open || typeof document === "undefined") return
+    restoreFocusTo.current = document.activeElement as HTMLElement | null
+    return () => {
+      const previous = restoreFocusTo.current
+      restoreFocusTo.current = null
+      // Only if it is still in the document. A step that told the person to press the control it
+      // was pointing at has every chance of having caused that control to be replaced, and focusing
+      // a detached node puts focus on the body — which is the thing this exists to avoid.
+      if (previous?.isConnected) previous.focus?.()
+    }
+  }, [open])
+
+  /**
    * Moves focus onto the card at every step.
    *
    * To the card and not to a button on it, so a screen reader reads the step before its controls;

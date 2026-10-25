@@ -21,6 +21,13 @@ copies code into your project, so existing installs are never changed automatica
   The attribute is now set only while the default hint is rendered; a caller supplying their own
   content can name their own description.
 
+- a11y(product-tour): the tour never gave focus back. The card takes focus at every step and is
+  gone from the document when the tour ends, so Done, the × and Escape all left focus on
+  `document.body` — a keyboard user part way down a settings page was returned to the top of it with
+  their place lost. Focus is now captured as the tour opens and restored when it closes, the pattern
+  command-palette and keyboard-shortcuts already use, skipped when the element has since left the
+  document.
+
 ## 2026-10-18 — quality sweep
 
 - fix(camera-capture): the camera never opened in development. A component's effects can be torn
