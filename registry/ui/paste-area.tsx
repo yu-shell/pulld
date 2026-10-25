@@ -616,7 +616,14 @@ export const PasteArea = React.forwardRef<HTMLDivElement, PasteAreaProps>(functi
       role="group"
       tabIndex={disabled ? -1 : 0}
       aria-label={text.label}
-      aria-describedby={hintId}
+      /*
+        Only while the default hint is the thing being described. `children` replaces that hint, and
+        a describedby left pointing at an id no longer in the document describes nothing — the
+        attribute is silently dropped, so the region loses its instruction with no sign that it did.
+        A caller supplying their own content can name their own description: `props` is spread after
+        this and wins.
+      */
+      aria-describedby={children ? undefined : hintId}
       aria-disabled={disabled || undefined}
       onClick={handleClick}
       /*

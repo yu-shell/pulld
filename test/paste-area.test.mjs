@@ -501,6 +501,19 @@ test("the region is focusable and named, with its instruction attached", () => {
   assert.ok(hint, "aria-describedby points at nothing")
 })
 
+// The hint is the region's whole instruction, and it is the thing `children` replaces. Left
+// unconditional, the attribute went on pointing at an id that was no longer in the document, which
+// an assistive technology drops without comment: the region keeps its name and loses its
+// description, and nothing in the tree says so.
+test("the instruction is only pointed at while it is in the tree", () => {
+  const custom = mount({ children: { type: "p", props: { children: "Drop a receipt" } } }).tree
+  const described = custom.props["aria-describedby"]
+  if (described !== undefined) {
+    const target = walk(custom).find((n) => n.props?.id === described)
+    assert.ok(target, `aria-describedby points at "${described}", which is not in the tree`)
+  }
+})
+
 test("a disabled region is out of the tab order and says so", () => {
   const tree = mount({ disabled: true }).tree
   assert.equal(tree.props.tabIndex, -1)

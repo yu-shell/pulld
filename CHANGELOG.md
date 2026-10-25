@@ -15,6 +15,12 @@ copies code into your project, so existing installs are never changed automatica
   translated down with "Release to refresh" showing and no further touch coming to clear it. The
   close is now unconditional, and `run` still holds the indicator open on the path that refreshes.
 
+- a11y(paste-area): `children` replaced the hint the region pointed at, leaving `aria-describedby`
+  aimed at an id no longer in the document. An assistive technology drops that silently, so a region
+  given custom content kept its name and lost its instruction with nothing in the tree to show it.
+  The attribute is now set only while the default hint is rendered; a caller supplying their own
+  content can name their own description.
+
 ## 2026-10-18 — quality sweep
 
 - fix(camera-capture): the camera never opened in development. A component's effects can be torn
