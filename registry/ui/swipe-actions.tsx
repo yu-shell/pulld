@@ -506,7 +506,12 @@ export const SwipeActions = React.forwardRef<HTMLDivElement, SwipeActionsProps>(
      * The touch was taken away — an incoming call, the system's own edge gesture, a finger sliding
      * off the digitiser. Deliberately *not* the same handler as `onTouchEnd`: the row is far enough
      * across to snap open at that moment, and sharing one handler reveals actions the person never
-     * released onto. It closes instead, and leaves nothing half way.
+     * released onto.
+     *
+     * It puts the row back where the finger found it instead, which is the same rule `abandon`
+     * follows and for the same reason: a row that was already showing its actions has to survive
+     * the interruption, or an incoming call takes away the buttons the person was reaching for. So
+     * a row that started shut closes, a row that was open stays open, and neither is left half way.
      */
     const onTouchCancel = React.useCallback(() => {
       const gesture = gestureRef.current

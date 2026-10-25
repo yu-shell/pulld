@@ -397,6 +397,28 @@ test("the row's own click is swallowed after a swipe, not passed on as a choice"
   assert.equal(second, true)
 })
 
+test("an interrupted touch leaves a row that was already open open", () => {
+  // The other half of the cancel rule, and the half "it closes" gets wrong. The test below covers a
+  // row that started shut, where closing and going back are the same thing. Here they are not: the
+  // row was open before the finger landed, so closing would take away the buttons the person was
+  // reaching for — the same loss `abandon` exists to prevent when a scroll passes over an open row.
+  const result = mount()
+  toggleOf(result).props.onClick()
+  result.rerender()
+  assert.equal(toggleOf(result).props["aria-expanded"], true)
+
+  const root = result.tree
+  root.props.onTouchStart({ touches: [{ clientX: 200, clientY: 100 }], timeStamp: 0 })
+  root.props.onTouchCancel()
+  result.rerender()
+
+  assert.equal(
+    toggleOf(result).props["aria-expanded"],
+    true,
+    "an interruption closed the actions the person had opened"
+  )
+})
+
 test("a touchcancel puts the row back instead of revealing actions nobody released onto", () => {
   // An incoming call or the system's own edge gesture arrives at the moment the row is far enough
   // across to snap open. Sharing the release handler would open it.
