@@ -602,6 +602,65 @@ test("the indicator says what releasing will do, and changes at the threshold", 
   instance.unmount()
 })
 
+/** The box carrying the pull transform — the one thing on screen that says the list is open. */
+const findTranslated = (tree) =>
+  byTag(walk(tree), "div").find((n) => n.props?.style && "transform" in n.props.style)
+
+/** The indicator's own label, which fades in with the pull. */
+const findIndicatorLabel = (tree) => {
+  const indicator = byTag(walk(tree), "div").find((n) => n.props?.["aria-hidden"] === "true")
+  return byTag(walk(indicator), "span").find((n) => n.props?.style && "opacity" in n.props.style)
+}
+
+// The indicator is held open at the threshold while a refresh is in flight expressly so the spinner
+// has somewhere to sit — and the button is the path with no finger behind it, so there is no travel
+// distance to fade by. Faded by `distance` the label came out at `opacity: 0`: a 64px gap opens
+// under the header, a spinner turns in it, and the word for what is happening is invisible. Every
+// non-touch refresh goes through here.
+test("the label in the indicator the button opens is actually visible", () => {
+  const instance = mount({ onRefresh: () => new Promise(() => {}) })
+  findButton(instance.tree).props.onClick()
+  instance.rerender()
+
+  assert.equal(findTranslated(instance.tree).props.style.transform, `translateY(${DEFAULT_PULL_THRESHOLD}px)`)
+  const label = findIndicatorLabel(instance.tree)
+  assert.equal(label.props.children, "Refreshing…")
+  assert.equal(label.props.style.opacity, 1)
+  instance.unmount()
+})
+
+// `run` declines when the component is disabled or already busy, and the release path used to hand
+// it the close and return. When it declined, nothing closed: the list stayed translated down at the
+// distance the finger left it, "Release to refresh" still showing, and no touch coming to clear it —
+// a parent that disables refreshing part-way through a pull (going offline is the ordinary way) wedges
+// the list open. Asserted through the transform because that is the stuck thing the person sees.
+test("a release the component declines still closes the list", () => {
+  const props = { onRefresh: () => {}, children: { type: "ul", props: {} } }
+  const instance = render(PullToRefresh, props)
+  const { listener } = touchmoveRegistration(instance)
+
+  findScroller(instance.tree).props.onTouchStart({ touches: [{ clientX: 50, clientY: 100 }] })
+  listener({
+    touches: [{ clientX: 50, clientY: 100 + DEFAULT_PULL_THRESHOLD + 20 }],
+    cancelable: true,
+    preventDefault() {},
+  })
+  instance.rerender()
+  assert.match(findTranslated(instance.tree).props.style.transform, /^translateY\(/)
+
+  // The pull is armed. Refreshing is turned off under it, and only then does the finger lift.
+  instance.update({ ...props, disabled: true })
+  findScroller(instance.tree).props.onTouchEnd()
+  instance.rerender()
+
+  assert.equal(
+    findTranslated(instance.tree).props.style.transform,
+    undefined,
+    "the list is still held open by a pull that was never allowed to refresh"
+  )
+  instance.unmount()
+})
+
 test("the threshold and ceiling are the documented defaults", () => {
   assert.equal(DEFAULT_PULL_THRESHOLD, 64)
   assert.equal(SCROLL_TOP_EPSILON, 1)

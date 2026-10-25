@@ -367,11 +367,13 @@ export const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps
       const gesture = gestureRef.current
       gestureRef.current = null
       setDragging(false)
-      if (gesture && !gesture.abandoned && isArmed(gesture.distance, threshold)) {
-        run()
-        return
-      }
+      // Closed unconditionally, before deciding whether to refresh. `run` holds the indicator open
+      // by way of `refreshing`, so an armed release looks the same either way — but `run` also
+      // *declines*, when the component was disabled or a refresh began between the finger landing
+      // and it lifting, and returning early on that path left the list translated down with
+      // "Release to refresh" showing and no further touch coming to clear it.
       setDistance(0)
+      if (gesture && !gesture.abandoned && isArmed(gesture.distance, threshold)) run()
     }, [run, threshold])
 
     /**
@@ -448,7 +450,11 @@ export const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps
     // Held open at the threshold while the request is out, so the spinner has somewhere to sit
     // instead of the list snapping shut over it the instant the finger lifts.
     const offset = refreshing ? threshold : distance
-    const progress = Math.min(1, threshold > 0 ? distance / threshold : 0)
+    // Read off `offset` rather than `distance`, because `offset` is the gap actually on screen and
+    // the fade has to match it. The two part company only while a refresh is in flight, which is
+    // the whole of the button's path: there was never a finger there, so `distance` is 0 and fading
+    // by it left "Refreshing…" at `opacity: 0` in an indicator opened expressly to show it.
+    const progress = Math.min(1, threshold > 0 ? offset / threshold : 0)
 
     return (
       <div ref={ref} className={cn("flex flex-col", className)} {...props}>

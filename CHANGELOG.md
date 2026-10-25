@@ -3,6 +3,18 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-10-25 — quality sweep
+
+- fix(pull-to-refresh): the Refresh button opened the indicator and left it blank, and a refusal
+  could wedge the list open. The indicator is held at the threshold while a refresh is in flight so
+  the spinner has somewhere to sit, but its label faded in by finger travel — and the button is the
+  path with no finger behind it, so `distance` was 0 and "Refreshing…" was drawn at `opacity: 0`
+  underneath a turning spinner. Every non-touch refresh went through there. The fade now reads the
+  offset actually on screen. Separately, the release path handed the close to `run` and returned, so
+  when `run` declined — disabled, or a refresh already in flight — nothing closed: the list stayed
+  translated down with "Release to refresh" showing and no further touch coming to clear it. The
+  close is now unconditional, and `run` still holds the indicator open on the path that refreshes.
+
 ## 2026-10-18 — quality sweep
 
 - fix(camera-capture): the camera never opened in development. A component's effects can be torn
