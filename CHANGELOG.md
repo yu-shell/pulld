@@ -28,6 +28,18 @@ copies code into your project, so existing installs are never changed automatica
   command-palette and keyboard-shortcuts already use, skipped when the element has since left the
   document.
 
+- docs(swipe-actions): the touchcancel comment said the row closes. It returns the row to where the
+  finger found it — the rule `abandon` follows, and the one that matters: a row already showing its
+  actions has to survive an interruption, or an incoming call takes away the buttons the person was
+  reaching for. Only a row that started shut closes. The behaviour was already right and is now
+  pinned by a test; the comment was the defect.
+
+- docs(sticky-table-header): the measuring comment described a row the code does not read. It said
+  widths come from the first row "rather than from the header" because a `<th>` may be narrower than
+  the cells beneath it — but `querySelector("tr")` returns the header row in any table with a
+  `<thead>`, and the premise is not how tables work: a column is a single width for every cell in
+  it, so a `<th>` already reports what the widest cell in its column made it. No behaviour change.
+
 ## 2026-10-18 — quality sweep
 
 - fix(camera-capture): the camera never opened in development. A component's effects can be torn

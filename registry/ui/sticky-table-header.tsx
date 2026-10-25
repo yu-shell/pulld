@@ -168,8 +168,10 @@ export function needsMeasurement(columns: number): boolean {
 /**
  * Keeps `--sticky-table-left-*` in step with the real widths of the pinned columns.
  *
- * Widths are read from the first row rather than from the header, because a `<th>` may be narrower
- * than the cells beneath it and the column's width is whatever the widest cell made it.
+ * Widths are read from the first `<tr>` in the table, which is the header row whenever there is a
+ * `<thead>`. Any row gives the same answer: a table column is a single width for every cell in it,
+ * so a `<th>` already reports whatever the widest cell in its column made it. What there is no
+ * static answer for is the width itself, which is the whole reason this effect exists.
  */
 function useStickyColumnOffsets(
   ref: React.RefObject<HTMLDivElement | null>,
