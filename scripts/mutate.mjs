@@ -23,7 +23,7 @@
 //     the same rule (a clamp after an index, a guard after a parse),
 //   - an artifact of the harness: it runs every effect on every pass, so a dependency array has no
 //     observable consequence here and a mutation inside one is invisible by construction.
-import { readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
 import ts from "typescript"
@@ -138,12 +138,53 @@ export function mutationsFor(source, fileName = "input.tsx") {
 
 const lineOf = (source, index) => source.slice(0, index).split("\n").length
 
+/**
+ * How long one mutant's suite may take before it is treated as hung.
+ *
+ * It needs a deadline at all because a mutation can make the code loop forever, and a run of 350
+ * then stops at the first one: the day this was added, one mutant turned the chunk-splitter's
+ * backstop into `while (to + start > limit)` and the run sat on it for seventeen minutes.
+ * Generous against the suite's own runtime (a few hundred milliseconds), so a slow machine is
+ * never mistaken for a loop.
+ */
+const RUN_TIMEOUT_MS = 20_000
+
+/**
+ * Runs the test file once.
+ *
+ * Directly rather than through `node --test`, which forks a runner process that forks a worker per
+ * file: three processes, of which only the first receives the timeout's kill. The other two outlive
+ * it, and a hanging mutant leaves a spinning orphan behind for every run. Executing the file itself
+ * puts the tests in the one process the deadline can actually end — node's test runner reports and
+ * sets the exit code the same way either way, which is all this reads.
+ */
+function runSuite(testPath) {
+  return spawnSync(process.execPath, [testPath], {
+    encoding: "utf8",
+    timeout: RUN_TIMEOUT_MS,
+    killSignal: "SIGKILL",
+  })
+}
+
 function main(argv) {
   const [sourcePath, testPath, ...flags] = argv
   if (!sourcePath || !testPath) {
     console.error("usage: node scripts/mutate.mjs <source.tsx> <test.test.mjs> [--list]")
     return 2
   }
+  // A sidecar left behind means the previous run was killed before it could put the file back, so
+  // what is on disk now is a mutant. Repair it before reading, or every mutation this run reports
+  // is measured against code nobody wrote.
+  const leftover = `${sourcePath}.mutate-backup`
+  if (existsSync(leftover)) {
+    const saved = readFileSync(leftover, "utf8")
+    if (saved !== readFileSync(sourcePath, "utf8")) {
+      writeFileSync(sourcePath, saved)
+      console.error(`restored ${sourcePath} from an interrupted run`)
+    }
+    rmSync(leftover, { force: true })
+  }
+
   const original = readFileSync(sourcePath, "utf8")
   const mutations = mutationsFor(original)
 
@@ -156,13 +197,23 @@ function main(argv) {
   }
 
   // The baseline matters: a suite that is already red says nothing about any mutant.
-  const baseline = spawnSync(process.execPath, ["--test", testPath], { encoding: "utf8" })
+  const baseline = runSuite(testPath)
   if (baseline.status !== 0) {
     console.error(`the suite is already failing — fix that first\n${baseline.stdout?.slice(-2000)}`)
     return 1
   }
 
-  const restore = () => writeFileSync(sourcePath, original)
+  // The original is also written beside the source, because holding it only in memory makes the
+  // restore conditional on this process living long enough to run it. It does not always: a kill
+  // that lands between writing a mutant and writing the original back leaves the mutant in the
+  // file, type-valid and silent, and the next reader has no way to know. The sidecar turns that
+  // into something the next run repairs by itself.
+  const backupPath = `${sourcePath}.mutate-backup`
+  writeFileSync(backupPath, original)
+  const restore = () => {
+    writeFileSync(sourcePath, original)
+    rmSync(backupPath, { force: true })
+  }
   for (const signal of ["SIGINT", "SIGTERM"]) {
     process.on(signal, () => {
       restore()
@@ -171,22 +222,33 @@ function main(argv) {
   }
 
   const survivors = []
+  const hung = []
   try {
     for (const [index, m] of mutations.entries()) {
       writeFileSync(sourcePath, original.slice(0, m.start) + m.to + original.slice(m.end))
-      const run = spawnSync(process.execPath, ["--test", testPath], { encoding: "utf8" })
+      const run = runSuite(testPath)
+      const timedOut = run.error?.code === "ETIMEDOUT"
       const killed = run.status !== 0
       const line = lineOf(original, m.start)
-      if (!killed) survivors.push({ ...m, line })
+      if (timedOut) hung.push({ ...m, line })
+      else if (!killed) survivors.push({ ...m, line })
       process.stdout.write(
-        `${killed ? "." : "S"}${(index + 1) % 50 === 0 ? ` ${index + 1}/${mutations.length}\n` : ""}`
+        `${timedOut ? "T" : killed ? "." : "S"}${(index + 1) % 50 === 0 ? ` ${index + 1}/${mutations.length}\n` : ""}`
       )
     }
   } finally {
     restore()
   }
 
-  console.log(`\n\n${mutations.length} mutants, ${mutations.length - survivors.length} killed, ${survivors.length} survived`)
+  console.log(
+    `\n\n${mutations.length} mutants, ${mutations.length - survivors.length} killed, ${survivors.length} survived` +
+      (hung.length ? `, of which ${hung.length} by hanging` : "")
+  )
+  // Counted as killed — a suite that never finishes has certainly noticed — but listed, because a
+  // mutant that loops forever is pointing at a loop whose termination rests on the token it changed.
+  for (const h of hung) {
+    console.log(`  HUNG     ${sourcePath}:${h.line}  ${h.from} -> ${h.to || "(removed)"}`)
+  }
   for (const s of survivors) {
     // The context is the point: two `||` on one line are two mutants, and which one lived is the
     // whole question. Printed with the replacement spliced in, so the survivor reads as the code
