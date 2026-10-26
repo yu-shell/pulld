@@ -66,6 +66,27 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // A speaker over a paragraph with ONE line lit, because what distinguishes this from the other
+  // audio cards is that the subject is the text, not the sound: speech-input is the waveform-and-
+  // "Listening" one, audio-recorder is the meter and the clock. The lit line is the sentence being
+  // read — the component speaks a sentence at a time and hands back its index, so a thumbnail
+  // showing a whole glowing paragraph would show the thing it deliberately does not do.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box carrying 10px of padding and a
+  // 1px border, so 82px is all the content gets and a 104px child loses 11px to overflow:hidden.
+  "read-aloud": `<div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:100%;box-sizing:border-box"><span style="display:inline-flex;color:var(--accent)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg></span><div style="display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box">${[
+    ["100%", false],
+    ["86%", true],
+    ["94%", false],
+    ["62%", false],
+  ]
+    .map(
+      ([width, lit]) =>
+        `<span style="height:4px;border-radius:2px;width:${width};background:${
+          lit ? "color-mix(in srgb,var(--accent) 46%,var(--surface))" : "var(--line)"
+        }${lit ? ";box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 32%,transparent)" : ""}"></span>`
+    )
+    .join("")}</div></div>`,
   // The toolbar alone would have been a row of icons, which is every other component here. What
   // makes it this one is the pair: a run of text picked out of the paragraph, and the toolbar
   // sitting over that run with a tail pointing back down at it. The highlighted run is deliberately
