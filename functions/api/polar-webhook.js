@@ -116,6 +116,15 @@ async function logEvent(env, event, ok, note) {
   }
 }
 
+// D1's own count of the rows a statement wrote (`meta.changes`), or null when the binding did not
+// say. The distinction is the point: the counts below exist so a revocation cannot claim more than
+// it did, and reading a missing count as a zero would invent the opposite failure — a refund that
+// worked, reported as paid access still live. Unknown stays unknown.
+const changesOf = (res) => {
+  const n = res?.meta?.changes
+  return Number.isFinite(n) ? n : null
+}
+
 function genKey() {
   const b = new Uint8Array(18)
   crypto.getRandomValues(b)
@@ -264,21 +273,65 @@ export async function onRequestPost(context) {
         await logEvent(env, `polar:${type}`, true, `pro license issued`)
       }
     } else if (isRevoke) {
-      if (subId) {
-        await env.DB.prepare("UPDATE search_projects SET active = 0 WHERE ls_subscription = ?")
-          .bind(subId)
-          .run()
-      }
+      // What this revocation deactivated, rather than what it attempted. Both statements below
+      // match on a value the event carried and either can match nothing: an `ls_subscription` this
+      // project never stored (a row provisioned from an `order.paid` that carried no subscription
+      // id has the column NULL), or a Pro license key the Polar API would not hand back —
+      // fetchLicenseKey returns null for a missing or rotated POLAR_ACCESS_TOKEN, an unresolvable
+      // product benefit and a network error alike, and a rotated token is the ordinary way it
+      // happens.
+      //
+      // The note said `revoked (sub=… pro=…)` with ok=1 in every one of those cases, so the record
+      // of a refund that left paid access alive was identical to the record of one that worked.
+      // Nothing else in the system would catch it: the Pro gate accepts any `active = 1` row, and
+      // webhook_log is the only place a revocation is written down at all.
+      //
+      // The issue path above already treats this shape as a failure — an ungranted license key is
+      // logged ok=0 and answered with a retryable 503 rather than a silent success. Revocation is
+      // the side where the silence costs money and it had none of that.
       // One-time Pro refund (no subscription): deactivate the license by its key.
-      if (isPro || !subId) {
+      const byKey = isPro || !subId
+      let projects = 0
+      let licenses = 0
+      let keyUnresolved = false
+      if (subId) {
+        projects = changesOf(
+          await env.DB.prepare("UPDATE search_projects SET active = 0 WHERE ls_subscription = ?")
+            .bind(subId)
+            .run()
+        )
+      }
+      if (byKey) {
         const lk = await fetchLicenseKey(env, { customerId, productId })
         if (lk) {
-          await env.DB.prepare("UPDATE licenses SET active = 0, status = 'refunded' WHERE key = ?")
-            .bind(lk)
-            .run()
+          licenses = changesOf(
+            await env.DB.prepare("UPDATE licenses SET active = 0, status = 'refunded' WHERE key = ?")
+              .bind(lk)
+              .run()
+          )
+        } else {
+          keyUnresolved = true
         }
       }
-      await logEvent(env, `polar:${type}`, true, `revoked (sub=${subId} pro=${isPro})`)
+      // A half that never ran deactivated nothing, and knowably so — which is why both start at 0
+      // rather than at null. Only a count the binding withheld is unknown, and an unknown one must
+      // not be added up into a verdict.
+      const unknown = projects === null || licenses === null
+      const deactivated = (projects ?? 0) + (licenses ?? 0)
+      // Scoped to a product this project sells. A `subscription.revoked` for anything else runs the
+      // first statement harmlessly and is expected to match nothing, so counting those as failures
+      // would bury the ones that mean a paying customer kept their access.
+      const nothingDeactivated = (isSearch || isPro) && !unknown && deactivated === 0
+      const projectCount = subId ? projects ?? "?" : "n/a"
+      const licenseCount = !byKey ? "n/a" : keyUnresolved ? "no-key" : licenses ?? "?"
+      await logEvent(
+        env,
+        `polar:${type}`,
+        !nothingDeactivated,
+        `revoked (sub=${subId} pro=${isPro}) ` +
+          `projects=${projectCount} licenses=${licenseCount}` +
+          (nothingDeactivated ? " — nothing was deactivated; paid access may still be live" : "")
+      )
     } else if (isIssue) {
       // Paid order for a product in neither POLAR_SEARCH_PRODUCT_IDS nor POLAR_PRO_PRODUCT_IDS —
       // log loudly (ok=0) so a product-id misconfiguration is visible rather than silently dropped.
