@@ -26,8 +26,12 @@ const API = "https://api.polar.test"
 
 // Records every statement the handler runs, so a test can assert on the SQL *and* its bindings.
 // `failOn` makes writes to a chosen table throw, modelling a D1 outage on one statement.
-function fakeDB({ failOn = null } = {}) {
+function fakeDB({ failOn = null, changes = 1 } = {}) {
   const calls = []
+  // Rows a statement reports having written, as D1 puts them in `meta.changes`. A number applies to
+  // every statement; `null` models a binding that does not report the field at all, which the
+  // handler has to read as "cannot tell" rather than as a zero.
+  const rowsChanged = () => (changes === null ? null : changes)
   return {
     calls,
     // Statements that touched a given table, ignoring the always-present webhook_log writes.
@@ -41,7 +45,8 @@ function fakeDB({ failOn = null } = {}) {
             async run() {
               if (failOn && new RegExp(failOn, "i").test(sql)) throw new Error("D1 down")
               calls.push({ sql, args })
-              return { success: true }
+              const n = rowsChanged()
+              return n === null ? { success: true } : { success: true, meta: { changes: n } }
             },
           }
         },
@@ -161,6 +166,106 @@ test("order.refunded on a Pro purchase marks that license refunded (terminal)", 
   } finally {
     f.restore()
   }
+})
+
+// --- a revocation that revoked nothing ---
+//
+// Both statements above match on a value the event carried, and either can match nothing: an
+// `ls_subscription` never stored, or a license key the Polar API would not hand back. The note was
+// `revoked (sub=… pro=…)` with ok=1 regardless, so the record of a refund that left paid access
+// alive read exactly like the record of one that worked — and webhook_log is the only place a
+// revocation is written down at all.
+
+test("a revocation that deactivated a row says how many, so the log can be checked", async () => {
+  const db = fakeDB() // every statement reports one row written
+  await post(
+    {
+      type: "subscription.revoked",
+      data: { id: "sub_abc", product_id: SEARCH_PRODUCT, customer_id: "cus_1" },
+    },
+    env(db)
+  )
+  const log = db.forTable("webhook_log").at(-1)
+  assert.equal(log.args[2], 1)
+  assert.match(log.args[3], /projects=1/)
+  // The license half never ran: this is a subscription, not a one-time Pro purchase.
+  assert.match(log.args[3], /licenses=n\/a/)
+})
+
+test("a subscription.revoked that matched no project is not recorded as a revocation", async () => {
+  // The row is matched on `ls_subscription`, and a project provisioned from an order.paid that
+  // carried no subscription id has that column NULL — so the UPDATE can match nothing while the
+  // handler still answers 200 and Polar never redelivers. The access stays live either way; what
+  // this pins is that the log stops claiming otherwise.
+  const db = fakeDB({ changes: 0 })
+  const res = await post(
+    {
+      type: "subscription.revoked",
+      data: { id: "sub_abc", product_id: SEARCH_PRODUCT, customer_id: "cus_1" },
+    },
+    env(db)
+  )
+  assert.equal(res.status, 200)
+  const log = db.forTable("webhook_log").at(-1)
+  assert.equal(log.args[2], 0, "recorded as not-ok, the way an unrecognized product already is")
+  assert.match(log.args[3], /projects=0/)
+  assert.match(log.args[3], /nothing was deactivated/)
+})
+
+test("a Pro refund whose license key cannot be resolved is not recorded as a revocation", async () => {
+  // fetchLicenseKey returns null for a rotated POLAR_ACCESS_TOKEN as readily as for a key that
+  // does not exist, and the issue path already treats an unavailable key as a failure rather than
+  // a success. This is the same shape on the side where the silence costs money.
+  const db = fakeDB()
+  const f = stubFetch({ keys: [] })
+  try {
+    const res = await post(
+      { type: "order.refunded", data: { product_id: PRO_PRODUCT, customer_id: "cus_1" } },
+      env(db)
+    )
+    assert.equal(res.status, 200)
+    assert.equal(db.forTable("UPDATE licenses").length, 0, "there was no key to update")
+    const log = db.forTable("webhook_log").at(-1)
+    assert.equal(log.args[2], 0)
+    assert.match(log.args[3], /licenses=no-key/)
+    assert.match(log.args[3], /nothing was deactivated/)
+  } finally {
+    f.restore()
+  }
+})
+
+test("a binding that does not report a row count is not read as a failed revocation", async () => {
+  // The counts come from `meta.changes`, and an absent one means "cannot tell". Read as a zero it
+  // would invent the opposite alarm — every revocation reported as having left paid access live,
+  // on a database that in fact did the work.
+  const db = fakeDB({ changes: null })
+  await post(
+    {
+      type: "subscription.revoked",
+      data: { id: "sub_abc", product_id: SEARCH_PRODUCT, customer_id: "cus_1" },
+    },
+    env(db)
+  )
+  const log = db.forTable("webhook_log").at(-1)
+  assert.equal(log.args[2], 1, "unknown is not a failure")
+  assert.match(log.args[3], /projects=\?/)
+})
+
+test("a revoke for a product this project does not sell is not flagged for matching nothing", async () => {
+  // `subscription.revoked` fires for every product in the organization. The UPDATE runs and is
+  // expected to match nothing, so flagging those would bury the ones that mean a paying customer
+  // kept their access.
+  const db = fakeDB({ changes: 0 })
+  await post(
+    {
+      type: "subscription.revoked",
+      data: { id: "sub_other", product_id: "prod_unknown", customer_id: "cus_9" },
+    },
+    env(db)
+  )
+  const log = db.forTable("webhook_log").at(-1)
+  assert.equal(log.args[2], 1)
+  assert.doesNotMatch(log.args[3], /nothing was deactivated/)
 })
 
 test("a customer who owns both products never gets the other product's key", async () => {
