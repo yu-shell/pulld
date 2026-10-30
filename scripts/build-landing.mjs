@@ -552,6 +552,23 @@ const PREVIEWS = {
       "color-mix(in srgb,var(--muted) 55%,transparent)"
     )}</span>${bar}</div>`
   })(),
+  // The locked state, because that is the component's whole job: a document cut off by a fade with
+  // more below it, and the control under it visibly not available yet. The fade downward is what
+  // tells this apart from read-more's "Show more" link, and the button is what tells it apart from
+  // scroll-progress's bar. 43px box + 5 gap + 14 row = 62px, inside the 82px the preview box
+  // leaves — and the widths are percentages, so nothing is cut off on the right.
+  "terms-scroll-gate": (() => {
+    const line = (w) =>
+      `<span style="height:3px;width:${w};border-radius:2px;background:var(--muted);opacity:.5;flex:none"></span>`
+    const fade = "linear-gradient(to bottom,#000 0,#000 58%,transparent 100%)"
+    const doc = `<span style="display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;overflow:hidden;-webkit-mask-image:${fade};mask-image:${fade}">${line(
+      "100%"
+    )}${line("88%")}${line("96%")}${line("72%")}${line("90%")}</span>`
+    const box = `<span style="display:block;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:5px;background:var(--surface);padding:5px">${doc}</span>`
+    const arrow = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>`
+    const button = `<span style="flex:none;display:inline-flex;align-items:center;height:14px;padding:0 6px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:7px;line-height:1;opacity:.6;white-space:nowrap">I agree</span>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box">${box}<span style="display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;box-sizing:border-box">${arrow}${button}</span></div>`
+  })(),
   "middle-truncate": (() => {
     const mono = (text, color, weight = "400") =>
       `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`
