@@ -35,6 +35,22 @@ const today = () => new Date().toISOString().slice(0, 10)
 // so the "capped" batch quietly became the entire catalog — the opposite of what the cap is for.
 // Out-of-range or non-numeric falls back to the default, the way learn.mjs and usage-alert.mjs
 // validate their own env overrides.
+//
+// Each slice gets one slot before any slice gets a second, because the three were concatenated
+// in priority order and then cut at the cap, which is only fair while the first slice is shorter
+// than the batch. It stopped being: this registry gains a component most days (ROUTINE.md step 2)
+// and the sweep audits six a week, so the never-swept backlog outgrows the batch and `new` takes
+// the whole of it. Measured on 2026-10-31 — 128 components, 102 swept, 26 never — every one of the
+// six picks came back `new`, and that is what the last several runs had been doing: the
+// most-installed slice, the one slice chosen because those components are the ones people actually
+// hold, had not been audited since the backlog opened, and nothing had been RE-audited at all. The
+// cap was doing its job and the starvation showed up nowhere, because a batch of six plausible
+// names is what a healthy run looks like too.
+//
+// So the cap is allocated rather than consumed: one slot to each slice that has a candidate, then
+// the rest handed out in the same priority order as before. Below the crossover — a backlog that
+// fits inside the batch — this returns what it always did, which is why the tests above it did not
+// move. Above it, `new` still takes most of a run (four of six here) and the other two resume.
 export function pickScope({ names = [], state = {}, installs = {}, batch } = {}) {
   const requested = Math.floor(Number(batch))
   const cap = Number.isFinite(requested) && requested >= 1 ? requested : DEFAULT_BATCH
@@ -46,27 +62,59 @@ export function pickScope({ names = [], state = {}, installs = {}, batch } = {})
     .filter((n) => installs[n])
     .sort((a, b) => installs[b] - installs[a])
     .slice(0, TOP_INSTALLED)
-  // Oldest-swept first. A three-way compare, not `a < b ? -1 : 1`: the latter claims "greater" for
-  // two equal dates, and every component swept on the same day (the normal case — `mark` stamps a
-  // whole batch at once) compares equal, so their relative order was left to the sort's internals.
-  const rotating = [...names].sort((a, b) => {
-    const [x, y] = [sweptAt(a), sweptAt(b)]
-    return x < y ? -1 : x > y ? 1 : 0
-  })
+  // Oldest-swept first, and only among components that HAVE been swept. A never-swept one has no
+  // audit date to be oldest by — it is the `new` slice's — and leaving it in made `rotating` a
+  // superset of `newOnes` with the new ones at its head, so the reserved slot below would have
+  // spent itself on a second `new` pick and the rotation would still never have come round.
+  // (Before the allocation it was merely redundant: `newOnes` came first and deduped them away.)
+  //
+  // A three-way compare, not `a < b ? -1 : 1`: the latter claims "greater" for two equal dates,
+  // and every component swept on the same day (the normal case — `mark` stamps a whole batch at
+  // once) compares equal, so their relative order was left to the sort's internals.
+  const rotating = names
+    .filter((n) => sweptAt(n))
+    .sort((a, b) => {
+      const [x, y] = [sweptAt(a), sweptAt(b)]
+      return x < y ? -1 : x > y ? 1 : 0
+    })
 
-  const picked = []
-  for (const n of [...newOnes, ...top, ...rotating]) {
-    if (!picked.includes(n)) picked.push(n)
-    if (picked.length >= cap) break
+  const slices = [
+    { reason: () => "new", queue: newOnes, got: [] },
+    { reason: (n) => `top-installed(${installs[n]})`, queue: top, got: [] },
+    { reason: () => "rotating", queue: rotating, got: [] },
+  ]
+
+  // Each slice keeps what it won in its own bucket, and the buckets are concatenated at the end.
+  // Allocating and listing are separate because they want different orders: a slot has to be
+  // reserved for the later slices before the first one spends the batch, but the batch is still
+  // read by a person working down it, so it is listed `new` first exactly as before.
+  let left = cap
+  const taken = new Set()
+  const takeFrom = (slice) => {
+    while (slice.queue.length) {
+      const n = slice.queue.shift()
+      if (taken.has(n)) continue
+      taken.add(n)
+      slice.got.push({ name: n, reason: slice.reason(n), lastSwept: components[n]?.lastSwept || null })
+      left--
+      return true
+    }
+    // Exhausted, or every remaining candidate is already picked — which is how `new` and
+    // `top-installed` overlap. It hands its turn on rather than holding a slot empty.
+    return false
   }
-  const reasonFor = (n) =>
-    newOnes.includes(n) ? "new" : top.includes(n) ? `top-installed(${installs[n]})` : "rotating"
 
-  return picked.map((n) => ({
-    name: n,
-    reason: reasonFor(n),
-    lastSwept: components[n]?.lastSwept || null,
-  }))
+  for (const slice of slices) {
+    if (!left) break
+    takeFrom(slice)
+  }
+  // What is left goes out in the original priority order: a never-swept component is still the
+  // most urgent thing in the catalogue, so `new` empties first.
+  for (const slice of slices) {
+    while (left && takeFrom(slice)) {}
+  }
+
+  return slices.flatMap((s) => s.got)
 }
 
 // Pure mark application: which of the requested names this registry actually ships, the state that

@@ -152,3 +152,95 @@ test("pickScope does not mutate the names it is given", () => {
   pickScope({ names: all, state: swept({ z: "2026-01-01", m: "2026-02-01", a: "2026-03-01" }), batch: 3 })
   assert.deepEqual(all, ["z", "m", "a"])
 })
+
+// --- the cap is allocated between the slices, not consumed by the first one ---
+//
+// Everything above passes a batch large enough that no slice overflows, which is the only shape in
+// which concatenate-then-cut is fair. The header of this file says a change that starves one slice
+// "costs coverage without failing anything"; what it did not say is that the registry growing past
+// the batch does the same thing, with nothing changed at all. On 2026-10-31 it already had: 128
+// components, 102 swept, 26 never — so `newOnes` alone was four times the batch and all six picks
+// came back `new`. The most-installed slice had not been audited since the backlog opened and no
+// component had been RE-audited at all, while every run printed six plausible names.
+
+test("a never-swept backlog larger than the batch does not starve the other two slices", () => {
+  const fresh = Array.from({ length: 10 }, (_, i) => `n${i}`)
+  const out = pickScope({
+    names: [...fresh, "old-a", "old-b", "old-c"],
+    state: swept({ "old-a": "2026-01-01", "old-b": "2026-02-01", "old-c": "2026-03-01" }),
+    installs: { "old-c": 99 },
+    batch: 6,
+  })
+  assert.equal(out.length, 6)
+  const reasons = out.map((b) => b.reason)
+  assert.equal(reasons.filter((r) => r === "new").length, 4)
+  assert.deepEqual(reasons.slice(4), ["top-installed(99)", "rotating"])
+  // Still listed new-first: the batch is read top to bottom and a never-swept component is the
+  // most urgent thing in it. Only the last two slots were reserved away from the backlog.
+  assert.deepEqual(names(out).slice(0, 4), ["n0", "n1", "n2", "n3"])
+  assert.equal(names(out)[5], "old-a", "the rotation picks the oldest audit, not the newest")
+})
+
+test("the rotation is drawn only from components that have actually been swept", () => {
+  // A never-swept component has no audit date to be oldest by — it is the `new` slice's. Leaving
+  // it in the rotation made that slice a superset of `newOnes` with the new ones at its head, so
+  // the slot reserved above would have been spent on a second `new` pick and the rotation would
+  // still never have come round. Before the allocation this was merely redundant, which is why it
+  // survived: `newOnes` came first and deduped them away.
+  const out = pickScope({
+    names: ["fresh-1", "fresh-2", "fresh-3", "swept-once"],
+    state: swept({ "swept-once": "2026-01-01" }),
+    batch: 2,
+  })
+  assert.deepEqual(names(out), ["fresh-1", "swept-once"])
+  assert.deepEqual(
+    out.map((b) => b.reason),
+    ["new", "rotating"]
+  )
+})
+
+test("a slice with no candidate hands its slot on instead of shrinking the batch", () => {
+  // D1 unreachable (no installs) on top of a backlog: the reserved slot must not be held open for
+  // a slice that cannot fill it, or a run that should audit six would audit five and the cap would
+  // be quietly enforcing a smaller batch than SWEEP_BATCH asks for.
+  const fresh = Array.from({ length: 10 }, (_, i) => `n${i}`)
+  const out = pickScope({
+    names: [...fresh, "once"],
+    state: swept({ once: "2026-01-01" }),
+    batch: 6,
+  })
+  assert.equal(out.length, 6)
+  assert.equal(out.filter((b) => b.reason === "new").length, 5)
+  assert.equal(out[5].reason, "rotating")
+})
+
+test("a batch too small for three slices fills them in priority order", () => {
+  const out = pickScope({
+    names: ["fresh", "popular", "stale"],
+    state: swept({ popular: "2026-05-01", stale: "2026-01-01" }),
+    installs: { popular: 99 },
+    batch: 2,
+  })
+  assert.deepEqual(names(out), ["fresh", "popular"])
+  assert.deepEqual(
+    out.map((b) => b.reason),
+    ["new", "top-installed(99)"]
+  )
+})
+
+test("a backlog that fits inside the batch returns what it always did", () => {
+  // The regression guard for the allocation itself: below the crossover the two orders agree, and
+  // this is the shape every test above this block is in. `pop` is both the top install and the
+  // newest audit, so it also pins that the rotation keeps handing back the oldest.
+  const out = pickScope({
+    names: ["fresh-a", "fresh-b", "pop", "mid", "old"],
+    state: swept({ pop: "2026-06-01", mid: "2026-05-01", old: "2026-04-01" }),
+    installs: { pop: 99 },
+    batch: 5,
+  })
+  assert.deepEqual(names(out), ["fresh-a", "fresh-b", "pop", "old", "mid"])
+  assert.deepEqual(
+    out.map((b) => b.reason),
+    ["new", "new", "top-installed(99)", "rotating", "rotating"]
+  )
+})
