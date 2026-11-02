@@ -6,13 +6,19 @@
 // following the <a href> looks exactly like a person who changed their mind. Routing the click
 // through here records who it actually was, and gives the funnel a denominator we own.
 //
-// Crawlers are not redirected at all: they get a plain page with the link on it. That keeps them
-// out of Polar's checkout log while still being failure-safe — a misclassified person sees one
+// Only a person is redirected: everything else gets a plain page with the link on it. That keeps
+// it out of Polar's checkout log while still being failure-safe — a misclassified person sees one
 // extra click, not a dead end.
+//
+// "Everything else" is _traffic.js's `isPerson`, not its `isCrawler`. `isCrawler` is the narrow
+// regex the `is_bot` column is pinned to, and it answers "does this UA name itself a bot?" — a
+// client with no user-agent at all, a catalogue mirror and the shadcn CLI all pass it and were all
+// being redirected into a fresh Checkout Session. `isPerson` is the question this route actually
+// has, and it is the same one report.mjs reads the log back with.
 //
 // The checkout URLs live in wrangler.toml [vars] so the landing page (which now links to /go/…)
 // and this redirect can't drift apart. Best-effort logging: a click is never blocked by the log.
-import { isCrawler } from "../_traffic.js"
+import { isPerson } from "../_traffic.js"
 
 const TARGETS = {
   search: "POLAR_SEARCH_CHECKOUT_URL",
@@ -35,7 +41,12 @@ export async function onRequestGet(context) {
   if (!dest) return new Response("not found", { status: 404 })
 
   const ua = request.headers.get("user-agent") || ""
-  const crawler = isCrawler(ua)
+  // One verdict for both the hop and the column: `clicks.is_bot` is documented in db/schema.sql
+  // as "shown the link instead of being redirected", so it has to be the same test the hop makes
+  // or the column stops meaning what it says. Nothing reads it — report.mjs re-derives the
+  // classification from the stored `ua`, the way it does for `fetches` — so widening it costs no
+  // history.
+  const person = isPerson(ua)
 
   try {
     if (env.DB) {
@@ -51,7 +62,7 @@ export async function onRequestGet(context) {
             ua.slice(0, 256),
             (request.headers.get("cf-ipcountry") || "").slice(0, 8),
             referer.slice(0, 256),
-            crawler ? 1 : 0
+            person ? 0 : 1
           )
           .run()
           .catch((e) => console.error("click-log insert failed:", e?.message || e))
@@ -61,7 +72,7 @@ export async function onRequestGet(context) {
     console.error("click-log skipped:", e?.message || e)
   }
 
-  if (crawler) {
+  if (!person) {
     return new Response(
       `<!doctype html><meta name="robots" content="noindex,nofollow">` +
         `<title>pulld — checkout</title>` +

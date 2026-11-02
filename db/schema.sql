@@ -43,7 +43,12 @@ CREATE TABLE IF NOT EXISTS clicks (
   ua TEXT,                   -- user-agent (first 256 chars)
   country TEXT,              -- cf-ipcountry
   referer TEXT,              -- where the click came from (first 256 chars)
-  is_bot INTEGER DEFAULT 0   -- 1 = crawler; these are shown the link instead of being redirected
+  -- 1 = no person behind it (a crawler, a catalogue mirror, an install client, or anything that
+  -- does not look like a browser), which is exactly the set that is shown the link instead of
+  -- being redirected. Unlike `fetches.is_bot` this column tracks the routing decision rather than
+  -- the crawler regex, so the two always agree; rows written before 2026-11-03 carry the narrower
+  -- regex's answer, and nothing reads the column either way (report.mjs re-classifies from `ua`).
+  is_bot INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_clicks_date ON clicks(date);
 
