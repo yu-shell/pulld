@@ -569,6 +569,25 @@ const PREVIEWS = {
     const button = `<span style="flex:none;display:inline-flex;align-items:center;height:14px;padding:0 6px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:7px;line-height:1;opacity:.6;white-space:nowrap">I agree</span>`
     return `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box">${box}<span style="display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;box-sizing:border-box">${arrow}${button}</span></div>`
   })(),
+  // The same box twice with strings of different length in it, each one sized to span that width:
+  // the long figure small, the short one large. Both boxes are the same width on purpose — the
+  // width is the constraint and the type is what moves, which is the opposite of what a reader
+  // expects from a thumbnail and the whole point of the component. Not the width rule
+  // middle-truncate uses, so the two are not mistaken for each other at thumbnail size.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box carrying 10px of padding and a
+  // 1px border, so 82px is all the content gets. Each box then spends 1px of border and 2px of
+  // padding a side, leaving 76px for type — and the strings below are sized to land just inside it
+  // (a digit is about 0.6em with tabular figures, a comma about 0.28em), which is what makes them
+  // read as fitted rather than as two unrelated numbers.
+  "fit-text": (() => {
+    const box = (text, size) =>
+      `<span style="display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;overflow:hidden;border:1px solid var(--line);border-radius:5px;background:var(--surface);padding:2px"><span style="font-size:${size}px;line-height:1.15;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${text}</span></span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;box-sizing:border-box">${box(
+      "1,284,993",
+      14
+    )}${box("1.2M", 28)}</div>`
+  })(),
   "middle-truncate": (() => {
     const mono = (text, color, weight = "400") =>
       `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`

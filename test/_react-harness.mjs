@@ -129,7 +129,14 @@ function collectAttachedRefs(node, found = new Set()) {
 
 /** One stand-in node, with its own `calls` log: `[{ name, args }, ...]` in the order they came. */
 function makeStandIn() {
-  const node = { ...domStandIn, calls: [] }
+  // Its own object per node, not one on `domStandIn`, which is spread and would hand every node the
+  // same style. Writing an inline style to a node you are holding is as ordinary as focusing it —
+  // a size that has to be measured before it can be chosen cannot be written any other way — and it
+  // belongs here for the reason `contains` and `ownerDocument` do: so it is a no-op rather than the
+  // reason a component cannot be rendered at all. What is read back is whatever was written; the
+  // measurements beside it (`clientWidth`, `scrollWidth`) stay absent, so a component that measures
+  // reads "not measured yet", which is the server's answer and worth asserting on its own.
+  const node = { ...domStandIn, style: {}, calls: [] }
   for (const name of RECORDED) {
     node[name] = (...args) => {
       node.calls.push({ name, args })
