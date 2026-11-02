@@ -301,15 +301,25 @@ function reportClicks() {
   for (const r of rows) {
     const t = String(r.target)
     const n = Number(r.n) || 0
-    const acc = byTarget.get(t) || { human: 0, direct: 0, crawler: 0, other: 0 }
+    // Three buckets, and the line that divides them is whether /go/* handed this client the
+    // redirect: `human` and `direct` are the two verdicts that reached a Polar checkout, and
+    // everything else was given the plain link page instead (functions/go/[target].js, isPerson).
+    //
+    // `crawler` and a fourth `other` used to be kept apart and then printed added together —
+    // `direct-hit=${c.direct + c.other}` — which put `install` and `index` beside the browser-UA
+    // scripts under a legend reading "a script wearing a browser user-agent". It described
+    // neither of them, and the parenthetical below it promised that the automated rows reached no
+    // checkout while the route was redirecting a mirror and the shadcn CLI like anybody else.
+    // With the route asking isPerson, the split by checkout-reached is the real one, so the
+    // columns are the split.
+    const acc = byTarget.get(t) || { fromPage: 0, directHit: 0, automated: 0 }
     const kind = classifyClick({ ua: r.ua, referer: r.referer, site: SITE })
     if (kind === "human") {
-      acc.human += n
+      acc.fromPage += n
       const src = String(r.referer || "").trim()
       sources.set(src, (sources.get(src) || 0) + n)
-    } else if (kind === "direct") acc.direct += n
-    else if (kind === "crawler") acc.crawler += n
-    else acc.other += n
+    } else if (kind === "direct") acc.directHit += n
+    else acc.automated += n
     byTarget.set(t, acc)
   }
   console.log(`\nbuy-button clicks (last ${DAYS} days)`)
@@ -319,12 +329,14 @@ function reportClicks() {
   }
   for (const [t, c] of byTarget) {
     console.log(
-      `  ${t.padEnd(10)}from-page=${c.human}\tdirect-hit=${c.direct + c.other}\tcrawler=${c.crawler}`
+      `  ${t.padEnd(10)}from-page=${c.fromPage}\tdirect-hit=${c.directHit}\tautomated=${c.automated}`
     )
   }
   console.log("  from-page  = arrived with the landing page as referrer — the only bucket that is a person choosing to buy")
   console.log("  direct-hit = /go/* fetched without ever loading the page; a script wearing a browser user-agent")
-  console.log("  (crawlers are shown the link instead of being redirected, so they reach no checkout)")
+  console.log("  automated  = a crawler, a catalogue mirror, an install client, or no user-agent at all")
+  console.log("  (automated clients are shown the link instead of being redirected, so from-page and")
+  console.log("  direct-hit are the only two columns that reached a Polar checkout session)")
   if (sources.size) {
     console.log("  which page sent the real clicks:")
     for (const [src, n] of [...sources].sort((a, b) => b[1] - a[1]).slice(0, 8)) {

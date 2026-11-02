@@ -8,7 +8,7 @@
 // confused with the shadcn CLI (`Mozilla/5.0 shadcn-audit`, `shadcn-registry-indexer/0.1`).
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { classify, classifyClick, isCrawler, isInstall } from "../functions/_traffic.js"
+import { classify, classifyClick, isCrawler, isInstall, isPerson } from "../functions/_traffic.js"
 
 test("crawlers: indexers, scrapers and generic HTTP clients", () => {
   for (const ua of [
@@ -181,4 +181,33 @@ test("a declared crawler stays a crawler even when it sends a referrer", () => {
 test("no user-agent at all is never a person, referrer or not", () => {
   assert.equal(classifyClick({ ua: "", referer: "https://pulld.pages.dev/", site: SITE }), "crawler")
   assert.equal(classifyClick({}), "crawler")
+})
+
+// `isPerson` is what functions/go/[target].js acts on, so it is the one verdict in this file that
+// changes what a client receives rather than how a row is later counted. It must agree with
+// `classify` on every bucket — the bug it replaced was a second, narrower predicate (`isCrawler`)
+// standing in for this question, which let a UA-less client, a mirror and the shadcn CLI through
+// the buy redirect and into a Polar Checkout Session.
+test("only a browser is a person, and isPerson agrees with classify on every bucket", () => {
+  for (const ua of [
+    PIXEL,
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+  ]) {
+    assert.equal(isPerson(ua), true, ua)
+  }
+  for (const ua of [
+    "", // every real client sends one
+    undefined,
+    "shadcn", // an install client is a tool, not a buyer
+    "shadcn-mcp/0.1",
+    "shadcn-helper-intellij-plugin/1.2", // a catalogue mirror
+    "Googlebot/2.1 (+http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible)", // a costume with no engine in it
+    "SomeNewThing/1.0", // unknown, and not browser-shaped
+  ]) {
+    assert.equal(isPerson(ua), false, JSON.stringify(ua))
+  }
+  for (const ua of [PIXEL, "", "shadcn", "Googlebot/2.1", "Mozilla/5.0 (compatible)"]) {
+    assert.equal(isPerson(ua), classify(ua) === "human", JSON.stringify(ua))
+  }
 })

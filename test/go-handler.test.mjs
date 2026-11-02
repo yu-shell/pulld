@@ -11,6 +11,11 @@ import { onRequestGet } from "../functions/go/[target].js"
 const SEARCH_URL = "https://buy.polar.sh/polar_cl_search"
 const PRO_URL = "https://buy.polar.sh/polar_cl_pro"
 
+// A browser, engine and all — the one shape of client that gets the hop. Named because `ctx()`
+// below defaults the user-agent to "", which is NOT a person (functions/_traffic.js), so a test
+// about anything other than classification has to say so rather than inherit the default.
+const BROWSER = "Mozilla/5.0 (Macintosh) Chrome/126.0"
+
 // Minimal fake of the D1 binding: records the bound row of every INSERT so the test can assert
 // what was logged, and (like the real binding) resolves asynchronously.
 function fakeDB(rows = []) {
@@ -55,7 +60,7 @@ test("a browser is redirected to the product's checkout link", async () => {
     ["search", SEARCH_URL],
     ["pro", PRO_URL],
   ]) {
-    const c = ctx({ target, ua: "Mozilla/5.0 (Macintosh) Chrome/126.0" })
+    const c = ctx({ target, ua: BROWSER })
     const res = await onRequestGet(c)
     assert.equal(res.status, 302, target)
     assert.equal(res.headers.get("location"), dest, target)
@@ -65,9 +70,9 @@ test("a browser is redirected to the product's checkout link", async () => {
 })
 
 test("target matching is case-insensitive and an unknown target is a 404", async () => {
-  assert.equal((await onRequestGet(ctx({ target: "SEARCH" }))).status, 302)
+  assert.equal((await onRequestGet(ctx({ target: "SEARCH", ua: BROWSER }))).status, 302)
   for (const target of ["bogus", "", "__proto__", "constructor"]) {
-    const res = await onRequestGet(ctx({ target }))
+    const res = await onRequestGet(ctx({ target, ua: BROWSER }))
     assert.equal(res.status, 404, target)
   }
 })
@@ -88,11 +93,45 @@ test("a crawler is not redirected — it gets the link instead, so Polar sees no
   assert.ok(body.includes(SEARCH_URL), "the destination is still reachable by hand")
 })
 
+// The gap between "names itself a bot" and "is not a person". Every user-agent below passes
+// _traffic.js's CRAWLER_UA — so the old `isCrawler` gate redirected all of them — and none of
+// them is somebody buying. Polar opens a brand-new Checkout Session on every visit to a buy
+// link, so each one of these was a row in the dashboard that no person ever made, in the log
+// report.mjs prints as having reached no checkout.
+test("a client with no person behind it is not redirected, bot word or not", async () => {
+  for (const [ua, what] of [
+    ["", "no user-agent at all"],
+    ["shadcn/2.3.0", "the shadcn CLI following a link out of the catalogue"],
+    ["shadcn-helper-intellij-plugin/1.2", "a catalogue mirror"],
+    ["Mozilla/5.0 (compatible)", "a costume with no engine in it"],
+    ["SomeNewThing/1.0", "an unknown client that does not look like a browser"],
+  ]) {
+    const c = ctx({ target: "pro", ua })
+    const res = await onRequestGet(c)
+    assert.equal(res.status, 200, what)
+    assert.equal(res.headers.get("location"), null, what)
+    assert.ok((await res.text()).includes(PRO_URL), `${what}: the link is still there by hand`)
+  }
+})
+
+// The column says what the hop did — db/schema.sql calls it "shown the link instead of being
+// redirected" — so a client that was not redirected has to be flagged, even though it matches no
+// crawler word and the narrower regex scored it 0.
+test("is_bot records the hop that was actually made, not just a declared bot", async () => {
+  for (const ua of ["", "shadcn/2.3.0", "Mozilla/5.0 (compatible)"]) {
+    const db = fakeDB()
+    const c = ctx({ target: "search", ua, db })
+    await onRequestGet(c)
+    await flush(c)
+    assert.equal(db.rows[0].args[6], 1, JSON.stringify(ua))
+  }
+})
+
 test("every click is logged with its classification, before the hop", async () => {
   const db = fakeDB()
   const c = ctx({
     target: "pro",
-    ua: "Mozilla/5.0 (Macintosh) Chrome/126.0",
+    ua: BROWSER,
     referer: "https://pulld.pages.dev/",
     db,
   })
@@ -118,7 +157,7 @@ test("every click is logged with its classification, before the hop", async () =
 test("the redirect still works when logging is impossible", async () => {
   // Serving the click is never blocked by the log — an unbound DB or a failing insert must not
   // cost a sale.
-  const noDb = ctx({ target: "search", ua: "Mozilla/5.0 Chrome/126.0" })
+  const noDb = ctx({ target: "search", ua: BROWSER })
   noDb.env.DB = null
   assert.equal((await onRequestGet(noDb)).status, 302)
 
@@ -135,7 +174,7 @@ test("the redirect still works when logging is impossible", async () => {
       }
     },
   }
-  const c = ctx({ target: "search", ua: "Mozilla/5.0 Chrome/126.0", db: brokenDb })
+  const c = ctx({ target: "search", ua: BROWSER, db: brokenDb })
   const res = await onRequestGet(c)
   assert.equal(res.status, 302)
   await flush(c) // the rejected insert is caught inside the handler, not surfaced here

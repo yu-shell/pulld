@@ -67,6 +67,29 @@ export const isInstall = (ua) => {
   return k === "install" || k === "human"
 }
 
+// Is there a person behind this request? `classify` already answers it — `human` is the only one
+// of its four buckets that is somebody — and this names that reading because one caller has to
+// act on it rather than count it: functions/go/[target].js hands a person the redirect to Polar
+// and everything else a plain page with the link on it.
+//
+// It was asking `isCrawler` for that, which is a different question. `isCrawler` is the narrow
+// regex the `is_bot` COLUMN is pinned to (see the note at the top of this file), and the gap
+// between the two is the whole reason `classify` exists: a client with no user-agent at all, or
+// any UA that does not look like a browser, matches no CRAWLER_UA word, so it was handed the 302
+// and opened a Polar Checkout Session — the exact noise /go/* was written to keep out of a
+// dashboard where "each visit produces a brand new Checkout Session". A catalogue mirror and an
+// install client were redirected for the same reason.
+//
+// The read side had already settled every one of those cases — `classifyClick` below starts from
+// `classify`, and test/traffic-classify.test.mjs spells out that "no user-agent at all is never a
+// person" — so report.mjs filed those hits as automated traffic in a table whose own legend says
+// such clients reach no checkout. Both sides ask `classify` now, so that legend is true by
+// construction instead of by coincidence.
+//
+// Failure-safe in the one direction it can be: a misclassified person sees one extra click, not a
+// dead end, because the link is on the page they are given.
+export const isPerson = (ua) => classify(ua) === "human"
+
 // A buy button exists on exactly one page, so a real click on it arrives with that page as its
 // referrer. A hit on /go/* with no referrer never loaded the page at all — it is a script pulling
 // the two links out of the HTML. On 2026-08-23 twelve such hits arrived as six search/pro PAIRS
