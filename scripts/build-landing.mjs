@@ -588,6 +588,42 @@ const PREVIEWS = {
       14
     )}${box("1.2M", 28)}</div>`
   })(),
+  // A logo band cut off at BOTH edges, with the same accent mark appearing twice: the repeat is the
+  // only way a still picture can say "this comes round again", and the repeat is what the component
+  // is — a seamless loop exists because the content is duplicated.
+  //
+  // Both edges is also what tells the card apart from its neighbours. `scroll-shadow` fades one
+  // edge, `tab-scroller` cuts the right edge and puts a chevron over the cut, and both of those say
+  // "there is more this way, go and look"; a marquee says "it is coming to you", so neither a fade
+  // nor an arrow belongs here. Against `announcement-bar`, which is also a band across the page:
+  // that one is tinted, holds a sentence and ends in a ×, while this holds marks and no text.
+  //
+  // width:100%, never a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+  // 1px border, so 82px is all the content gets. The arithmetic inside is what puts the second
+  // accent mark on screen: each mark is 11px with an 8px gap, so a cycle of three is 57px, and the
+  // row starts at −4px so the first mark is cut. Measured in the generated page, that lands the
+  // marks at −3, 16, 35, 54 and 73 across the 80px inside the band's border — the accent at 54 is
+  // the second time round, and the mark at 73 runs off the right-hand edge. The band's own overflow
+  // is 3px by design and the preview box's is zero on both axes, which is the number that matters:
+  // the cut is the component's, not the card running out of room.
+  marquee: (() => {
+    const CYCLE_SPACING = 19
+    const circle = (tone) =>
+      `<span style="flex:none;width:11px;height:11px;border-radius:999px;background:${tone}"></span>`
+    const block = (tone) =>
+      `<span style="flex:none;width:11px;height:11px;border-radius:2.5px;background:${tone}"></span>`
+    const wedge = (tone) =>
+      `<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style="flex:none;display:block"><path d="M5.5 1 10.5 10H.5z" fill="${tone}"/></svg>`
+    const quiet = "color-mix(in srgb,var(--muted) 55%,transparent)"
+    // The accent is the first mark of the cycle, so the eye reads ●▪▲ ●▪ and lands on the second ●
+    // as the same logo again rather than as a fourth logo.
+    const marks = [circle("var(--accent)"), block(quiet), wedge(quiet), circle("var(--accent)"), block(quiet)]
+    const band = `<span style="display:block;width:100%;box-sizing:border-box;overflow:hidden;border:1px solid var(--line);border-radius:5px;background:var(--surface);padding:6px 0"><span style="display:flex;align-items:center;gap:${
+      CYCLE_SPACING - 11
+    }px;margin-left:-4px">${marks.join("")}</span></span>`
+    const caption = `<span style="font-size:8px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">Trusted by</span>`
+    return `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box">${caption}${band}</div>`
+  })(),
   "middle-truncate": (() => {
     const mono = (text, color, weight = "400") =>
       `<span style="font:10.5px ui-monospace,monospace;color:${color};font-weight:${weight}">${text}</span>`
