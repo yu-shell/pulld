@@ -580,6 +580,29 @@ const PREVIEWS = {
   // padding a side, leaving 76px for type — and the strings below are sized to land just inside it
   // (a digit is about 0.6em with tabular figures, a comma about 0.28em), which is what makes them
   // read as fitted rather than as two unrelated numbers.
+  // Two pairs, one over the other, each with its verdict — because the component is not the colours
+  // and not the swatch, it is the judgement about a pair. A single swatch would read as color-picker
+  // and a pair of swatches as a palette, so the ratio and the tick/cross have to be in the thumbnail
+  // or it shows the wrong component. The failing row deliberately draws its "Aa" in --line on
+  // --surface: at 82px the unreadable row has to be *visibly* unreadable, which is the one thing
+  // this component is for.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box carrying 10px of padding and a
+  // 1px border, so 82px is all the content gets and a 104px child loses 11px to overflow:hidden.
+  "color-contrast": (() => {
+    const tick =
+      '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
+    const cross =
+      '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>'
+    const row = (ink, ratio, mark, tone) =>
+      `<span style="display:flex;align-items:center;gap:4px;width:100%;box-sizing:border-box"><span style="flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:17px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:${ink};font-size:10px;font-weight:700;line-height:1">Aa</span><span style="flex:1;font-size:10px;line-height:1;font-variant-numeric:tabular-nums;color:${tone}">${ratio}</span>${mark}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:7px;width:100%;box-sizing:border-box">${row(
+      "var(--ink)",
+      "15.2",
+      tick,
+      "var(--ink)"
+    )}${row("var(--line)", "1.6", cross, "var(--muted)")}</div>`
+  })(),
   "fit-text": (() => {
     const box = (text, size) =>
       `<span style="display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;overflow:hidden;border:1px solid var(--line);border-radius:5px;background:var(--surface);padding:2px"><span style="font-size:${size}px;line-height:1.15;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap">${text}</span></span>`
