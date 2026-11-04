@@ -165,3 +165,83 @@ test("the credit total is exactly the sum of the per-item credits", () => {
     assert.equal(total, summed)
   }
 })
+
+// --- the client key is compared as a byte string, never collated ---
+//
+// The sort that puts a client's fetches next to each other has to agree with the `===` that
+// chains them about which keys are the same. `localeCompare` does not: its default collation
+// treats a class of characters as absent, `\u0000` — the key's own separator — among them. Two
+// keys one invisible character apart are therefore `=== false` (different clients, correctly) and
+// `localeCompare 0` (the same client, wrongly), so the two runs interleave by timestamp and the
+// chain breaks at every switch. A user-agent is attacker-supplied text stored verbatim, which is
+// what makes this reachable rather than theoretical: `@shadcn/mcp` with one soft hyphen on the end
+// is still an install client by _traffic.js, so it still reaches the reward.
+const CLOAKED_SWEEP = Array.from({ length: 8 }, (_, i) => ({
+  ts: 1786818128000 + i * 25,
+  // Alternating, so every consecutive pair in the sorted run is a switch.
+  ua: i % 2 ? "@shadcn/mcp\u00ad" : "@shadcn/mcp",
+  country: "VN",
+  item: `component-${i}`,
+}))
+
+test("a sweep stays one decision when its user-agent carries an invisible character", () => {
+  const { sessions, sweeps, rawCount, collapsedCount } = groupSessions(CLOAKED_SWEEP)
+  assert.equal(rawCount, 8)
+  // Two spellings of the UA = two clients, each taking 4 of the 8 — not eight clients taking one.
+  assert.equal(sessions.length, 2, "the two runs were interleaved instead of sorted apart")
+  assert.equal(sweeps.length, 2)
+  assert.equal(collapsedCount, 2)
+  assert.equal(creditSessions(CLOAKED_SWEEP).total, 0, "a sweep earns no per-component credit")
+})
+
+test("two keys that collate equal are still two clients", () => {
+  // Pinned on the comparison rather than on the grouping, because this is the property the sort
+  // has to have: the pair below is `=== false` and `localeCompare() === 0`, and it is the second
+  // answer that used to decide the order.
+  const soft = "@shadcn/mcp\u00ad"
+  assert.notEqual(soft, "@shadcn/mcp")
+  assert.equal(`VN\u0000${soft}`.localeCompare("VN\u0000@shadcn/mcp"), 0, "fixture no longer collides")
+  const events = [
+    { ts: 1_000, ua: "@shadcn/mcp", country: "VN", item: "a" },
+    { ts: 1_100, ua: soft, country: "VN", item: "b" },
+    { ts: 1_200, ua: "@shadcn/mcp", country: "VN", item: "c" },
+  ]
+  const { sessions } = groupSessions(events)
+  assert.equal(sessions.length, 2)
+  assert.deepEqual(
+    sessions.map((s) => [...s.items].sort()),
+    [["a", "c"], ["b"]],
+    "each client kept its own items"
+  )
+})
+
+test("the separator keeps a country/UA split from being misread", () => {
+  // `\u0000` is in the key so that ("US","shadcn") and ("","USshadcn") are different clients. They
+  // concatenate to the same text without it, which is exactly what collation reduced them to.
+  const events = [
+    { ts: 1_000, ua: "shadcn", country: "US", item: "a" },
+    { ts: 1_100, ua: "USshadcn", country: "", item: "b" },
+    { ts: 1_200, ua: "shadcn", country: "US", item: "c" },
+  ]
+  const { sessions } = groupSessions(events)
+  assert.equal(sessions.length, 2)
+})
+
+test("ordering does not depend on the host's locale", () => {
+  // The grouping is a property of the data, and the report exists to be compared with yesterday's
+  // (scripts/report.mjs). A collated sort makes it a property of the machine instead.
+  const events = [...CLOAKED_SWEEP, ...VN_SWEEP, ...US_SPREAD]
+  const expected = groupSessions(events).collapsedCount
+  const expectedCredit = creditSessions(events).total
+  const real = String.prototype.localeCompare
+  try {
+    // Any comparator reachable through collation must be unreachable from here.
+    String.prototype.localeCompare = function () {
+      throw new Error("groupSessions must not collate the client key")
+    }
+    assert.equal(groupSessions(events).collapsedCount, expected)
+    assert.equal(creditSessions(events).total, expectedCredit)
+  } finally {
+    String.prototype.localeCompare = real
+  }
+})
