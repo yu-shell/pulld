@@ -46,9 +46,27 @@ export function groupSessions(events, options = {}) {
       ts: e.ts === null || e.ts === undefined || e.ts === "" ? NaN : Number(e.ts),
     }))
     .filter((e) => Number.isFinite(e.ts))
+    // Keys compared as plain strings, never `localeCompare`. The sort exists for one reason —
+    // to put a client's own fetches next to each other, so the scan below can chain them — and
+    // it only has to agree with the `===` that does the chaining about which keys are the same.
+    // Collation does not: its default strength ignores a whole class of characters, `\u0000`
+    // among them, so the separator this key is built on (see `key`) is the one character the
+    // comparator cannot see. Measured: `"@shadcn/mcp"` and `"@shadcn/mcp\u00ad"` — one soft
+    // hyphen apart, both install clients by _traffic.js — are `=== false` and `localeCompare 0`,
+    // which is the worst pair of answers available. The two runs then interleave by timestamp
+    // instead of sorting apart, and because `===` is right to call them different clients, the
+    // chain breaks at every switch: a 0.2-second sweep of 8 components came back as 8
+    // one-row sessions, no sweep reported, all 8 credited as separate choices — the exact
+    // over-count this module exists to remove, from one invisible character in a user-agent.
+    // Any zero-width or control character does it, and a user-agent is stored verbatim.
+    //
+    // A three-way compare rather than `a < b ? -1 : 1`, the way sweep.mjs orders its rotating
+    // slice: the latter claims "greater" for two equal keys, and equal keys are the whole point
+    // here — their relative order has to fall through to the timestamp below.
     .sort((a, b) => {
-      const client = key(a).localeCompare(key(b))
-      return client !== 0 ? client : a.ts - b.ts
+      const [x, y] = [key(a), key(b)]
+      if (x !== y) return x < y ? -1 : 1
+      return a.ts - b.ts
     })
 
   const sessions = []
@@ -93,6 +111,9 @@ export function groupSessions(events, options = {}) {
 
 // Joined on a character neither field can contain, so a user-agent that happens to
 // begin with a space cannot be mistaken for a different country/UA split.
+//
+// That makes the key a byte string, not text: anything that compares it has to honour every
+// character in it, the separator included. The sort above says why that is worth stating.
 const key = (event) => `${event.country ?? ""}\u0000${event.ua ?? ""}`
 
 /**
