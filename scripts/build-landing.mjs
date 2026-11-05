@@ -589,6 +589,31 @@ const PREVIEWS = {
   //
   // width:100%, not a pixel width: `.preview` is a 104px border-box carrying 10px of padding and a
   // 1px border, so 82px is all the content gets and a 104px child loses 11px to overflow:hidden.
+  // Switches, not a notice: the thumbnail has to say "a decision per category" so it is not taken
+  // for announcement-bar, which is a bar with a message and a close. The two pills underneath are
+  // the other half of the component — the refusal at the same weight as the agreement.
+  "cookie-consent": (() => {
+    const track = (on) =>
+      `<span style="flex:none;position:relative;display:block;width:17px;height:10px;border-radius:999px;background:${
+        on ? "var(--accent)" : "var(--line)"
+      }"><span style="position:absolute;top:1.5px;left:${
+        on ? "8.5px" : "1.5px"
+      };width:7px;height:7px;border-radius:50%;background:var(--surface)"></span></span>`
+    const row = (width, on) =>
+      `<span style="display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box"><span style="flex:none;height:3px;width:${width};border-radius:2px;background:var(--muted);opacity:.45"></span><span style="flex:1"></span>${track(
+        on
+      )}</span>`
+    const pill = (primary) =>
+      `<span style="flex:1;height:13px;border-radius:4px;background:${
+        primary ? "var(--accent)" : "var(--surface)"
+      };border:1px solid ${primary ? "transparent" : "var(--line)"}"></span>`
+    return `<div style="display:flex;flex-direction:column;gap:8px;width:100%;box-sizing:border-box">${row(
+      "26px",
+      true
+    )}${row("20px", false)}<span style="display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box">${pill(
+      true
+    )}${pill(false)}</span></div>`
+  })(),
   "color-contrast": (() => {
     const tick =
       '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
