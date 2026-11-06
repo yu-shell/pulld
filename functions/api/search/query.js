@@ -26,6 +26,12 @@ export const clampLimit = (raw, dflt) => {
   return Number.isFinite(n) ? Math.floor(Math.min(20, Math.max(1, n))) : dflt
 }
 
+// The result count a caller who names none gets. A literal at the one call site below until now,
+// which left the guide's "Default **8**" as the only written record of it — and nothing checked
+// that record. The range it is clamped into stays inside clampLimit: it is already reachable from
+// a test through clampLimit itself, so naming it twice would only create a second place to drift.
+export const DEFAULT_LIMIT = 8
+
 // Vectorize returns at most 50 matches per query when the matches carry their metadata, and 100
 // when they do not (Vectorize platform limits). This query asks for `returnMetadata: "all"` —
 // the title, url and snippet each result is built from — so 50 is the ceiling that applies, and
@@ -63,7 +69,7 @@ async function handle(context) {
 
   let q = url.searchParams.get("q") || ""
   let key = url.searchParams.get("key") || request.headers.get("x-pulld-key") || ""
-  let topK = clampLimit(url.searchParams.get("limit"), 8)
+  let topK = clampLimit(url.searchParams.get("limit"), DEFAULT_LIMIT)
 
   if (request.method === "POST") {
     try {

@@ -192,6 +192,14 @@ async function fetchLicenseKey(env, { customerId, productId }) {
   }
 }
 
+// What a Pro Search subscription is provisioned with. These two numbers are the plan this project
+// sells — public/search-integration.md quotes them under "Notes & limits" — and they lived as bare
+// digits inside the INSERT below, where nothing connected them to the prose selling them and
+// neither could notice the other moving. Bound as parameters rather than interpolated, like every
+// other value in that statement; test/search-guide-limits.test.mjs holds them to the guide.
+export const PRO_Q_LIMIT = 50000
+export const PRO_DOC_LIMIT = 5000
+
 export async function onRequestPost(context) {
   const { request, env } = context
 
@@ -254,10 +262,20 @@ export async function onRequestPost(context) {
         const projId = "prj_" + genKey().slice(0, 12)
         await env.DB.prepare(
           "INSERT INTO search_projects (id, admin_key, query_key, email, ls_license, ls_subscription, plan, q_limit, doc_limit, created, active) " +
-            "VALUES (?, ?, ?, ?, ?, ?, 'pro', 50000, 5000, ?, 1) " +
+            "VALUES (?, ?, ?, ?, ?, ?, 'pro', ?, ?, ?, 1) " +
             "ON CONFLICT(ls_license) DO UPDATE SET active=1, email=excluded.email, ls_subscription=excluded.ls_subscription"
         )
-          .bind(projId, "ak_" + genKey(), "pk_" + genKey(), email, license, subId, new Date().toISOString())
+          .bind(
+            projId,
+            "ak_" + genKey(),
+            "pk_" + genKey(),
+            email,
+            license,
+            subId,
+            PRO_Q_LIMIT,
+            PRO_DOC_LIMIT,
+            new Date().toISOString()
+          )
           .run()
         await logEvent(env, `polar:${type}`, true, `search project provisioned (sub=${subId})`)
       } else {

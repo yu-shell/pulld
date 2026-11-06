@@ -13,12 +13,17 @@ import {
   vecId,
 } from "./_lib.js"
 
-const MAX_CHUNKS_PER_REQUEST = 400
+// The two per-request caps a caller can hit (the per-document one is MAX_CHUNKS_PER_DOC, in
+// _lib.js, where delete.js needs it too). Exported for the same reason delete.js's twin is: each
+// is quoted as a number in public/search-integration.md, and test/search-guide-limits.test.mjs
+// pins the prose to the constant so neither side can move alone.
+export const MAX_DOCS_PER_REQUEST = 100
+export const MAX_CHUNKS_PER_REQUEST = 400
 const PRUNE_BATCH = 1000 // vector ids per deleteByIds call (mirrors delete.js)
 // How many truncated ids the response names. The count beside them carries the real total, and a
 // request may hold 100 documents with ids of 200 characters each — naming them all would put 20 KB
 // of diagnostics in a success response. Ten is enough to find the content that needs splitting.
-const MAX_REPORTED_IDS = 10
+export const MAX_REPORTED_IDS = 10
 const j = (data, status = 200) => json(data, status, { cors: false })
 
 export async function onRequestPost(context) {
@@ -39,7 +44,8 @@ export async function onRequestPost(context) {
   }
   const docs = Array.isArray(body?.documents) ? body.documents : []
   if (!docs.length) return j({ error: "no documents" }, 400)
-  if (docs.length > 100) return j({ error: "max 100 documents per request" }, 400)
+  if (docs.length > MAX_DOCS_PER_REQUEST)
+    return j({ error: `max ${MAX_DOCS_PER_REQUEST} documents per request` }, 400)
 
   const texts = []
   const meta = []

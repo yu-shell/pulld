@@ -7,7 +7,7 @@
 // delete its own documents.
 import { json, projectByKey, MAX_CHUNKS_PER_DOC, vecId } from "./_lib.js"
 
-const MAX_IDS_PER_REQUEST = 100
+export const MAX_IDS_PER_REQUEST = 100
 const DELETE_BATCH = 1000 // vector ids per deleteByIds call
 const j = (data, status = 200) => json(data, status, { cors: false })
 
