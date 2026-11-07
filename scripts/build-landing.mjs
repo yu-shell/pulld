@@ -66,6 +66,15 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // The field holding a rem with its resolved pixel length underneath, because that pairing is the
+  // component: number-input's thumbnail is the −/+ stepper and currency-input's is a formatted
+  // amount, and what separates this one from both is that the unit is part of the value and the
+  // field says what the value comes to. Showing `px` in the select would show the one case where
+  // the component deliberately says nothing (a px value needs no conversion line).
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
+  "unit-input": `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;width:100%;box-sizing:border-box;height:20px;border:1px solid var(--line);border-radius:5px;background:var(--bg);overflow:hidden"><span style="flex:1;min-width:0;padding-left:5px;font-size:9px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums">1.5</span><span style="display:flex;align-items:center;gap:2px;align-self:stretch;padding:0 4px;border-left:1px solid var(--line);background:var(--surface);flex:none"><span style="font-size:8px;line-height:1;color:var(--muted)">rem</span><span style="width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-top:3px solid var(--muted)"></span></span></span><span style="font-size:7px;line-height:1;color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums">= 24px</span></div>`,
   // A speaker over a paragraph with ONE line lit, because what distinguishes this from the other
   // audio cards is that the subject is the text, not the sound: speech-input is the waveform-and-
   // "Listening" one, audio-recorder is the meter and the clock. The lit line is the sentence being
