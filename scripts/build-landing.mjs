@@ -66,6 +66,40 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // Three correspondences drawn as lines, with the middle one missing and its target dashed.
+  //
+  // Not two bordered panes with controls between them: that silhouette is transfer-list's, and it
+  // says "move items from here to there", which is the thing this component is not. Here the two
+  // sides are of different kinds — a column that came out of a file on the left, a field this app
+  // already has on the right — and nothing moves; a line is either drawn or it is not. So the left
+  // chips are filled (they exist, they came with the file) and the right boxes are outlines (slots
+  // waiting to be filled), which also keeps it clear of csv-export-button's card, a table with a
+  // button, and of sort-header's and sticky-table-header's, which are both grids with a tinted row.
+  //
+  // The missing middle line is the whole point rather than decoration: the correspondence is not
+  // one-to-one in either direction, and a card showing three tidy lines would show the easy case.
+  // The caption carries the half a picture cannot — that something is still unresolved.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
+  "csv-column-mapper": (() => {
+    const chip = `<span style="flex:none;width:22px;height:7px;border-radius:2px;background:color-mix(in srgb,var(--accent) 38%,transparent)"></span>`
+    const link = (joined) =>
+      joined
+        ? `<span style="flex:1;min-width:0;height:1px;background:var(--accent)"></span>`
+        : `<span style="flex:1;min-width:0;height:0;border-top:1px dashed var(--line)"></span>`
+    const slot = (filled) =>
+      `<span style="flex:none;box-sizing:border-box;width:26px;height:9px;border-radius:2px;border:1px ${
+        filled ? "solid var(--line)" : "dashed var(--muted)"
+      };background:${filled ? "var(--surface)" : "transparent"}"></span>`
+    const pair = (joined) =>
+      `<span style="display:flex;align-items:center;gap:3px;width:100%;box-sizing:border-box">${chip}${link(
+        joined
+      )}${slot(joined)}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;box-sizing:border-box">${pair(
+      true
+    )}${pair(false)}${pair(true)}<span style="font:7px ui-monospace,monospace;color:var(--muted);white-space:nowrap">1 unmapped</span></div>`
+  })(),
   // The field holding a rem with its resolved pixel length underneath, because that pairing is the
   // component: number-input's thumbnail is the −/+ stepper and currency-input's is a formatted
   // amount, and what separates this one from both is that the unit is part of the value and the
