@@ -3,6 +3,18 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-11-08 — quality sweep
+
+- fix(copy-button): a caller's own `onClick` replaced the copy instead of running beside it. The
+  handler was attached before `{...props}` was spread onto the same button, so an `onClick` passed
+  in for analytics or a toast won outright — the button still looked right, still announced
+  "Copied", and never wrote to the clipboard. The caller's handler is now invoked from the
+  component's own, with `preventDefault()` as the way to take the copy over deliberately. This is
+  the convention share-button, csv-export-button, print-button, fullscreen-button and
+  geolocation-button already follow, and what this component's own description already promised.
+  The four components in this registry that compose it pass no `onClick`, so none of them changes.
+  Its first tests land with it: it was the most-installed component here and had none.
+
 ## 2026-10-25 — quality sweep
 
 - fix(pull-to-refresh): the Refresh button opened the indicator and left it blank, and a refusal

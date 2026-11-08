@@ -15,6 +15,7 @@ interface CopyButtonProps extends React.ComponentPropsWithoutRef<"button"> {
 export function CopyButton({
   value,
   timeout = 2000,
+  onClick,
   className,
   ...props
 }: CopyButtonProps) {
@@ -26,7 +27,15 @@ export function CopyButton({
     return () => window.clearTimeout(id)
   }, [copied, timeout])
 
-  async function onCopy() {
+  // The caller's own onClick is invoked here rather than being left to the spread below. Props are
+  // spread after this handler is attached, so an onClick coming in through them would replace the
+  // copy instead of running beside it — a button that still looks right, still announces "Copied",
+  // and never writes to the clipboard. `preventDefault` is the way to take the copy over
+  // deliberately, which is the only reason to want the replacing behaviour.
+  async function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+    onClick?.(event)
+    if (event.defaultPrevented) return
+
     try {
       await navigator.clipboard.writeText(value)
       setCopied(true)
@@ -38,7 +47,7 @@ export function CopyButton({
   return (
     <button
       type="button"
-      onClick={onCopy}
+      onClick={handleClick}
       aria-label={copied ? "Copied" : "Copy to clipboard"}
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
