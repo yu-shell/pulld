@@ -90,6 +90,15 @@ function browser({
   writesAs = null,
   audioContext = true,
   contextState = "running",
+  /**
+   * Whether `close()` hands back a promise.
+   *
+   * The spec says it does, and every fake here said it did, which is why the one place that read
+   * `.catch` off the result without guarding it went unnoticed. An implementation that returns
+   * nothing is the shape the prefixed `webkitAudioContext` era shipped, and the component's own
+   * `resume` call is written to survive it — so this is the other half of that pair.
+   */
+  closeReturnsPromise = true,
 } = {}) {
   const requests = []
   const recorders = []
@@ -184,9 +193,10 @@ function browser({
       this.analysers.push(analyser)
       return analyser
     }
-    async close() {
+    close() {
       this.state = "closed"
       this.closed += 1
+      return closeReturnsPromise ? Promise.resolve() : undefined
     }
     async resume() {
       this.state = "running"
@@ -958,6 +968,22 @@ test("stopping closes the audio context", async () => {
   // An AudioContext left open holds the audio hardware, and a page may only have a handful at
   // once — so a recorder used a few times stops being able to meter at all.
   assert.equal(env.context.closed, 1)
+  assert.equal(env.context.sources[0].disconnected, 1)
+  result.unmount()
+  env.restore()
+})
+
+test("a close() that hands back no promise still releases the microphone", async () => {
+  // `release` is the one function whose whole job is handing the device back, and it closes the
+  // context before it stops the tracks. Reading `.catch` off a `close()` that returned nothing
+  // throws there, so the tracks below it are never stopped: the recording indicator stays lit with
+  // nothing left on the page able to turn it off. Every fake above returns a promise, which is why
+  // this needs its own browser.
+  const env = browser({ closeReturnsPromise: false })
+  const result = render(AudioRecorder, {})
+  const made = await recordAndStop(result, env)
+  assert.equal(env.context.closed, 1)
+  assert.equal(made.track.stopped, 1, "the tracks were never stopped")
   assert.equal(env.context.sources[0].disconnected, 1)
   result.unmount()
   env.restore()

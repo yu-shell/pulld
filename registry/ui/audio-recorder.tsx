@@ -647,8 +647,13 @@ export function useAudioRecorder(options: UseAudioRecorderOptions = {}): UseAudi
     const context = contextRef.current
     contextRef.current = null
     if (context && context.state !== "closed") {
-      // Returns a promise that nothing waits for; a rejection here is not actionable.
-      void context.close?.().catch?.(() => {})
+      // Returns a promise that nothing waits for; a rejection here is not actionable. The second
+      // `?.` is on the *result* of the call, not just the method: an implementation whose `close`
+      // returns nothing would otherwise throw reading `.catch` of undefined, from inside the one
+      // function whose whole job is to hand the microphone back — and the lines below it, which
+      // stop the tracks, would never run. That is the recording indicator left lit with no control
+      // able to reach it. `resume` below is written this way for the same reason.
+      void context.close?.()?.catch?.(() => {})
     }
 
     const stream = streamRef.current

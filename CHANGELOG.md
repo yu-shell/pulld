@@ -15,6 +15,14 @@ copies code into your project, so existing installs are never changed automatica
   The four components in this registry that compose it pass no `onClick`, so none of them changes.
   Its first tests land with it: it was the most-installed component here and had none.
 
+- fix(audio-recorder): `release()` could throw before it stopped the microphone's tracks. It closed
+  the `AudioContext` with `close?.().catch?.()`, where the second `?.` guards only the call and not
+  the result, so an implementation whose `close` returns no promise threw on reading `.catch` of
+  `undefined` — inside the one function whose job is handing the device back, and above the lines
+  that stop the tracks. That is the recording indicator left lit with nothing on the page able to
+  turn it off. The `resume` call a few lines down was already written against the same shape; the
+  two now match, and a test pins it.
+
 ## 2026-10-25 — quality sweep
 
 - fix(pull-to-refresh): the Refresh button opened the indicator and left it blank, and a refusal
