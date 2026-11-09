@@ -93,6 +93,70 @@ export function proFunnel(rows) {
 export const nameWidth = (header, names) =>
   names.reduce((w, n) => Math.max(w, String(n ?? "").length), String(header).length) + 2
 
+/** The width the client table gives a user-agent, and how much of one it therefore shows. */
+export const UA_COLUMN = 42
+const UA_SHOWN = UA_COLUMN - 2
+
+/**
+ * A user-agent as the client table prints it: bounded to the column, and marked with `…` when it
+ * was cut. The mark is the whole point — two clients that share a prefix this long print as two
+ * rows under a heading that exists to say whether they are one client or two, and a row that ends
+ * in `…` says the name is not the whole of it. Only the printed form is bounded; what the counts
+ * are grouped by is the user-agent entire (see clientRows).
+ */
+export const shortUa = (ua, max = UA_SHOWN) => {
+  const s = String(ua ?? "")
+  return s.length <= max ? s : `${s.slice(0, max - 1)}…`
+}
+
+/**
+ * Who the install/index fetches came from: one `{kind, ua, n}` row per client, busiest first.
+ *
+ * The table it feeds is printed so `install`/`index` is never read as "N developers" when it is
+ * one client repeating itself — which only holds while the user-agent beside a count identifies
+ * the client the count belongs to. It did not.
+ *
+ * A client's identity was the string `${kind}\t${ua.slice(0, 40)}`, taken apart again at print
+ * time with `key.split("\t")` destructured into two. Neither half of that round trip is sound:
+ *
+ *   - A user-agent may contain a tab. HTTP permits HTAB inside a field value (RFC 9110 §5.5) and
+ *     functions/r/[[path]].js stores `user-agent` verbatim, so one reaches the column intact —
+ *     measured through the same Headers API Workers hands the Function. `@shadcn/mcp\tv2` and
+ *     `@shadcn/mcp\tv3` are both install clients by _traffic.js and both separate keys here, and
+ *     both printed as `@shadcn/mcp`: two identical lines splitting the traffic between them, in
+ *     the one table whose job is to say whether that is one client or two.
+ *   - Truncating before grouping merged clients it could not then tell apart: two differing only
+ *     past the 40th character were summed into a single row.
+ *
+ * scripts/_bursts.mjs paid for this from the other end — its session key is joined on `\u0000`
+ * exactly because a separator has to be a character the fields cannot hold. The cheaper answer is
+ * not to need one: the pair is kept as a pair, grouping is on the whole user-agent, and bounding
+ * it is left to the printer.
+ */
+export function clientRows(rows) {
+  // A Map per kind rather than one joined key, so no character has to be reserved as a separator.
+  const byKind = new Map()
+  for (const r of rows ?? []) {
+    const kind = classify(r?.ua)
+    if (kind !== "install" && kind !== "index") continue
+    const perKind = byKind.get(kind) ?? new Map()
+    const ua = String(r?.ua ?? "")
+    perKind.set(ua, (perKind.get(ua) || 0) + (Number(r?.n) || 0))
+    byKind.set(kind, perKind)
+  }
+
+  const out = []
+  for (const [kind, perKind] of byKind) {
+    for (const [ua, n] of perKind) out.push({ kind, ua, n })
+  }
+  // Busiest first, then a fixed order for the ties, so one report over one window prints the same
+  // table twice. Plain three-way `<`/`>` compares, never localeCompare: these are the strings
+  // _bursts.mjs measured collation lying about — its default strength ignores control and
+  // zero-width characters, which are the very characters that make two user-agents two clients.
+  const cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0)
+  return out.sort((a, b) => b.n - a.n || cmp(a.kind, b.kind) || cmp(a.ua, b.ua))
+}
+
 /**
  * The names the registry ships right now, for marking misses that have since been answered.
  *
@@ -124,7 +188,6 @@ function reportFetches() {
   }
 
   const byItem = new Map()
-  const clients = new Map()
   const totals = { install: 0, index: 0, human: 0, crawler: 0 }
   for (const r of components) {
     const item = String(r.item)
@@ -134,10 +197,6 @@ function reportFetches() {
     acc[kind] += n
     byItem.set(item, acc)
     totals[kind] += n
-    if (kind === "install" || kind === "index") {
-      const key = `${kind}\t${String(r.ua || "").slice(0, 40)}`
-      clients.set(key, (clients.get(key) || 0) + n)
-    }
   }
 
   const ranked = [...byItem.entries()].sort(
@@ -155,12 +214,14 @@ function reportFetches() {
   )
 
   // Print who each non-crawler fetch came from, so `install`/`index` is never read as "N
-  // developers" when it is one client repeating itself.
-  if (clients.size) {
+  // developers" when it is one client repeating itself. Grouped by clientRows, which keeps the
+  // kind and the user-agent apart instead of joining them into a key it then has to take back
+  // apart — see the note on it for what that cost.
+  const clients = clientRows(components)
+  if (clients.length) {
     console.log("\nclients (by user-agent)")
-    for (const [key, n] of [...clients.entries()].sort((a, b) => b[1] - a[1])) {
-      const [kind, ua] = key.split("\t")
-      console.log(`  ${kind.padEnd(8)}${(ua || "(none)").padEnd(42)}${n}`)
+    for (const { kind, ua, n } of clients) {
+      console.log(`  ${kind.padEnd(8)}${(shortUa(ua) || "(none)").padEnd(UA_COLUMN)}${n}`)
     }
   }
 
