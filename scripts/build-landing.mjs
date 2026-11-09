@@ -66,6 +66,25 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // Two dashed regions stacked, the upper one holding a line of text and the lower one empty.
+  //
+  // Not a speaker and not a waveform: read-aloud owns the speaker over a paragraph and
+  // speech-input owns the waveform, and both of those are about sound, which this component has
+  // nothing to do with — it writes text that is never drawn. So the card shows the mechanism
+  // instead of a metaphor, and the mechanism is the one thing nothing else in the catalogue has:
+  // two regions per politeness, exactly one of them holding the message, because the same string
+  // written twice into one region is not a change and is not read out. The empty one is not
+  // decoration — it is where the next message goes, and it is why a repeat is heard at all.
+  //
+  // Dashed rather than solid for both, because these regions are in the accessibility tree and
+  // not on the screen; a solid border would make it a panel, and a solid two-pane silhouette is
+  // transfer-list's. The filled slot takes the accent on its border as well as its bar so that
+  // which of the two is live reads at thumbnail size, and the caption carries the word a developer
+  // scanning the grid is actually looking for.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
+  "live-announcer": `<div style="display:flex;flex-direction:column;align-items:stretch;gap:5px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;box-sizing:border-box;width:100%;height:17px;padding:0 4px;border:1px dashed var(--accent);border-radius:3px"><span style="width:62%;height:4px;border-radius:2px;background:var(--accent)"></span></span><span style="display:flex;box-sizing:border-box;width:100%;height:17px;border:1px dashed var(--muted);border-radius:3px"></span><span style="font:7px ui-monospace,monospace;color:var(--muted);text-align:center;white-space:nowrap">aria-live</span></div>`,
   // Three correspondences drawn as lines, with the middle one missing and its target dashed.
   //
   // Not two bordered panes with controls between them: that silhouette is transfer-list's, and it
