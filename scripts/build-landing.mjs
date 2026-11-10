@@ -128,6 +128,35 @@ const PREVIEWS = {
   // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
   // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
   "unit-input": `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;width:100%;box-sizing:border-box;height:20px;border:1px solid var(--line);border-radius:5px;background:var(--bg);overflow:hidden"><span style="flex:1;min-width:0;padding-left:5px;font-size:9px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums">1.5</span><span style="display:flex;align-items:center;gap:2px;align-self:stretch;padding:0 4px;border-left:1px solid var(--line);background:var(--surface);flex:none"><span style="font-size:8px;line-height:1;color:var(--muted)">rem</span><span style="width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-top:3px solid var(--muted)"></span></span></span><span style="font-size:7px;line-height:1;color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums">= 24px</span></div>`,
+  // Three field/operator/value rows with the lower two fenced into a dashed box, because the two
+  // things that separate this card from every other stack-of-rows thumbnail here are that each row
+  // is three controls of descending width (the field, the operator, the value) and that some of the
+  // rows are joined differently from the rest. repeatable-fields' thumbnail is undifferentiated
+  // rows; filter-chips' is pills in a line. The `or` inside the fence against the `and` outside it
+  // is the whole point of the nesting, so both words are drawn.
+  //
+  // width:100% throughout, never a pixel width: `.preview` is a 104px border-box with 10px of
+  // padding and a 1px border, so the content gets 82px and a 104px child loses 11px to
+  // overflow:hidden. Every flexible cell carries min-width:0 so the row shrinks instead of
+  // pushing past the edge.
+  "filter-builder": (() => {
+    const cell = (width, tone) =>
+      `<span style="flex:none;box-sizing:border-box;width:${width};height:8px;border-radius:2px;background:${tone}"></span>`
+    const box = () =>
+      `<span style="flex:1;min-width:0;box-sizing:border-box;height:8px;border-radius:2px;border:1px solid var(--line);background:var(--surface)"></span>`
+    const row = () =>
+      `<span style="display:flex;align-items:center;gap:2px;width:100%;min-width:0;box-sizing:border-box">${cell(
+        "22px",
+        "var(--accent)"
+      )}${cell("13px", "color-mix(in srgb,var(--accent) 34%,transparent)")}${box()}</span>`
+    const word = (text) =>
+      `<span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);white-space:nowrap">${text}</span>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;min-width:0;box-sizing:border-box">${row()}${word(
+      "and"
+    )}<span style="display:flex;flex-direction:column;gap:3px;width:100%;min-width:0;box-sizing:border-box;padding:3px;border:1px dashed var(--muted);border-radius:3px">${row()}${word(
+      "or"
+    )}${row()}</span></div>`
+  })(),
   // A speaker over a paragraph with ONE line lit, because what distinguishes this from the other
   // audio cards is that the subject is the text, not the sound: speech-input is the waveform-and-
   // "Listening" one, audio-recorder is the meter and the clock. The lit line is the sentence being
