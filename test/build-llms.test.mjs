@@ -11,6 +11,8 @@ import { readFileSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { summarize, buildLlms } from "../scripts/build-llms.mjs"
+import { MAX_DOCS_PER_REQUEST } from "../functions/api/search/ingest.js"
+import { clampLimit, DEFAULT_LIMIT } from "../functions/api/search/query.js"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const BASE = "https://pulld.pages.dev"
@@ -115,6 +117,53 @@ test("a trailing slash on the base never doubles in a URL", () => {
   const out = buildLlms(registry, { base: "https://pulld.pages.dev/" })
   assert.ok(out.includes("https://pulld.pages.dev/r/copy-button.json"))
   assert.ok(!out.includes("//r/copy-button.json"))
+})
+
+// --- the pulld Search section: an API contract, in the index an agent wires a client up from ---
+//
+// The numbers are interpolated from the handlers' own constants now (see the note in
+// build-llms.mjs), so they cannot disagree with them. What these pin is the other half of that:
+// that the sentences still CARRY the numbers. An interpolation is one careless reword away from
+// being dropped, and a line that no longer states the ingest cap or the query range does not look
+// broken — it looks like a shorter sentence, in a generated file nobody reads by hand.
+//
+// The same shape as test/search-guide-limits.test.mjs, which asserts its regex matched before
+// comparing "so rewording the sentence out from under the number fails here instead of quietly
+// pinning nothing". The difference is only which artifact is on the other side: that file reads a
+// committed markdown file, this one calls the generator, because public/llms.txt is gitignored and
+// a fresh checkout has none.
+// Scoped to that section, so a `100` or an `8` elsewhere in the index cannot stand in for the one
+// being checked. The heading is asserted rather than assumed: `indexOf` answers -1 for a heading
+// that moved, and `slice(-1)` is a one-character string the regexes below simply do not match —
+// which would report "the line no longer states the cap" for a section that is still there.
+const searchSection = (out) => {
+  const at = out.indexOf("## pulld Search")
+  assert.ok(at >= 0, "the pulld Search section is gone from the index — this check reads nothing")
+  return out.slice(at)
+}
+
+test("the index states the ingest cap the handler actually refuses on", () => {
+  const section = searchSection(buildLlms(registry, { base: BASE }))
+  const m = section.match(/≤(\d+)\/req/)
+  assert.ok(m, "the Index line no longer states a per-request document cap")
+  assert.equal(Number(m[1]), MAX_DOCS_PER_REQUEST)
+})
+
+test("the index states the query range and default clampLimit actually applies", () => {
+  const section = searchSection(buildLlms(registry, { base: BASE }))
+  const m = section.match(/`limit` is (\d+)-(\d+) \(default (\d+);/)
+  assert.ok(m, "the Search line no longer states the limit range and default")
+  const [min, max, dflt] = m.slice(1).map(Number)
+  // The bounds are read the way the guide's test reads them: a value far outside the range clamps
+  // to the edge. Finite probes, because a non-finite one goes to the fallback, not the clamp.
+  assert.equal(min, clampLimit(-1e9, DEFAULT_LIMIT))
+  assert.equal(max, clampLimit(1e9, DEFAULT_LIMIT))
+  assert.equal(dflt, DEFAULT_LIMIT)
+  // The example URL carries the default a second time; a client copying it must get the same one.
+  assert.ok(
+    section.includes(`/api/search/query?key=<query_key>&q=<text>&limit=${DEFAULT_LIMIT}\``),
+    `the example query URL does not spend the documented default (${DEFAULT_LIMIT})`
+  )
 })
 
 // The budget this file exists to hold. Run against the real registry, so the day a description is

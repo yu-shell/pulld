@@ -10,6 +10,8 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { MAX_DOCS_PER_REQUEST } from "../functions/api/search/ingest.js"
+import { clampLimit, DEFAULT_LIMIT } from "../functions/api/search/query.js"
 
 // llms.txt is an index: the file an agent loads to find out what exists, before fetching the one
 // component it wants. That job has a budget, and the catalogue had outgrown it — 83 components
@@ -27,6 +29,32 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 // at /r/index.json — which is the link offered below for an agent that wants to match on all of
 // them at once.
 const SUMMARY_MAX = 400
+
+// The pulld Search section below is an API contract written in prose, and the numbers in it are
+// constants in functions/. public/search-integration.md has exactly the same problem and was
+// given exactly this fix: test/search-guide-limits.test.mjs pins every number that guide quotes
+// to the code enforcing it, "because nothing but a reader connects the two, so a limit that moves
+// in one tree goes on reading as true in the other".
+//
+// llms.txt was left out of that, and it is the surface with the most to lose: it is the index an
+// AI coding agent loads, so its four numbers — the ingest cap, the query range, and the default
+// limit twice, once in the example URL and once in the sentence beside it — are what an agent
+// wires a client up against before it ever reads the guide. They were four string literals, and
+// they agreed with the handlers only because nobody had moved a handler yet.
+//
+// Interpolated rather than pinned by a test, which is the difference between this artifact and the
+// guide: llms.txt is GENERATED, so the number can be read from the constant instead of compared
+// against it. Same reason test/deploy-gate.test.mjs reads the deploy steps off package.json —
+// "a fact written twice is a fact that drifts".
+//
+// The range is read off clampLimit rather than from a second pair of constants, the way
+// test/search-guide-limits.test.mjs reads it: query.js deliberately does not export the bounds
+// ("it is already reachable from a test through clampLimit itself, so naming it twice would only
+// create a second place to drift"). A value far outside the range clamps to the edge, so the edge
+// is what comes back — and the probes must be finite, because clampLimit sends a non-finite input
+// to the fallback instead of through the clamp.
+const LIMIT_MIN = clampLimit(-1e9, DEFAULT_LIMIT)
+const LIMIT_MAX = clampLimit(1e9, DEFAULT_LIMIT)
 
 // The first sentence of a description. A sentence only ends at `.!?` when what follows starts a new
 // one — a capital, a digit, or an opening quote — which is what keeps keyboard-shortcuts ("the help
@@ -121,7 +149,8 @@ export function buildLlms(registry, { base = "", pro = [] } = {}) {
   lines.push(
     "- Index (server-side, secret admin_key): `POST " +
       BASE +
-      "/api/search/ingest` header `x-pulld-admin-key`, body `{documents:[{id,title,url,content}]}` (≤100/req; same `id` overwrites)."
+      "/api/search/ingest` header `x-pulld-admin-key`, body `{documents:[{id,title,url,content}]}` " +
+      `(≤${MAX_DOCS_PER_REQUEST}/req; same \`id\` overwrites).`
   )
   lines.push(
     "- Remove (server-side, secret admin_key): `POST " +
@@ -131,8 +160,9 @@ export function buildLlms(registry, { base = "", pro = [] } = {}) {
   lines.push(
     "- Search (public query_key): `GET " +
       BASE +
-      "/api/search/query?key=<query_key>&q=<text>&limit=8` → `{results:[{id,label,url,snippet,score}]}`. " +
-      "`limit` is 1-20 (default 8; out of range is clamped, not rejected) and results are one row per " +
+      `/api/search/query?key=<query_key>&q=<text>&limit=${DEFAULT_LIMIT}\` → \`{results:[{id,label,url,snippet,score}]}\`. ` +
+      `\`limit\` is ${LIMIT_MIN}-${LIMIT_MAX} (default ${DEFAULT_LIMIT}; out of range is clamped, not ` +
+      "rejected) and results are one row per " +
       "document, so a short list is normal. The key may travel in an `x-pulld-key` header instead of " +
       "the query string, and POST takes the same fields as a JSON body. An empty `q` returns no " +
       "results and costs no query quota."
