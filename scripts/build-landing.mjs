@@ -66,6 +66,32 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // Four column stacks with the third one absent — an outline where it would be.
+  //
+  // The card has to say "which columns the table shows", and five table cards already sit on this
+  // page: sort-header is two headings with a direction, sticky-table-header and table-row-expander
+  // are grids with a tinted row, column-resizer is a grid with a divider, filter-builder is stacked
+  // condition rows. All five are horizontal silhouettes, so this one is drawn vertically — columns
+  // as columns — and the thing nothing else shows is a *gap*: the component's whole job is that one
+  // of them is not there, which a panel of checkboxes would not say (that silhouette is
+  // multi-select's) and a complete table cannot say at all.
+  //
+  // The absent column is an outline rather than blank space, because blank space at this size reads
+  // as a layout with wide gutters. Dashed in `var(--muted)` rather than `var(--line)`: the dashed
+  // empty slot in csv-column-mapper nearly disappeared in light mode drawn with `--line`, and
+  // "exists but is switched off" is the card's only subject.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
+  "column-visibility": (() => {
+    const head = `<span style="display:block;width:100%;height:7px;border-radius:2px;background:var(--accent)"></span>`
+    const cell = `<span style="display:block;width:100%;height:6px;border-radius:2px;background:color-mix(in srgb,var(--accent) 22%,transparent)"></span>`
+    const shown = `<span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">${head}${cell}${cell}${cell}</span>`
+    // 34px is the shown stack's own height — 7 + 6 + 6 + 6 plus three 3px gaps — so the gap lines up
+    // with the columns beside it instead of hanging below them.
+    const off = `<span style="display:block;flex:1;min-width:0;box-sizing:border-box;height:34px;border:1px dashed var(--muted);border-radius:3px"></span>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:flex-start;gap:4px;width:100%;box-sizing:border-box">${shown}${shown}${off}${shown}</span><span style="font:7px ui-monospace,monospace;color:var(--muted);text-align:center;white-space:nowrap">3 / 4 columns</span></div>`
+  })(),
   // Two dashed regions stacked, the upper one holding a line of text and the lower one empty.
   //
   // Not a speaker and not a waveform: read-aloud owns the speaker over a paragraph and
