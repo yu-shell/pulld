@@ -277,6 +277,30 @@ const PREVIEWS = {
   "confirm-button": `<button class="pv-btn pv-danger">Delete</button>`,
   "ansi-log": `<div class="pv-log"><span><i>$</i>npm run build</span><span class="pv-log-g">✓ built in 1.2s</span><span class="pv-log-r">✗ 2 errors</span><span class="pv-log-d">exit code 1</span></div>`,
   "cron-expression": `<div class="pv-cron"><code>0 9 * * 1-5</code><b>At 09:00, Mon\u2013Fri</b><span>Thu 09:00 UTC</span><span>Fri 09:00 UTC</span></div>`,
+  // The pair worth distinguishing at thumbnail size is cron-expression above: that one is a machine
+  // string being read back, this one is a form being driven. The signature is the row of seven
+  // weekday pills with two filled \u2014 weekly-hours is rows of day-plus-hours, segmented-control is
+  // two wide tabs, and calendar-heatmap is an undifferentiated grid, so none of the four collide.
+  // Written with width:100% and flex:1 pills rather than fixed widths, because `.preview` is a
+  // 104px border-box carrying 10px of padding and a 1px border, leaving 82px of usable width.
+  "recurrence-input": `<div style="display:flex;flex-direction:column;gap:5px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;gap:3px;font-size:7px;color:var(--muted);white-space:nowrap">Every<b style="display:inline-flex;align-items:center;justify-content:center;min-width:9px;height:10px;padding:0 2px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink);font-size:7px;font-weight:600">2</b>weeks</span><span style="display:flex;gap:2px;width:100%;box-sizing:border-box">${[
+    ["M", true],
+    ["T", false],
+    ["W", false],
+    ["T", true],
+    ["F", false],
+    ["S", false],
+    ["S", false],
+  ]
+    .map(
+      ([label, on]) =>
+        `<span style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;height:12px;border-radius:3px;font-size:6.5px;font-weight:600;box-sizing:border-box;${
+          on
+            ? "border:1px solid var(--accent);background:var(--accent);color:#fff"
+            : "border:1px solid var(--line);background:var(--bg);color:var(--muted)"
+        }">${label}</span>`
+    )
+    .join("")}</span><span style="font-size:7px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mon, Thu \u00b7 10 times</span></div>`,
   "ratio-bar": `<div style="display:flex;flex-direction:column;gap:8px;width:96px"><span style="display:flex;gap:1px;height:6px;border-radius:99px;overflow:hidden;background:var(--line)">${[46, 30, 24]
     .map((share, i) => `<span style="flex:${share} 1 0;background:${RATIO_TONE[i]}"></span>`)
     .join("")}</span>${[
