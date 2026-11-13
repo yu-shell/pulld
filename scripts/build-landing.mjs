@@ -1381,6 +1381,50 @@ const PREVIEWS = {
     )}${tab("Usage", true)}${tab("Members", false)}</span>${arrow}</span>`
     return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${strip}</div>`
   })(),
+  "permission-matrix": (() => {
+    // width:100%, not a pixel width — `.preview` is a 104px border-box with 10px of padding and a
+    // 1px border, so 82px is all the content gets and anything wider is clipped on the right.
+    //
+    // The card has to say "two lists crossing", and then say the thing that makes this component
+    // more than a table of checkboxes: that a tick can be filled or hollow. nested-checkbox's
+    // thumbnail is the other card here with checkbox states on it and it is a *tree* — indented
+    // rows, a dash on the parent — while this one is a square of cells with a label column and a
+    // header row, which is the shape nobody confuses with a list. The hollow tick is the second
+    // half: it is the cell that is granted by a requirement or by inheritance, the one a press
+    // refuses, and without it this reads as any grid of checkboxes.
+    //
+    // 3 × 3 is the smallest grid where a column can be partly on, which is what makes the
+    // header's own tri-state tick mean something rather than look like a fourth row.
+    const CELL = 11
+    const GAP = 4
+    const box = (fill) => {
+      const base = `display:block;box-sizing:border-box;width:${CELL}px;height:${CELL}px;border-radius:2px`
+      if (fill === "on") return `<span style="${base};background:var(--accent)"></span>`
+      // The hollow one: the component draws a derived grant as an outline over a wash rather than a
+      // solid box, so the two kinds of "granted" are told apart without reading the tooltip.
+      if (fill === "via")
+        return `<span style="${base};border:1.5px solid var(--accent);background:color-mix(in srgb,var(--accent) 20%,transparent)"></span>`
+      return `<span style="${base};border:1px solid var(--line)"></span>`
+    }
+    const label = (w) =>
+      `<span style="display:block;width:${w}px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--ink) 34%,transparent)"></span>`
+    const LABEL_W = 20
+    const row = (w, cells) =>
+      `<span style="display:flex;align-items:center;gap:${GAP}px;width:100%"><span style="display:flex;justify-content:flex-end;width:${LABEL_W}px">${label(
+        w
+      )}</span>${cells.map(box).join("")}</span>`
+    // The header line carries the column select-alls, and the middle one is the tri-state: its
+    // column below is on, hollow, on — partly granted — so a dash is the only honest mark for it.
+    const dash = `<span style="display:block;box-sizing:border-box;width:${CELL}px;height:${CELL}px;border-radius:2px;background:var(--accent);position:relative"><span style="position:absolute;left:2px;right:2px;top:50%;height:1.5px;margin-top:-0.75px;background:var(--bg)"></span></span>`
+    const head = `<span style="display:flex;align-items:center;gap:${GAP}px;width:100%"><span style="width:${LABEL_W}px"></span>${box(
+      "on"
+    )}${dash}${box("off")}</span>`
+    // 20 + 4 + 3 × 11 + 2 × 4 = 65px wide inside an 82px box, so nothing reaches the clip.
+    return `<div style="display:flex;flex-direction:column;gap:${GAP}px;width:100%">${head}${row(
+      18,
+      ["on", "on", "off"]
+    )}${row(14, ["on", "via", "off"])}${row(20, ["via", "via", "off"])}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
