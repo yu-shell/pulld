@@ -1,5 +1,7 @@
-// `npm run deploy` has to run `npm run verify` before it uploads, and nothing may regenerate
-// public/ after that.
+// `npm run deploy` has to run every check in `npm run check` before it uploads, nothing may
+// regenerate public/ after the verify among them, and a rebuild inside deploy has to carry
+// SITE_BASE. The verify half is the oldest rule here and the essay below is about it; the last
+// section generalises it to the rest of the gate.
 //
 // verify-registry.mjs is the only check in this project whose subject is the artifact rather than
 // the source: it compares registry.json against what is sitting in public/r, public/index.html and
@@ -108,6 +110,71 @@ for (const [i, step] of deploySteps.entries()) {
       /SITE_BASE=\S/,
       "scripts/inject-base.mjs does nothing without SITE_BASE, so this step would publish bare " +
         "dependency names that shadcn resolves against ui.shadcn.com instead of this registry"
+    )
+  })
+}
+
+// --- every check in `check` is on the path to production, not just verify ---
+//
+// The gate above put verify in front of the upload because verify is the only check whose subject
+// is the artifact. The other two steps of `check` — `node --test` and `tsc --noEmit` — were left
+// out, and that is a hole rather than a symmetry, because `wrangler pages deploy` uploads more
+// than public/: Pages compiles the project-root `functions/` directory alongside it, so every
+// Pages Function ships with the same command.
+//
+// That is the code with the least to fall back on. functions/ is excluded from tsconfig, and
+// functions/_pro-gate.js says so in as many words — its handlers have `node --test` coverage
+// "precisely because functions/ is excluded from tsconfig and that is its only automated check".
+// The handlers under it are the Polar webhook that provisions and revokes paid access, the Pro
+// license gate, and the search endpoints, one of which answers an uncredentialed caller with a
+// secret `admin_key`. Their only automated check was a command that `deploy` never ran.
+//
+// Nothing else would have caught it: there is no CI (no .github at all) and no git hook, so
+// `npm run check` typed by hand was the whole gate — and a deploy typed straight after an edit
+// skipped it while reporting success, which is the same silence the top of this file describes for
+// a stale public/r/<old>.json. Measured on this checkout: `node --test` is 5.5s over 3,504 tests
+// and `tsc --noEmit` 1.8s, against a deploy that already spends two `npx --yes` package
+// resolutions and an upload. There was no budget reason to leave them out.
+//
+// Derived from `check` rather than written here as the two step names, for the reason the top of
+// this file gives: which commands make up the gate is a fact package.json already states, and a
+// fact written twice is a fact that drifts. A step added to `check` from now on has to reach
+// production too — unless it regenerates public/, which `deploy` deliberately keeps its own
+// SITE_BASE-carrying copy of (the loop above is what holds that copy honest).
+//
+// Only "before the upload" is asserted, because that is the invariant. Their placement first in
+// `deploy` is a courtesy: a red tree should not cost two package resolutions and a landing-page
+// build before anyone is told.
+const checkSteps = stepsOf(scripts.check)
+
+test("the check script is being read at all", () => {
+  // Same hazard as the deploy guard: a list that comes back empty would retire every rule below.
+  assert.ok(scripts.check, "package.json has no `check` script")
+  assert.ok(checkSteps.length >= 3, `expected the steps of \`check\`, found: ${scripts.check}`)
+  assert.ok(
+    checkSteps.some(regeneratesPublic),
+    `no step of \`check\` regenerates public/ — the predicate matches nothing: ${scripts.check}`
+  )
+  assert.ok(
+    checkSteps.some((s) => !regeneratesPublic(s)),
+    `every step of \`check\` reads as a public/ rebuild, which would exempt all of them: ${scripts.check}`
+  )
+})
+
+for (const step of checkSteps) {
+  // deploy runs its own SITE_BASE-carrying rebuild instead of this one; see the loop above.
+  if (regeneratesPublic(step)) continue
+  test(`deploy runs \`${step}\` before uploading`, () => {
+    const wanted = expand(step)
+    const at = deploySteps.findIndex((s) => expand(s).includes(wanted))
+    assert.ok(
+      at >= 0,
+      `\`${step}\` (${wanted}) is part of \`check\` but nothing in \`deploy\` runs it, so an upload ` +
+        `can ship code this command is the only check on — functions/ above all: ${scripts.deploy}`
+    )
+    assert.ok(
+      at < uploadAt,
+      `\`${step}\` runs after the upload in \`deploy\`, which checks a tree that already shipped: ${scripts.deploy}`
     )
   })
 }
