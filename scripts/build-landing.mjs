@@ -1425,6 +1425,49 @@ const PREVIEWS = {
       ["on", "on", "off"]
     )}${row(14, ["on", "via", "off"])}${row(20, ["via", "via", "off"])}</div>`
   })(),
+  // Six times in two columns under a day, one of them filled and two of them struck out.
+  //
+  // The card has to say "pick a time from what is left", and the time cards already on this page
+  // say other things: time-input is one field with a caret in it, weekly-hours is a column of day
+  // rows with a span beside each, month-picker is a grid behind arrows, date-range-preset is a
+  // huddle of wrapped labels, recurrence-input opens with a sentence. Only this one is a set of
+  // equal times offered as choices, and the thing none of the others can show is a time that is
+  // *gone* — availability already spent, which is the whole problem the component exists for. So
+  // two of the six are struck through, one is taken, and the count is legible without reading:
+  // three free out of six.
+  //
+  // Struck through with `text-decoration` rather than an overlaid rule, because the text is really
+  // there at 7px and the browser puts the line where the glyphs are. Dashed in `var(--muted)` and
+  // not `var(--line)`: the roadmap records a dashed `--line` border nearly vanishing in light mode
+  // on csv-column-mapper, and "this one is out" is half of what the card says.
+  //
+  // The caption carries the zone as well as the day, which no other card does and which is the
+  // other half of this component — but as 7px monospace under a grid, not as a field, so it does
+  // not read as timezone-select's silhouette.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and anything wider is clipped on the right.
+  "time-slot-picker": (() => {
+    const chip = (time, state) => {
+      const base =
+        "display:flex;align-items:center;justify-content:center;flex:1;min-width:0;height:13px;border-radius:3px;box-sizing:border-box;font:7px ui-monospace,monospace;white-space:nowrap"
+      const skin =
+        state === "on"
+          ? "background:var(--accent);border:1px solid var(--accent);color:#fff"
+          : state === "gone"
+            ? "border:1px dashed var(--muted);color:var(--muted);text-decoration:line-through"
+            : "border:1px solid var(--line);color:var(--ink)"
+      return `<span style="${base};${skin}">${time}</span>`
+    }
+    const row = (left, right) =>
+      `<span style="display:flex;gap:4px;width:100%;box-sizing:border-box">${chip(
+        ...left
+      )}${chip(...right)}</span>`
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box"><span style="font:7px ui-monospace,monospace;color:var(--muted);white-space:nowrap">Fri 20 \u00b7 JST</span>${row(
+      ["9:00", "off"],
+      ["9:30", "on"]
+    )}${row(["10:00", "gone"], ["10:30", "off"])}${row(["11:00", "gone"], ["11:30", "off"])}</div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
