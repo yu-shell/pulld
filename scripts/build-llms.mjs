@@ -10,7 +10,9 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { MAX_DOCS_PER_REQUEST } from "../functions/api/search/ingest.js"
+import { chunk, MAX_CHUNKS_PER_DOC } from "../functions/api/search/_lib.js"
+import { MAX_CHUNKS_PER_REQUEST, MAX_DOCS_PER_REQUEST } from "../functions/api/search/ingest.js"
+import { MAX_IDS_PER_REQUEST } from "../functions/api/search/delete.js"
 import { clampLimit, DEFAULT_LIMIT } from "../functions/api/search/query.js"
 
 // llms.txt is an index: the file an agent loads to find out what exists, before fetching the one
@@ -37,10 +39,33 @@ const SUMMARY_MAX = 400
 // in one tree goes on reading as true in the other".
 //
 // llms.txt was left out of that, and it is the surface with the most to lose: it is the index an
-// AI coding agent loads, so its four numbers — the ingest cap, the query range, and the default
-// limit twice, once in the example URL and once in the sentence beside it — are what an agent
-// wires a client up against before it ever reads the guide. They were four string literals, and
-// they agreed with the handlers only because nobody had moved a handler yet.
+// AI coding agent loads, so its numbers — the ingest caps, the query range, and the default limit
+// twice, once in the example URL and once in the sentence beside it — are what an agent wires a
+// client up against before it ever reads the guide. They were string literals, and they agreed
+// with the handlers only because nobody had moved a handler yet.
+//
+// Pinning the numbers it quoted left a second half: which numbers it quoted at all. Of the four
+// ways an ingest request can go wrong, the index named only the one that costs the caller a
+// retry — `≤100/req`. The two that cost them content or money were absent, and both are reachable
+// from the recipe the index itself implies:
+//
+//   * MAX_CHUNKS_PER_REQUEST. A batch obeying `≤100/req` is refused WHOLE with 413
+//     `too_many_chunks` as soon as its documents average more than four chunks — about 3,150
+//     characters, which is an ordinary help article. No number in the index explained the
+//     refusal, so the obvious response is to re-send the same batch and get the same 413.
+//   * MAX_CHUNKS_PER_DOC. Past it the rest of a document is never searchable and the request
+//     still answers `ok: true` — ingest.js's own comment measures a 40,000-character article
+//     losing 62% of itself that way. It is reported in `truncated_docs` / `truncated_ids`, and
+//     the index named neither the cap nor the fields, so there was nothing to check.
+//
+// Also the doc quota, which is a monthly FLOW: every document sent is charged, re-indexes
+// included. The guide gives that its own bullet and a whole section ("the main thing that decides
+// whether your quota fits"), because it is what decides between the build-time and on-change
+// recipes — an agent that wired up the first from this index re-charged the whole catalogue on
+// every deploy and found out from a 429.
+//
+// And the delete cap, which was simply missing: `MAX_IDS_PER_REQUEST` is a 400 with no number in
+// the index to batch against.
 //
 // Interpolated rather than pinned by a test, which is the difference between this artifact and the
 // guide: llms.txt is GENERATED, so the number can be read from the constant instead of compared
@@ -55,6 +80,38 @@ const SUMMARY_MAX = 400
 // to the fallback instead of through the clamp.
 const LIMIT_MIN = clampLimit(-1e9, DEFAULT_LIMIT)
 const LIMIT_MAX = clampLimit(1e9, DEFAULT_LIMIT)
+
+/**
+ * How long one document's `title` + `content` may be before MAX_CHUNKS_PER_DOC starts dropping the
+ * rest of it.
+ *
+ * The one figure here that is nobody's constant: it is what the cap comes to once chunk()'s
+ * default size and overlap are applied. Stated in characters because that is the unit a caller can
+ * measure — "20 chunks" is an internal one, and an agent reading this index to decide how to split
+ * its content cannot act on it. public/search-integration.md quotes the same figure for the same
+ * reason, and test/search-guide-limits.test.mjs derives it there rather than trusting the prose.
+ *
+ * Derived the way a caller experiences it — grow a body until one more character would need a
+ * chunk past the cap — rather than recomputed from size and overlap, which would be a second
+ * expression of chunk()'s arithmetic that could disagree with it. chunk() is monotonic in input
+ * length, so the refinement below lands on the exact capacity.
+ *
+ * The first loop finds an input the cap already rejects, so the second is not bounded by a literal
+ * that a larger chunk size or cap would silently outgrow — which would leave this under-reporting
+ * the capacity and telling callers to split documents that did not need it. Computed once at module
+ * load: chunk() is pure and its inputs here are its own defaults, so the answer cannot change
+ * between calls.
+ */
+function docCharCapacity() {
+  let step = 1
+  while (chunk("x".repeat(step)).length <= MAX_CHUNKS_PER_DOC) step *= 2
+  let capacity = 0
+  for (; step >= 1; step >>= 1) {
+    while (chunk("x".repeat(capacity + step)).length <= MAX_CHUNKS_PER_DOC) capacity += step
+  }
+  return capacity
+}
+const DOC_CHAR_CAPACITY = docCharCapacity()
 
 // The first sentence of a description. A sentence only ends at `.!?` when what follows starts a new
 // one — a capital, a digit, or an opening quote — which is what keeps keyboard-shortcuts ("the help
@@ -150,12 +207,23 @@ export function buildLlms(registry, { base = "", pro = [] } = {}) {
     "- Index (server-side, secret admin_key): `POST " +
       BASE +
       "/api/search/ingest` header `x-pulld-admin-key`, body `{documents:[{id,title,url,content}]}` " +
-      `(≤${MAX_DOCS_PER_REQUEST}/req; same \`id\` overwrites).`
+      `(≤${MAX_DOCS_PER_REQUEST}/req; same \`id\` overwrites) → ` +
+      "`{ok,indexed_docs,skipped_docs,truncated_docs,truncated_ids,indexed_chunks,docs_this_month}`. " +
+      `Each document is chunked: ≤${MAX_CHUNKS_PER_DOC} chunks/doc (~${DOC_CHAR_CAPACITY} ` +
+      `characters of title+content) and ≤${MAX_CHUNKS_PER_REQUEST} chunks/req. Past the per-doc ` +
+      "cap the request still succeeds and the rest of that document is never searchable — check " +
+      "`truncated_docs` and split those documents, one per section. Past the per-req total the " +
+      "whole request is refused with 413 `too_many_chunks`: send fewer documents per request, not " +
+      "the same batch again. Every document indexed is charged against the month's doc quota, " +
+      "re-sending an `id` you already have included, so send only what changed; over the quota the " +
+      "request is refused whole with 429 `quota_exceeded` and nothing in it is indexed."
   )
   lines.push(
     "- Remove (server-side, secret admin_key): `POST " +
       BASE +
-      "/api/search/delete` body `{ids:[\"docId\"]}` (same id range as ingest; non-existent ids are no-ops)."
+      "/api/search/delete` body `{ids:[\"docId\"]}` " +
+      `(≤${MAX_IDS_PER_REQUEST} ids/req; same id range as ingest; non-existent ids are no-ops). ` +
+      "Deleting credits nothing back against the doc quota."
   )
   lines.push(
     "- Search (public query_key): `GET " +
