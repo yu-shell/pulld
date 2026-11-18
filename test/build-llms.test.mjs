@@ -11,7 +11,12 @@ import { readFileSync } from "node:fs"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { summarize, buildLlms } from "../scripts/build-llms.mjs"
-import { MAX_DOCS_PER_REQUEST } from "../functions/api/search/ingest.js"
+import { chunk, MAX_CHUNKS_PER_DOC } from "../functions/api/search/_lib.js"
+import {
+  MAX_CHUNKS_PER_REQUEST,
+  MAX_DOCS_PER_REQUEST,
+} from "../functions/api/search/ingest.js"
+import { MAX_IDS_PER_REQUEST } from "../functions/api/search/delete.js"
 import { clampLimit, DEFAULT_LIMIT } from "../functions/api/search/query.js"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
@@ -147,6 +152,59 @@ test("the index states the ingest cap the handler actually refuses on", () => {
   const m = section.match(/≤(\d+)\/req/)
   assert.ok(m, "the Index line no longer states a per-request document cap")
   assert.equal(Number(m[1]), MAX_DOCS_PER_REQUEST)
+})
+
+// The three caps the index used to leave out. The per-request document cap above costs a caller a
+// retry; these cost them content, a refused batch, or quota — which is why each is asserted to be
+// PRESENT before it is compared. A reword that drops one of them is the failure being guarded
+// against, and a missing sentence is not a broken-looking file.
+test("the index states both chunk caps, and the length the per-doc one comes to", () => {
+  const section = searchSection(buildLlms(registry, { base: BASE }))
+  const perDoc = section.match(/≤(\d+) chunks\/doc \(~(\d+) characters/)
+  assert.ok(perDoc, "the Index line no longer states the per-document chunk cap and its length")
+  assert.equal(Number(perDoc[1]), MAX_CHUNKS_PER_DOC)
+
+  // The character figure is nobody's constant — it is what the cap comes to once chunk()'s default
+  // size and overlap are applied — so it is derived here rather than compared against a literal,
+  // the way test/search-guide-limits.test.mjs derives the same figure for the guide. Grown until
+  // one more character would need a chunk past the cap; chunk() is monotonic in input length, so
+  // this lands on the exact capacity.
+  let capacity = 0
+  for (let step = 1 << 15; step >= 1; step >>= 1) {
+    while (chunk("x".repeat(capacity + step)).length <= MAX_CHUNKS_PER_DOC) capacity += step
+  }
+  // Exactly, not within a tolerance: the index is generated, so it can read the capacity instead
+  // of approximating it, and both directions are a lie to a paying customer — over-stating it says
+  // content is searchable that was dropped, under-stating it says to split documents that fit.
+  assert.equal(
+    Number(perDoc[2]),
+    capacity,
+    `the index promises ${perDoc[2]} characters are indexed; ${capacity} are`
+  )
+
+  const perReq = section.match(/≤(\d+) chunks\/req/)
+  assert.ok(perReq, "the Index line no longer states the per-request chunk cap")
+  assert.equal(Number(perReq[1]), MAX_CHUNKS_PER_REQUEST)
+})
+
+test("the index names the fields that are the only report of a truncated document", () => {
+  const section = searchSection(buildLlms(registry, { base: BASE }))
+  // Stating the per-doc cap is not enough on its own: crossing it answers `ok: true`, so the two
+  // response fields are the only way a caller learns it happened. A cap with no field to check is
+  // a number nobody can act on.
+  for (const field of ["truncated_docs", "truncated_ids"]) {
+    assert.ok(section.includes(field), `the Index line does not name \`${field}\``)
+  }
+})
+
+test("the index states the delete cap, read off delete's own constant", () => {
+  const section = searchSection(buildLlms(registry, { base: BASE }))
+  const m = section.match(/≤(\d+) ids\/req/)
+  assert.ok(m, "the Remove line no longer states a per-request id cap")
+  // Spelled `ids/req` so it cannot be satisfied by the ingest line's `≤…/req`, and vice versa: the
+  // two are independent constants that happen to hold the same number today, so a looser pattern
+  // would pass while checking the wrong endpoint's cap.
+  assert.equal(Number(m[1]), MAX_IDS_PER_REQUEST)
 })
 
 test("the index states the query range and default clampLimit actually applies", () => {
