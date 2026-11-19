@@ -1488,6 +1488,26 @@ const PREVIEWS = {
       ["9:30", "on"]
     )}${row(["10:00", "gone"], ["10:30", "off"])}${row(["11:00", "gone"], ["11:30", "off"])}</div>`
   })(),
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so only 82px is usable and a 104px child is clipped by 11px on the right.
+  //
+  // Japan is the country drawn here because its form is the one that makes the point: the postal
+  // code comes first, the prefecture second, and there is no city field at all. A preview showing
+  // street/city/state/zip would look like every other address form and say nothing about why this
+  // component exists.
+  "address-input": (() => {
+    const field = (label, accent) =>
+      `<span style="display:flex;align-items:center;width:100%;box-sizing:border-box;height:12px;padding:0 4px;border:1px solid ${
+        accent ? "var(--accent)" : "var(--line)"
+      };border-radius:3px;background:var(--surface)"><span style="font:7px ui-monospace,monospace;line-height:1;color:${
+        accent ? "var(--ink)" : "var(--muted)"
+      };white-space:nowrap">${label}</span></span>`
+    const country = `<span style="display:flex;align-items:center;gap:3px;width:100%;box-sizing:border-box;height:12px;padding:0 4px;border:1px solid var(--line);border-radius:3px;background:var(--bg)"><span style="font:7px ui-monospace,monospace;line-height:1;color:var(--ink)">Japan</span><span style="margin-left:auto;width:0;height:0;border-left:3px solid transparent;border-right:3px solid transparent;border-top:3px solid var(--muted)"></span></span>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;box-sizing:border-box">${country}${field(
+      "\u3012 150-0001",
+      true
+    )}${field("Prefecture", true)}${field("Address", false)}<span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">no city field</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
