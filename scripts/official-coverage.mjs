@@ -12,20 +12,80 @@
 //   - each item is fetched from the new-york-v4 style, falling back to new-york when v4 404s
 //   - the total is the concatenation of `files[].content` only — never the JSON around it
 // Items that 404 on both are reported by name rather than skipped silently: a shrinking denominator
-// would otherwise look like a shrinking registry.
+// would otherwise look like a shrinking registry. A catalogue that does not come back as a non-empty
+// list is refused outright (see fetchCatalogue) for the stronger version of the same reason — it
+// sets the denominator and the source text both, so there is no partial answer it leaves behind.
 //
 // Usage: node scripts/official-coverage.mjs [word ...]
 //   With words, each is counted in the concatenated sources — that is the "is this a hole" check.
 //   A word that is zero everywhere is evidence official has nothing of the kind; a word that is not
-//   is a prompt to look at where it occurs before claiming the hole.
+//   is a prompt to look at where it occurs before claiming the hole. That reading is what the
+//   catalogue check protects: it only holds while the zero is known to be a count of something.
 
 import { pathToFileURL } from "node:url"
 
 const CATALOGUE = "https://ui.shadcn.com/r/index.json"
 const STYLES = ["new-york-v4", "new-york"]
 
+// The catalogue request, refused rather than trusted.
+//
+// It is the one fetch here with no fallback and no second opinion. Every per-item fetch has both:
+// two styles are tried, and a name that answers from neither lands in `missing` and is printed. The
+// catalogue has neither, and it decides the denominator and the entire word count — so a response
+// that is not a catalogue has to stop the run, because the alternative is a measurement.
+//
+// Measured against the function before this check, over the four shapes a failing request actually
+// takes. A 404 carrying a JSON error body, and a 200 carrying an object instead of a list, both
+// reached `index.map` and threw `TypeError: index.map is not a function` — loud, but naming a local
+// variable rather than the URL or the status, from a script the daily routine runs unattended. A
+// 503 carrying an HTML error page threw `SyntaxError: Unexpected token '<'` out of `.json()`, same
+// problem. The fourth is the one that said nothing at all: a 200 with `[]` returned
+// `catalogue 0, fetched 0, 404: none` and `0 bytes`, and then `0` for every word asked about.
+//
+// That last line is the whole file. `0` is documented here as "evidence official has nothing of the
+// kind" — it is what a roadmap entry gets written on. A zero from an empty reply is indistinguishable
+// from a measured one, and it arrives with a 404 list that is empty for the only honest reason it
+// could be: nothing was ever asked for. So an empty catalogue is refused too. Official shipping
+// nothing is not a state this tool needs to be able to report; it is a state that means the fetch
+// did not work.
+//
+// This is the distinction learn.mjs draws between a baseline of `null` and a baseline of 0, and the
+// one scripts/_d1.mjs was written for ("zero installs is a legitimate-looking answer"). A failure
+// that has to be told apart from a result cannot be reported as one.
+async function fetchCatalogue(fetchImpl) {
+  const res = await fetchImpl(CATALOGUE)
+  if (!res?.ok) {
+    throw new Error(
+      `official catalogue unavailable: ${CATALOGUE} answered ${res?.status ?? "a non-ok response"}` +
+        ` — no measurement was taken (a zero here is not a zero in the registry)`
+    )
+  }
+  let index
+  try {
+    index = await res.json()
+  } catch (e) {
+    throw new Error(
+      `official catalogue is not JSON: ${CATALOGUE} answered ok with ${e?.message || e} — this is` +
+        ` usually an error page or an interstitial served under 200`
+    )
+  }
+  if (!Array.isArray(index)) {
+    throw new Error(
+      `official catalogue is not a list: ${CATALOGUE} answered ok with ${typeof index} — the shape` +
+        ` this script reads (an array of { name }) has changed`
+    )
+  }
+  if (index.length === 0) {
+    throw new Error(
+      `official catalogue is empty: ${CATALOGUE} answered ok with 0 items — refused rather than` +
+        ` reported, because every word would come back 0 with no 404 list to show why`
+    )
+  }
+  return index
+}
+
 export async function fetchOfficialSources(fetchImpl = fetch) {
-  const index = await (await fetchImpl(CATALOGUE)).json()
+  const index = await fetchCatalogue(fetchImpl)
   const names = index.map((i) => i.name)
   const missing = []
   let sources = ""
