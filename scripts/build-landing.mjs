@@ -66,6 +66,39 @@ const RATIO_TONE = [
 const MONTH_CELLS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 const PREVIEWS = {
+  // Two numbered rows, each with its own arrow: the first key ascending, the second descending.
+  //
+  // The card has to say "several keys, in priority order, each with a direction", and the two
+  // cards it could be confused with are the ones to draw away from. sort-header is a small table
+  // with one accent arrow in its heading — that one is *one* column being sorted, so this one is
+  // not a table at all, it is a list of keys with the table nowhere in sight. filter-builder is
+  // also stacked rows, so the thing that separates them is what sits at the left edge: the ordinal
+  // numbers, which filter-builder's rows do not have and cannot have, because a filter's rows are
+  // a set and these are a sequence. The two arrows point opposite ways for the same reason — one
+  // direction per row is the fact a single arrow would hide.
+  //
+  // The second bar is shorter and dimmer: priority reads top-down before anything else does, and
+  // at 82px a difference in weight carries it faster than anything that needs to be read.
+  //
+  // width:100%, not a pixel width: `.preview` is a 104px border-box with 10px of padding and a 1px
+  // border, so the content gets 82px and a 104px child loses 11px to overflow:hidden.
+  "sort-builder": (() => {
+    const arrow = (d, opacity) =>
+      `<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:${opacity}" aria-hidden="true"><path d="${d}"/></svg>`
+    const up = arrow("m18 15-6-6-6 6", 1)
+    const down = arrow("m6 9 6 6 6-6", 0.75)
+    const row = (ordinal, width, tint, icon) =>
+      `<span style="display:flex;align-items:center;gap:4px;width:100%;box-sizing:border-box">` +
+      `<span style="flex:none;font:8px ui-monospace,monospace;color:var(--muted);line-height:1">${ordinal}</span>` +
+      `<span style="display:block;flex:1;min-width:0;height:7px;border-radius:2px;background:${tint};max-width:${width}"></span>` +
+      `${icon}</span>`
+    return (
+      `<div style="display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;box-sizing:border-box">` +
+      row(1, "100%", "var(--accent)", up) +
+      row(2, "74%", "color-mix(in srgb,var(--accent) 45%,transparent)", down) +
+      `</div>`
+    )
+  })(),
   // Four column stacks with the third one absent — an outline where it would be.
   //
   // The card has to say "which columns the table shows", and five table cards already sit on this
