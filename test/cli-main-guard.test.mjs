@@ -77,9 +77,15 @@ for (const name of scriptNames) {
 // the file exists for — the unit tests all call the exported functions directly, so they passed
 // just as happily with a guard that never fired.
 //
-// Its CLI block calls the global `fetch`, so the real catalogue is replaced with an empty one via
-// `--import` (which runs before the entry module and leaves argv[1] alone). An empty catalogue is
-// enough: what is under test is whether the block runs, not what it counts.
+// Its CLI block calls the global `fetch`, so the real catalogue is replaced with a stand-in via
+// `--import` (which runs before the entry module and leaves argv[1] alone). One item with no files
+// is enough: what is under test is whether the block runs, not what it counts.
+//
+// It was an EMPTY catalogue until official-coverage.mjs learned to refuse one — a 200 with `[]` is
+// one of the four shapes a failed catalogue fetch takes, and the only one that used to come back as
+// a complete-looking measurement of zero. A stand-in that is now a refusal would fail this test for
+// a reason that has nothing to do with the `file://` rule it exists to hold down, so the stub serves
+// the smallest catalogue that is a catalogue.
 test("official-coverage's CLI block runs from a path that needs URL-encoding", () => {
   // realpath, because macOS's tmpdir() is a symlink and Node resolves a module's own URL through it
   // while leaving argv[1] as given — which would fail the guard for a reason that has nothing to do
@@ -92,7 +98,7 @@ test("official-coverage's CLI block runs from a path that needs URL-encoding", (
     join(root, "offline-fetch.mjs"),
     'globalThis.fetch = async (url) => ({\n' +
       '  ok: true,\n' +
-      '  json: async () => (String(url).endsWith("/r/index.json") ? [] : {}),\n' +
+      '  json: async () => (String(url).endsWith("/r/index.json") ? [{ name: "alpha" }] : {}),\n' +
       '})\n'
   )
 
@@ -103,7 +109,7 @@ test("official-coverage's CLI block runs from a path that needs URL-encoding", (
   )
 
   assert.notEqual(out.trim(), "", "the CLI block printed nothing — it did not run")
-  assert.match(out, /catalogue 0, fetched 0, 404: none/)
+  assert.match(out, /catalogue 1, fetched 1, 404: none/)
   assert.match(out, /files\[\]\.content concatenated = 0 bytes/)
   // The word argument is read from argv too, so this covers the whole CLI path, not just its head.
   assert.match(out, /0\s+shiftKey/)
