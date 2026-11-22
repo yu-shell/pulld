@@ -205,6 +205,7 @@ function stage({ items, value, selected = [], threshold, edge, speed, allowTouch
   const keyListeners = []
   const frames = []
   const changes = []
+  const dragging = []
 
   globalThis.window = {
     addEventListener: (type, fn) => type === "keydown" && keyListeners.push(fn),
@@ -242,6 +243,7 @@ function stage({ items, value, selected = [], threshold, edge, speed, allowTouch
     value,
     defaultValue: value === undefined ? selected : undefined,
     onChange: (next) => changes.push(next),
+    onDraggingChange: (next) => dragging.push(next),
     threshold,
     edge,
     speed,
@@ -296,6 +298,7 @@ function stage({ items, value, selected = [], threshold, edge, speed, allowTouch
     result,
     container,
     changes,
+    dragging,
     bounds,
     /** The marquee element, or null when none is drawn. */
     get marquee() {
@@ -503,4 +506,29 @@ test("releasing stops the frame loop, and so does unmounting mid-drag", () => {
 
 test("the item helper writes the attribute the container looks for", () => {
   assert.deepEqual(dragSelectItem("file-1"), { [DRAG_SELECT_ITEM_ATTR]: "file-1" })
+})
+
+test("the dragging flag is only ever turned off after it was turned on", () => {
+  const s = stage({ selected: ["a"] })
+  // A press on empty space that never travels is a click, not a marquee. `true` is reported when
+  // the rectangle appears, so the `false` reported on release had no `true` before it: a consumer
+  // that counts the gesture, drives a cursor off a depth, or runs an exit transition is handed an
+  // end for something that never started — and every background click sends one.
+  s.down(10, 10)
+  s.up()
+  assert.deepEqual(s.dragging, [], "a click that drew no rectangle reported a drag ending")
+
+  // A real drag reports both, in order, exactly once each.
+  s.down(10, 10)
+  s.move(50, 50)
+  s.move(55, 55)
+  s.up()
+  assert.deepEqual(s.dragging, [true, false])
+})
+
+test("a cancelled press that never became a marquee reports no drag either", () => {
+  const s = stage()
+  s.down(10, 10)
+  s.cancel()
+  assert.deepEqual(s.dragging, [])
 })

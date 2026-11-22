@@ -427,10 +427,15 @@ export function DragSelect({
   React.useEffect(() => stopAutoScroll, [])
 
   const endSession = (node: HTMLElement | null, pointerId: number) => {
+    // Read before the session is dropped, because only a marquee that existed has an end. `true` is
+    // reported when the rectangle appears, so a press that never travelled past the threshold has
+    // nothing to turn off — and reporting it anyway hands the consumer an end for a gesture that
+    // never started, on every click that lands on the background.
+    const wasActive = sessionRef.current?.active === true
     stopAutoScroll()
     setSession(null)
     sessionRef.current = null
-    onDraggingChange?.(false)
+    if (wasActive) onDraggingChange?.(false)
     if (node?.hasPointerCapture?.(pointerId)) node.releasePointerCapture(pointerId)
   }
 
