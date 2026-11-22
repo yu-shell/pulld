@@ -1541,6 +1541,19 @@ const PREVIEWS = {
       true
     )}${field("Prefecture", true)}${field("Address", false)}<span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">no city field</span></div>`
   })(),
+  "name-input": (() => {
+    // The one thing to show is that the family name comes first, so the boxes are labelled and the
+    // reversed pair is the picture. Widths are 100% rather than 104px: .preview is a 104px
+    // border-box carrying 10px of padding and a 1px border, so the content box is 82px and a
+    // hard-coded 104 loses its right edge to overflow:hidden.
+    const field = (label, value) =>
+      `<span style="display:flex;align-items:center;gap:3px;width:100%;box-sizing:border-box;height:13px;padding:0 4px;border:1px solid var(--accent);border-radius:3px;background:var(--surface)"><span style="font:7px ui-monospace,monospace;line-height:1;color:var(--ink)">${label}</span><span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);white-space:nowrap">${value}</span></span>`
+    const single = `<span style="display:flex;align-items:center;gap:3px;width:100%;box-sizing:border-box"><span style="width:6px;height:6px;flex:none;border:1px solid var(--line);border-radius:2px;background:var(--bg)"></span><span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);white-space:nowrap">one name</span></span>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;box-sizing:border-box">${field(
+      "\u59d3",
+      "Yamada"
+    )}${field("\u540d", "Taro")}${single}<span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">family name first</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with

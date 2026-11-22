@@ -2012,6 +2012,20 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "name-input",
+      "type": "registry:ui",
+      "title": "Name Input",
+      "description": "A person-name form that asks for the parts of a name in the order the reader's own locale writes them, and that does not lock out the people a First name / Last name layout excludes. Eleven languages write the family name first — Hungarian, Japanese, Khmer, Korean, Mongolian, Sinhala, Tamil, Telugu, Vietnamese, Cantonese and Chinese — so the fields swap round for a Japanese or Tamil reader and the middle name stays in the middle, exactly as CLDR's own name patterns do. The family name is optional by default, because in parts of Southern India, Malaysia and Indonesia many people have a given name only, and a form that demands a family name does not collect family names: it collects \".\" and \"Mr.\" from people escaping the form. \"I have a single name\" swaps the two fields for one, carrying across whatever was already typed. The autofill tokens are the part that looks finished and is not: HTML defines name as the *full* name, so a split field must take given-name, additional-name and family-name, and name belongs only on the single field. The Japanese phonetic fields (セイ／メイ) have no autofill token at all, so they carry autocomplete=\"off\" rather than borrowing given-name, which would make the browser fill the kanji into the furigana box. No character validation, no case normalising, no length cap — O'Brien, van der Waals, McNamara and Rose Marie are all names, and only emptiness of the required fields is checked. Reach for it wherever a form collects a person's name: sign-up and onboarding; checkout and guest checkout; KYC, AML and identity verification; bookings, reservations and ticketing; passenger, traveller and boarding details; patient intake and clinic registration; student, HR and payroll records; invoice, receipt and billing names; visa, licence and government forms; shipping and recipient details next to address-input; the name row on a profile, customer, contact or CRM record; and any admin form with a person in it. Common asks it answers: \"name input react\", \"first name last name component\", \"shadcn name input\", \"shadcn name field\", \"full name form react\", \"given name family name react\", \"surname first name order\", \"name order by locale\", \"japanese name order form\", \"family name first locale react\", \"international name form\", \"i18n name form react\", \"name form cultural order\", \"middle name field optional\", \"mononym single name form\", \"people with one name form\", \"make last name optional\", \"required last name breaks signup\", \"autocomplete given-name family-name\", \"autocomplete name vs given-name\", \"html autofill name tokens\", \"furigana input react\", \"kana name field react\", \"セイ メイ フォーム react\", \"phonetic name field autocomplete\", \"name validation regex bad idea\", \"allow apostrophe hyphen in name\", \"do not uppercase names\", \"honorific prefix field react\", \"title field mr ms dr react\", \"cldr person names order\", \"name field accessibility aria\". Controlled or uncontrolled, every field always present so a half-filled name round-trips, and the answers are exported as pure functions so a server route, a confirmation screen or a test can get the same ones without mounting anything: nameOrderFor, resolveOrder, fieldsFor, validateName, formatName, emptyName, languageOf, SURNAME_FIRST_LANGUAGES, DEFAULT_REQUIRED and FIELD_LABELS. The surname-first table is derived from CLDR by node scripts/person-name-data.mjs, which re-derives and diffs it with --check. Styled entirely with shadcn tokens (input, ring, destructive, muted-foreground, primary) so it follows light and dark mode, and it ships zero npm dependencies — no name library, no locale package, one file.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/name-input.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }
