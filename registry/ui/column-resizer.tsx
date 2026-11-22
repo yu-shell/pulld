@@ -676,7 +676,12 @@ export function useColumnResizer({
     handleProps,
     guideProps: {
       ref: guideRef,
-      hidden: resizing === null,
+      // Hidden in `"live"` too, and not only between gestures. That mode moves the column and the
+      // table width directly and `paint` returns before ever touching the guide, so a guide shown
+      // for the duration of the drag is a line nobody positioned: it stands at the `left: 0` it was
+      // rendered with, a primary-coloured rule down the table's left edge, in the one mode where
+      // the boundary is already being drawn by the column that is moving.
+      hidden: resizing === null || preview === "live",
       style: { left: 0 },
     },
     setColumnWidth,

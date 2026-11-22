@@ -660,3 +660,23 @@ test("the handle marks itself while it is the one being dragged", () => {
   // every handle ever dragged looking active.
   assert.equal(ui.handles()[1].props["data-resizing"], undefined)
 })
+
+test("the guide stays hidden when the column itself is the preview", () => {
+  // `preview: "live"` moves the column and the table width directly and never positions the guide,
+  // but the guide's `hidden` was derived from the drag alone — so the line was un-hidden at the
+  // left: 0 it was rendered with and stood at the table's left edge for the whole gesture. A
+  // primary-coloured rule down the first column, in the one mode where the boundary is already
+  // being shown by the column that is moving.
+  const live = mount({ defaultWidths: { name: 220 }, preview: "live" })
+  assert.equal(live.guide().props.hidden, true)
+  live.handles()[0].props.onPointerDown(pointer({ clientX: 300 }))
+  live.instance.rerender()
+  assert.equal(live.resizer.resizing, "name", "the drag did not start")
+  assert.equal(live.guide().props.hidden, true, "the guide was shown at left: 0 during a live drag")
+
+  // Still shown in guide mode, which is the mode that has a boundary to draw.
+  const guided = mount({ defaultWidths: { name: 220 } })
+  guided.handles()[0].props.onPointerDown(pointer({ clientX: 300 }))
+  guided.instance.rerender()
+  assert.equal(guided.guide().props.hidden, false, "the guide stopped being drawn in guide mode")
+})
