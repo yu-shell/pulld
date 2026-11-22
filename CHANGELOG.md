@@ -3,6 +3,22 @@
 Notable changes to pulld components. Updates apply to new installs; the shadcn CLI
 copies code into your project, so existing installs are never changed automatically.
 
+## 2026-11-22 — quality sweep
+
+- fix(column-resizer): in `preview: "live"` the drag guide was shown without ever being positioned.
+  That mode moves the column and the table width directly and `paint` returns before it reaches the
+  guide, but the guide's `hidden` was derived from the drag alone — so for the whole gesture a
+  primary-coloured rule stood at the `left: 0` it was rendered with, down the table's left edge, in
+  the one mode where the boundary is already being drawn by the column that is moving. It is hidden
+  in `"live"` now, and still drawn in the default `"guide"` mode. A test pins both.
+
+- fix(drag-select): `onDraggingChange` reported a drag ending that had never begun. `true` is sent
+  when the rectangle appears, but `false` was sent from `endSession` unconditionally — so every
+  click that landed on the background, and every cancelled press that never travelled past the
+  threshold, handed the consumer an end for a gesture with no start. A listener that counts the
+  gesture, drives a cursor, or runs an exit transition saw it; `setDragging(false)` did not, which
+  is why it survived. It now fires only for a marquee that existed, and a test pins the pairing.
+
 ## 2026-11-08 — quality sweep
 
 - fix(copy-button): a caller's own `onClick` replaced the copy instead of running beside it. The
