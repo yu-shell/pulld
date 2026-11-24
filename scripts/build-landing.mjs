@@ -1554,6 +1554,27 @@ const PREVIEWS = {
       "Yamada"
     )}${field("\u540d", "Taro")}${single}<span style="font:7px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">family name first</span></div>`
   })(),
+  "latlng-input": (() => {
+    // Two axes and two notations are the whole component, so the picture is both: a latitude and a
+    // longitude row carrying their own hemisphere letter, with the same latitude repeated
+    // underneath in degrees-minutes-seconds. The crosshair is what keeps this card from reading as
+    // one more pair of labelled text boxes next to address-input and name-input.
+    //
+    // Widths are 100% rather than 104px, for the reason name-input gives above: .preview is a
+    // 104px border-box with 10px of padding and a 1px border, so the content box is 82px.
+    const row = (label, value, letter) =>
+      `<span style="display:flex;align-items:center;gap:2px;width:100%;box-sizing:border-box;height:13px;padding:0 3px;border:1px solid var(--accent);border-radius:3px;background:var(--surface)"><span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);flex:none">${label}</span><span style="flex:1;min-width:0;font:7px ui-monospace,monospace;line-height:1;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums">${value}</span><span style="flex:none;font:6px ui-monospace,monospace;line-height:1;color:var(--accent);font-weight:600">${letter}</span></span>`
+    const crosshair = `<svg width="13" height="13" viewBox="0 0 16 16" style="flex:none;display:block"><circle cx="8" cy="8" r="5" fill="none" stroke="var(--accent)" stroke-width="1.2"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3" stroke="var(--muted)" stroke-width="1.2"/><circle cx="8" cy="8" r="1.3" fill="var(--accent)"/></svg>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;box-sizing:border-box">${crosshair}${row(
+      "lat",
+      "35.6895",
+      "N"
+    )}${row(
+      "lng",
+      "139.6917",
+      "E"
+    )}<span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">35\u00b041'22.2"N</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
