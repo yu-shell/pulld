@@ -22,7 +22,7 @@ import { execFileSync } from "node:child_process"
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, relative, resolve } from "node:path"
 import { tmpdir } from "node:os"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SCRIPTS = join(ROOT, "scripts")
@@ -241,3 +241,80 @@ test("nothing imports a script that executes when it is imported", () => {
       `as a subprocess over a temp root instead (test/inject-base.test.mjs, test/_landing-page.mjs)`
   )
 })
+
+// --- the half of the guard that was never explained ---
+//
+// The static rule at the top of this file polices one half of the guard. The spelling every working
+// script uses has two:
+//
+//   if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+//       ^^^^^^^^^^^^^^^^^^
+//
+// Only the second half was ever written down. build-index.mjs, report.mjs and sweep.mjs each carry
+// a comment about pathToFileURL and not one about the presence check, so when the two newest
+// scripts were written they copied the explained half and dropped the silent one:
+// address-data.mjs and person-name-data.mjs both shipped `pathToFileURL(process.argv[1])` with
+// nothing in front of it. That is the same shape as the `file://` mistake this file already exists
+// for — prose beside ten correct examples does not stop the eleventh — except here the examples did
+// not even carry the prose.
+//
+// `pathToFileURL(undefined)` throws ERR_INVALID_ARG_TYPE, so the guard failed in the one direction
+// a guard must not: it threw during module evaluation, before any export could be reached. Measured
+// on both files before this test existed — `node --input-type=module -e 'await import(…)'` exited 1
+// with `TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string. Received
+// undefined` and never ran a line of either script. The other ten imported clean.
+//
+// A process that runs a file always has argv[1]. `node -e`, `node -p`, a piped stdin and the REPL
+// do not — and those are exactly how these two get driven, because both exist to export helpers and
+// be re-derived (`--check`) rather than to be a pipeline step. Reaching for one exported function
+// with `node -e 'await import("./scripts/address-data.mjs")'` is the documented way to use them,
+// and it was the one way that could not work.
+//
+// Checked by importing rather than by matching the source text, because the property wanted is
+// "this module can be imported", not a spelling. A regex over the guard line would pass for any
+// arrangement that happened to look right, and would have to be rewritten the first time somebody
+// hoisted argv[1] into a variable.
+
+/**
+ * The scripts that read argv[1], derived rather than listed.
+ *
+ * Flat programs are excluded: importing one runs its work against the importing process's tree,
+ * which is the hazard the rule above exists for. Neither flat program names argv[1] today, so this
+ * subtracts nothing — it is here so that giving one a CLI flag cannot quietly enlist it.
+ */
+const argvReaders = scriptNames.filter(
+  (name) => !flatPrograms.has(name) && readFileSync(join(SCRIPTS, name), "utf8").includes("process.argv[1]")
+)
+
+test("the argv[1] scan still finds the guards it is meant to police", () => {
+  // The same hazard as the two scans above: a filter that matches nothing leaves the rule below
+  // green while checking no scripts at all.
+  assert.ok(argvReaders.length >= 9, `expected the guarded scripts, found ${argvReaders.length}: ${argvReaders}`)
+})
+
+for (const name of argvReaders) {
+  test(`${name} survives being imported by a process with no argv[1]`, () => {
+    const url = pathToFileURL(join(SCRIPTS, name)).href
+    // `--input-type=module` so top-level await is available regardless of how this Node version
+    // treats a bare `-e`; neither form sets argv[1], which is the condition under test.
+    // stdio: "pipe" so a crash comes back on the thrown error rather than onto this run's stderr.
+    let failure = null
+    try {
+      execFileSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(url)})`], {
+        encoding: "utf8",
+        stdio: "pipe",
+      })
+    } catch (e) {
+      const stderr = String(e?.stderr ?? "")
+      failure = stderr.split("\n").find((line) => /Error\b/.test(line))?.trim() || e?.message || String(e)
+    }
+    assert.equal(
+      failure,
+      null,
+      `${name} threw while being imported: ${failure}\n` +
+        `a CLI block must be guarded as \`process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href\` ` +
+        `— without the presence check, pathToFileURL(undefined) throws out of module evaluation and the file's exports ` +
+        `become unreachable to anything that is not a file-entry process`
+    )
+  })
+}

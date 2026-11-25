@@ -161,4 +161,11 @@ async function main() {
 // Only when run directly, not when the unit tests import the helpers. Through pathToFileURL for the
 // reason build-index.mjs spells out: `import.meta.url` is percent-encoded, so a space in the
 // checkout path makes a raw argv[1] comparison differ and this block never runs.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) await main()
+//
+// Guarded on argv[1] existing *first*, which is the half of this line nothing explained. A process
+// that runs a file has an argv[1]; `node -e`, `node -p`, a piped stdin and the REPL do not, and
+// `pathToFileURL(undefined)` throws ERR_INVALID_ARG_TYPE — out of module evaluation, before any
+// export below can be reached. A file whose whole purpose is to be imported and re-derived must not
+// fail to import, and `node -e 'await import(…)'` to call one helper is how that is done by hand.
+// test/cli-main-guard.test.mjs holds this down by importing every argv[1]-reading script that way.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main()

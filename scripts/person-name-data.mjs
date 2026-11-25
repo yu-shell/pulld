@@ -192,4 +192,8 @@ async function main() {
   process.exitCode = 1
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) await main()
+// Only when run directly, not when test/name-input.test.mjs imports the helpers. Through
+// pathToFileURL for the reason build-index.mjs spells out, and guarded on argv[1] existing at all
+// for the reason scripts/address-data.mjs spells out: a process with no argv[1] (`node -e` and
+// friends) would throw ERR_INVALID_ARG_TYPE out of this line while importing the file.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main()
