@@ -1575,6 +1575,29 @@ const PREVIEWS = {
       "E"
     )}<span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">35\u00b041'22.2"N</span></div>`
   })(),
+  "ip-input": (() => {
+    // The prefix is the component, so the picture is the prefix: an address with its /8 beside it,
+    // and underneath it the thirty-two bits with the first eight of them filled. That bar is the
+    // thing no other card on this page has \u2014 the rows of labelled boxes next to it (address-input,
+    // name-input, latlng-input) all look alike from a thumbnail's distance \u2014 and it is also the
+    // one fact the field exists to tell you, since /8 and /16 differ by one character and by
+    // 16,711,680 hosts.
+    //
+    // Widths are 100% rather than 104px, for the reason latlng-input gives above: .preview is a
+    // 104px border-box with 10px of padding and a 1px border, so the content box is 82px. The bar
+    // is 16 segments of two bits each with flex:1, so nothing in here carries a pixel width that
+    // could add up past 82.
+    const SEGMENTS = 16
+    const filled = 4 // /8 of 32 bits, at two bits a segment
+    const bar = Array.from(
+      { length: SEGMENTS },
+      (_, i) =>
+        `<span style="flex:1;height:7px;border-radius:1px;background:${
+          i < filled ? "var(--accent)" : "var(--muted)"
+        };opacity:${i < filled ? "1" : "0.3"}"></span>`
+    ).join("")
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;gap:2px;width:100%;box-sizing:border-box;height:14px;padding:0 3px;border:1px solid var(--accent);border-radius:3px;background:var(--surface)"><span style="flex:1;min-width:0;font:8px ui-monospace,monospace;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums">10.0.0.0</span><span style="flex:none;font:8px ui-monospace,monospace;line-height:1;color:var(--accent);font-weight:600">/8</span></span><span style="display:flex;gap:1px;width:100%;box-sizing:border-box">${bar}</span><span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">16,777,216 addresses</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
