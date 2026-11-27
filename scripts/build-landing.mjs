@@ -1598,6 +1598,27 @@ const PREVIEWS = {
     ).join("")
     return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;gap:2px;width:100%;box-sizing:border-box;height:14px;padding:0 3px;border:1px solid var(--accent);border-radius:3px;background:var(--surface)"><span style="flex:1;min-width:0;font:8px ui-monospace,monospace;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums">10.0.0.0</span><span style="flex:none;font:8px ui-monospace,monospace;line-height:1;color:var(--accent);font-weight:600">/8</span></span><span style="display:flex;gap:1px;width:100%;box-sizing:border-box">${bar}</span><span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">16,777,216 addresses</span></div>`
   })(),
+  "focus-trap": (() => {
+    // Containment is the component, so the picture is a boundary: a dashed page with a solid box
+    // inside it, three tab stops in the box with the first one lit, and an arrow leaving the last
+    // stop and coming back to the first instead of carrying on past the edge. The dashed outer
+    // rectangle is what no other card on this page has — the rows of labelled boxes beside it all
+    // read alike from a thumbnail's distance — and the returning arrow is the one fact the
+    // component exists to assert.
+    //
+    // Widths are 100% rather than 104px, for the reason ip-input gives above: .preview is a 104px
+    // border-box with 10px of padding and a 1px border, so the content box is 82px. The only fixed
+    // width in here is the 11px arrow; with 6px of padding, 2px of borders and a 3px gap that is
+    // 22px, and the box beside it is flex:1, so nothing adds up past 82.
+    const stop = (lit) =>
+      `<span style="height:5px;border-radius:1px;background:var(--${
+        lit ? "accent" : "muted"
+      });opacity:${lit ? "1" : "0.35"}"></span>`
+    const loop = `<svg width="11" height="30" viewBox="0 0 11 30" style="flex:none;display:block"><path d="M3 5H7a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H3" fill="none" stroke="var(--accent)" stroke-width="1.2"/><path d="M5.5 2.5 3 5l2.5 2.5" fill="none" stroke="var(--accent)" stroke-width="1.2"/></svg>`
+    return `<div style="display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;box-sizing:border-box"><span style="display:flex;align-items:center;gap:3px;width:100%;box-sizing:border-box;padding:3px;border:1px dashed var(--muted);border-radius:3px"><span style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;box-sizing:border-box;height:30px;padding:0 4px;border:1px solid var(--accent);border-radius:2px;background:var(--surface)">${stop(
+      true
+    )}${stop(false)}${stop(false)}</span>${loop}</span><span style="font:6px ui-monospace,monospace;line-height:1;color:var(--muted);text-align:center;white-space:nowrap">Tab stays inside</span></div>`
+  })(),
 }
 // A component with no PREVIEWS entry still gets a card; it gets the generic box. That fallback is
 // what makes the omission invisible, so the two strings it is built from are shared with
