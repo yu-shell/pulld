@@ -85,6 +85,12 @@ Rules:
 - Up to **100 documents per request** (each doc is chunked: ≤20 chunks/doc, ≤400 chunks/request).
   A request over the per-request total is refused whole with
   `413 { "error": "too_many_chunks" }` — split it into more requests.
+- **The chunk total is the cap that binds first, so 100 is not a batch size.** 100 documents only
+  fit in one request while each is under ~3,000 characters of text; a catalogue of ordinary pages
+  is refused on the chunk total long before the document count matters — at 10,000 characters a
+  page, 28 fit. **A batch of 20 documents can never cross the chunk total**, whatever it contains:
+  a document is itself capped at 20 chunks, so 20 of them cannot pass 400. Step 4's script batches
+  at 20 for that reason, and a refused request indexes nothing — read the status (see step 4).
 - **A document longer than 20 chunks (~15,000 characters of text) is indexed only up to that
   point, and the rest is not searchable.** The request still succeeds, and the documents it
   happened to are reported in `truncated_docs` (how many) and `truncated_ids` (which ones, up to
@@ -151,16 +157,34 @@ occasional deploy; if that product exceeds your quota, use B.
 ```ts
 // scripts/index-content.ts — run in CI/build. PULLD_ADMIN_KEY is a server-side secret.
 const docs = await loadAllDocs() // your markdown / CMS / DB → [{ id, title, url, content }]
-for (let i = 0; i < docs.length; i += 100) {
-  await fetch("https://pulld.pages.dev/api/search/ingest", {
+
+// 20, not the 100-document cap: a document is capped at 20 chunks and a request at 400, so 20
+// documents is the largest batch that cannot be refused with a 413 (see step 3).
+const BATCH = 20
+let skipped = 0
+const truncated: string[] = []
+
+for (let i = 0; i < docs.length; i += BATCH) {
+  const res = await fetch("https://pulld.pages.dev/api/search/ingest", {
     method: "POST",
     headers: {
-      "x-pulld-admin-key": process.env.PULLD_ADMIN_KEY,
+      "x-pulld-admin-key": process.env.PULLD_ADMIN_KEY!,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ documents: docs.slice(i, i + 100) }),
+    body: JSON.stringify({ documents: docs.slice(i, i + BATCH) }),
   })
+  const body = await res.json()
+  // Fail the build. A refused batch indexes nothing at all — a 413 or a 429 nobody reads is a
+  // green deploy over content that search has never seen.
+  if (!res.ok) throw new Error(`ingest ${res.status}: ${JSON.stringify(body)}`)
+  skipped += body.skipped_docs
+  truncated.push(...body.truncated_ids)
 }
+
+// Both succeed quietly, and both mean content is missing: `skipped_docs` is usually a field
+// mapping that produced no id or no text, `truncated_ids` are documents to split (see step 3).
+if (skipped) console.warn(`${skipped} document(s) skipped — check your id/title/content mapping`)
+if (truncated.length) console.warn(`truncated, split these: ${truncated.join(", ")}`)
 ```
 
 **B. On-change (freshest, and the cheapest against the quota).** In your CMS's publish/update
